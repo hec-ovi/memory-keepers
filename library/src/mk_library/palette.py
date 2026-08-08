@@ -13,6 +13,7 @@ def palette_for(topic: str, side: str = "light") -> dict:
     if topic in NAMED and side == "light":
         return dict(NAMED[topic])
     h = int.from_bytes(hashlib.sha256(topic.encode()).digest()[:4], "big") / 2**32
+    h = 0.02 + h * 0.78  # hues stay between red and violet; the pink band never appears
     sat, light = (0.55, 0.62) if side == "light" else (0.45, 0.38)
     r, g, b = colorsys.hls_to_rgb(h, light, sat)
     ra, ga, ba = colorsys.hls_to_rgb(h, light * 0.45, sat)
