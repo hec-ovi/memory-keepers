@@ -12,7 +12,9 @@ Purpose: the game. A three.js SPA served as static ES modules, no build step, no
 | render | three.js scenes: island (light village, dark side, spatial day/night), houses, keepers, interior with the 24-slot bookcase, dream movie playback |
 | ui | holo panel kit (materialize/dissolve animations, reused by every modal), dialog with voice ring (listening) and orb (speaking) states plus mic button, book reader, HUD, minimap |
 
-Each component becomes its own folder with a CONTRACT.md when its code lands.
+Each component folder carries its own CONTRACT.md: `src/api`, `src/sim`, `src/render`, `src/ui`; the shell is `src/main.js`.
+
+How to test: `docker compose run --rm test-frontend` (vitest + jsdom + Testing Library + MSW; sim and api are pure and fully covered, the dialog runs against a mocked engine). Play it: `docker compose up`, open http://localhost:8000.
 
 ## Keeper look
 

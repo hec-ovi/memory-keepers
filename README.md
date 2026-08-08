@@ -12,15 +12,16 @@ Stack: Gemini on Vertex AI, Google ADK agents, Cloud Run, Firestore, Pub/Sub, Cl
 docker compose up
 ```
 
-Engine on http://localhost:8000 against the official Firestore and Pub/Sub emulators, model tier `fake` (deterministic). `MODEL_TIER=local docker compose up` points the model at a llama.cpp server on the host (Gemma). Nothing installs on the machine; everything lives in the containers.
+The game is at http://localhost:8000, running against the official Firestore and Pub/Sub emulators, model tier `fake` (deterministic). `MODEL_TIER=local docker compose up` points the model at a llama.cpp server on the host (Gemma). Nothing installs on the machine; everything lives in the containers.
 
 ## Tests
 
 ```
-docker compose run --rm test
+docker compose run --rm test            # python boxes (49 tests)
+docker compose run --rm test-frontend   # frontend (14 tests)
 ```
 
-Every box's contract suite in one pass: real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set).
+Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set); frontend on vitest + jsdom + Testing Library + MSW.
 
 ## Deploy
 
