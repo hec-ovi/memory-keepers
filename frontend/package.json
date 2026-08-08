@@ -1,15 +1,20 @@
 {
-  "name": "mk-frontend",
+  "name": "memory-keepers-frontend",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Static ES-module Three.js frontend for memory-keepers. No build step; three.js is vendored.",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "serve": "python3 -m http.server 8080"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/user-event": "^14.6.1",
-    "jsdom": "^25.0.1",
-    "msw": "^2.7.0",
-    "vitest": "^3.0.0"
+    "jsdom": "^26.1.0",
+    "msw": "^2.10.2",
+    "three": "^0.178.0",
+    "vitest": "^3.2.4"
   }
 }

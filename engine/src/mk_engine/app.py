@@ -236,6 +236,13 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
         from mk_voice import unavailable_router
         app.include_router(unavailable_router())
 
+    @app.post("/dev/seed")
+    async def dev_seed(x_world: str | None = Header(default=None)):
+        world = world_of(x_world)  # first touch seeds demo content
+        keepers = library.list_keepers(world)
+        books = sum(k.book_count for k in keepers)
+        return {"seeded": True, "keepers": len(keepers), "books": books}
+
     if dev_routes:
         @app.post("/dev/reset")
         async def dev_reset(x_world: str | None = Header(default=None)):

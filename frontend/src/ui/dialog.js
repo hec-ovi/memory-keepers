@@ -1,276 +1,893 @@
-// The chat: one component for keepers and the monument, world and interior.
-// Holo-styled, voice ring while listening, orb while speaking, book chips
-// showing exactly which shelves grounded an answer.
-import { holoPanel, toast } from "./holo.js";
-import { openReader } from "./reader.js";
+// Holo comm panel for the selected keeper. Not a chatbot window: the hero
+// element is a voice visualizer (ui/holo/voice.js). Idle it breathes faintly;
+// while a Tell/Ask request is in flight it goes cyan LISTENING and the
+// composer pill wears the kit's spinning "thinking" border (holo-thinking);
+// when the reply lands it goes purple/blue SPEAKING while the reply text
+// types itself out beneath in amber. Recent exchanges collapse into a small
+// scrollback that grows upward above the visualizer.
+//
+// Layout: the panel is a flex column with the COMPOSER PINNED TO THE BOTTOM.
+// One composer serves both tabs (Tell / Ask select what a send means): a pill
+// input whose right end merges into a circular mic button, with a compact
+// send button inside the pill; Enter sends too.
+//
+// Chat grounding: an ask reply that is grounded in books renders a vertical
+// book list on the LEFT of the reply (spine-colored bars + titles, glow
+// staggered so the first consulted book burns brightest, click opens the
+// reader; up/down arrows page one book at a time when the list overflows) and
+// emits "memory:used" the moment the list appears. An ungrounded reply with a
+// follow-up ({grounded: false, followup: true}) renders instead a "she does
+// not remember this" hint with the follow-up question and a "Save this as a
+// memory" shortcut that pre-fills the Tell tab.
+//
+// Rest and sleep: the panel header carries a level badge (LV n, amber) and a
+// thin rest meter fed from keeper.session {tokens_used, budget, status} (fill
+// cyan -> amber -> red). When she is getting tired / needs to dream a status
+// line and a "Send to sleep" button appear: it calls api.sleep, emits
+// "keeper:sleep", disables the chat inputs, polls api.sleepJob until done, then
+// refreshes the keeper record and emits "keeper:rested". A 409 NEEDS_SLEEP from
+// tell/ask is caught and rendered as the same send-to-sleep prompt; a 409
+// LIBRARY_FULL from tell (her one bookcase is full) renders the same prompt
+// with a "her library is full" note: dreaming makes room.
+//
+// Unconscious keepers can be talked to as well: she listens and answers, but
+// keeps no books of what you tell her (a soft hint on the Tell tab says so;
+// her books are born from dreaming). A tell reply without a book emits no
+// "book:created".
+//
+//   const dialog = createDialog({ root, state, bus, api, toasts });
+//   dialog.open("dreams"); dialog.close(); dialog.dispose();
+//
+// Bus wiring:
+//   listens "keeper:selected"  ({ keeperId } or a bare id)  -> opens the panel
+//   listens "state:loaded"   -> refreshes the open panel's session/level
+//                               header cluster from the re-synced state
+//   emits   "keeper:join"      { keeperId }                 Join button (closes first)
+//   emits   "book:created"   { keeperId, book }           after a tell that wrote a book
+//   emits   "book:open"      { keeperId, slug }           consulted book click
+//   emits   "memory:used"    { keeperId, slugs }          grounded ask reply lands
+//   emits   "keeper:sleep"     { keeperId }                 after api.sleep succeeds
+//   emits   "keeper:rested"    { keeperId }                 sleep job polled to done
+//   emits   "voice:mic"      { keeperId, on }             mic toggle (real STT later)
+//   emits   "voice:tts"      { keeperId, on }             speaker toggle (real TTS later)
+//   emits   "voice:state"    { keeperId, mode }           visualizer mode changes
+//                            ("idle" | "listening" | "speaking")
+//   emits   "ui:open" / "ui:close"  { panel: "dialog" } for the audio blips
+//
+// Esc or the close button closes the panel (modal overlays and the reader get
+// first dibs on Esc).
 
-export class Dialog {
-  constructor({ api, root, onWorldChanged, onSourcesUsed }) {
-    this.api = api;
-    this.root = root;
-    this.onWorldChanged = onWorldChanged;
-    this.onSourcesUsed = onSourcesUsed;
-    this.voiceOk = true;
-    this.speakReplies = false;
+import { renderMd } from "./md.js";
+import { createHoloPanel, ensureHoloStyles, ensureThinking } from "./holo/holo.js";
+import { createVoiceViz } from "./holo/voice.js";
+
+const STYLE_ID = "mk-dialog-style";
+const CSS = `
+.mk-dialog{position:absolute;top:70px;right:16px;width:min(370px,calc(100vw - 32px));max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow:hidden;z-index:30;}
+.mk-dialog .holo-panel__body{flex:1;min-height:0;display:flex;flex-direction:column;}
+.mk-dialog-inner{flex:1;min-height:0;display:flex;flex-direction:column;}
+.mk-dialog-chips{margin-bottom:8px;}
+.mk-dialog-join{display:block;width:100%;margin:2px 0 10px;}
+/* scrollback grows upward: newest at the bottom, column pinned low */
+.mk-dialog-hist{max-height:16vh;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;justify-content:flex-end;}
+.mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;}
+.mk-dialog-hist-who{color:var(--holo-cyan,#3fe0ff);margin-right:6px;text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;}
+.mk-dialog-hist-row-keeper .mk-dialog-hist-who{color:var(--holo-amber,#ffb658);}
+.mk-dialog-stage{display:flex;flex-direction:column;align-items:center;gap:6px;margin:4px 0 8px;}
+.mk-dialog-viz-row{display:flex;align-items:center;gap:14px;}
+.mk-dialog-tts{min-width:42px;padding:7px 10px;font-size:.95rem;}
+.mk-dialog-tts[aria-pressed="true"]{background:var(--holo-cyan,#3fe0ff);border-color:transparent;color:#03272e;box-shadow:0 0 14px rgba(63,224,255,.6);}
+.mk-dialog-status{margin:0;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);animation:mk-dialog-breathe 1.1s ease-in-out infinite;}
+@keyframes mk-dialog-breathe{0%,100%{opacity:.9;}50%{opacity:.35;}}
+
+/* reply area: consulted books stacked on the LEFT, the typed reply beside them */
+.mk-dialog-reply{display:flex;align-items:flex-start;gap:10px;min-height:0;overflow-y:auto;}
+.mk-dialog-say{flex:1;min-width:0;min-height:1.2em;font-size:.92rem;line-height:1.45;color:var(--holo-amber-hi,#ffd9a0);}
+.mk-dialog-say p:first-child{margin-top:0;}
+.mk-dialog-say p:last-child{margin-bottom:0;}
+
+/* composer: pill input whose right end merges into the circular mic button */
+.mk-dialog-io{position:relative;display:flex;align-items:center;gap:4px;margin-top:auto;border:1px solid var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:999px;background:rgba(10,5,2,.75);padding:3px 3px 3px 14px;}
+.mk-dialog-io.holo-thinking{border-radius:999px;}
+.mk-dialog-io.holo-thinking::before,.mk-dialog-io.holo-thinking::after{border-radius:999px;}
+.mk-dialog-field{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--holo-amber-hi,#ffd9a0);caret-color:var(--holo-cyan,#3fe0ff);font-family:var(--holo-font,inherit);font-size:.92rem;letter-spacing:.02em;padding:8px 0;}
+.mk-dialog-field::placeholder{color:rgba(255,182,88,.4);}
+.mk-dialog-field:disabled{opacity:.5;}
+.mk-dialog-send{width:32px;height:32px;min-width:32px;border-radius:50%;padding:0;font-size:.82rem;line-height:1;}
+.mk-dialog-mic{width:38px;height:38px;min-width:38px;border-radius:50%;padding:0;font-size:.95rem;margin:-1px;}
+.mk-dialog-mic[aria-pressed="true"]{background:var(--holo-cyan,#3fe0ff);border-color:transparent;color:#03272e;box-shadow:0 0 14px rgba(63,224,255,.6);}
+
+/* the unconscious whisper hint above the composer */
+.mk-dialog-whisper{margin:0 0 8px;font-size:.78rem;font-style:italic;opacity:.85;color:var(--holo-cyan,#3fe0ff);}
+
+/* header session cluster: level badge + thin rest meter */
+.mk-dialog-sess{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.mk-dialog-level{font-size:.66rem;font-weight:700;letter-spacing:.12em;color:var(--holo-amber,#ffb658);border:1px solid var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:3px;padding:1px 6px;text-shadow:0 0 8px rgba(255,166,64,.5);white-space:nowrap;}
+.mk-dialog-rest{position:relative;width:64px;height:5px;border:1px solid var(--holo-line,rgba(255,166,64,.42));border-radius:3px;background:rgba(0,0,0,.55);overflow:hidden;}
+.mk-dialog-rest-fill{height:100%;width:0;background:var(--holo-cyan,#3fe0ff);transition:width 300ms ease,background 300ms ease;}
+.mk-dialog-rest--amber .mk-dialog-rest-fill{background:var(--holo-amber,#ffb658);}
+.mk-dialog-rest--red .mk-dialog-rest-fill{background:var(--holo-danger,#ff7a5c);box-shadow:0 0 8px rgba(255,122,92,.85);}
+
+/* sleep prompt row */
+.mk-dialog-sleeprow{display:flex;align-items:center;gap:8px;margin:0 0 10px;border:1px dashed var(--holo-line,rgba(255,166,64,.42));border-radius:4px;padding:7px 10px;}
+.mk-dialog-sleepnote{flex:1;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--holo-amber,#ffb658);animation:mk-dialog-breathe 1.7s ease-in-out infinite;}
+.mk-dialog-sleeprow--red .mk-dialog-sleepnote{color:var(--holo-danger,#ff7a5c);}
+
+/* consulted books: a left-side vertical list, spine bars + titles, staggered glow */
+.mk-dialog-consulted{display:flex;flex-direction:column;gap:2px;width:112px;flex:none;}
+.mk-dialog-booklist{display:flex;flex-direction:column;gap:2px;overflow:hidden;}
+.mk-dialog-book{display:flex;align-items:center;gap:6px;width:100%;height:24px;flex:none;padding:0 4px;background:transparent;border:1px solid transparent;border-radius:3px;color:var(--holo-amber-hi,#ffd9a0);font-size:.7rem;text-align:left;cursor:pointer;animation:mk-dialog-bookglow 1.6s ease-in-out both;}
+.mk-dialog-book:hover{border-color:var(--holo-amber-dim,rgba(255,166,64,.55));box-shadow:0 0 12px var(--holo-amber,#ffb658);}
+.mk-dialog-book:focus-visible{outline:2px solid var(--holo-cyan,#3fe0ff);outline-offset:1px;}
+.mk-dialog-spine{width:6px;height:16px;flex:none;border-radius:1px;border:1px solid rgba(0,0,0,.4);background:var(--mk-book-spine,#8a6a4a);}
+.mk-dialog-book--lead .mk-dialog-spine{height:20px;}
+.mk-dialog-booktitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mk-dialog-bookarrow{width:100%;height:16px;padding:0;font-size:.6rem;line-height:1;background:rgba(255,166,64,.06);border:1px solid var(--holo-amber-dim,rgba(255,166,64,.35));border-radius:3px;color:var(--holo-amber,#ffb658);cursor:pointer;}
+.mk-dialog-bookarrow:disabled{opacity:.35;cursor:not-allowed;}
+@keyframes mk-dialog-bookglow{0%{box-shadow:none;filter:brightness(.85);}35%{box-shadow:0 0 12px var(--holo-amber,#ffb658);filter:brightness(1.6);}100%{box-shadow:0 0 3px rgba(255,182,88,.3);filter:brightness(1);}}
+@keyframes mk-dialog-bookglow-lead{0%{box-shadow:none;filter:brightness(.85);}35%{box-shadow:0 0 18px var(--holo-amber,#ffb658);filter:brightness(1.9);}100%{box-shadow:0 0 9px rgba(255,182,88,.75);filter:brightness(1.12);}}
+.mk-dialog-book--lead{animation-name:mk-dialog-bookglow-lead;}
+
+/* ungrounded reply: she does not remember */
+.mk-dialog-nomem{border:1px dashed var(--holo-cyan-dim,rgba(63,224,255,.35));border-radius:4px;padding:10px 12px;margin:2px 0 8px;}
+.mk-dialog-nomem-title{margin:0 0 6px;font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);text-shadow:0 0 8px rgba(63,224,255,.5);}
+.mk-dialog-nomem-q{margin:0 0 8px;font-size:.88rem;font-style:italic;color:var(--holo-amber-hi,#ffd9a0);}
+`;
+
+function ensureStyles(doc) {
+  if (doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = CSS;
+  doc.head.appendChild(style);
+}
+
+// Reply typing: ≤ ~220 ticks at 14 ms so even long replies land within ~3 s.
+export function typingStep(length, maxTicks = 220) {
+  return Math.max(1, Math.ceil(length / maxTicks));
+}
+
+// Sleep-job poll cadence (ms); createDialog({ sleepPollMs }) overrides (tests).
+export const SLEEP_POLL_MS = 1500;
+
+// Consulted-book list paging: rows shown before the arrows appear, and the
+// height of one row (the scroll step).
+export const BOOKS_VISIBLE = 4;
+export const BOOK_ROW_PX = 26;
+
+// Rest meter state from an Keeper session {tokens_used, budget, status}.
+// tone: "cyan" (fresh) -> "amber" (getting tired) -> "red" (needs to dream).
+// Pure; tested directly.
+export function restTone(session = null) {
+  const used = Math.max(0, Number(session?.tokens_used) || 0);
+  const budget = Number(session?.budget) || 0;
+  const ratio = budget > 0 ? Math.max(0, Math.min(1, used / budget)) : 0;
+  const status = session?.status ?? "rested";
+  let tone = ratio < 0.55 ? "cyan" : ratio < 0.85 ? "amber" : "red";
+  if (status === "needs_sleep") tone = "red";
+  else if (status === "unrested" && tone === "cyan") tone = "amber";
+  const label =
+    status === "needs_sleep" ? "needs to dream" : status === "unrested" ? "getting tired" : "";
+  return { ratio, tone, label, status };
+}
+
+// Deterministic spine color for the consulted-book bars. Same formula as the
+// interior's spineColorFromTags (tags key, FNV-1a, pleasant HSL band) so a
+// book's chat bar matches its 3D spine on the shelf; ui/ cannot import
+// render/, hence the local copy. Pure; tested directly.
+export function bookSpineColor(tags = []) {
+  const list = (Array.isArray(tags) ? tags : [tags])
+    .map((t) => String(t).trim().toLowerCase())
+    .filter(Boolean)
+    .sort();
+  const key = list.length ? list.join("|") : "untitled";
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  h = h >>> 0;
+  const hue = h % 360;
+  const sat = (42 + ((h >>> 9) % 33)) / 100;
+  const light = (38 + ((h >>> 17) % 22)) / 100;
+  const k = (n) => (n + hue / 30) % 12;
+  const a = sat * Math.min(light, 1 - light);
+  const f = (n) => light - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const toHex = (v) =>
+    Math.round(v * 255)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+}
+
+export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = SLEEP_POLL_MS } = {}) {
+  const doc = root.ownerDocument;
+  const win = doc.defaultView ?? globalThis;
+  const notify = toasts ?? ui?.toasts ?? null;
+  // Kit styles first, host styles second: .mk-dialog positioning must come
+  // later in the cascade than the kit's .holo-panel defaults.
+  ensureHoloStyles(doc);
+  ensureStyles(doc);
+
+  let holo = null;
+  let viz = null;
+  let currentId = null;
+  let onKey = null;
+  const offs = [];
+
+  // voice/typing state for the open panel
+  let inFlight = false;
+  let micOn = false;
+  let ttsOn = false;
+  let typingActive = false;
+  let holdActive = false;
+  let typeTimer = null;
+  let holdTimer = null;
+  let lastVizMode = null;
+  let lastReply = null; // { text } shown in the say area, archived on next send
+  let sayEl = null;
+  let groundingBox = null; // left column: the consulted-book list
+  let noteBox = null; // full-width: the "she does not remember" hint
+  let histBox = null;
+  let statusEl = null;
+  let keeperName = "";
+
+  // session/sleep state for the open panel
+  let session = null; // local copy of keeper.session, patched by 409s and sleep
+  let level = 1;
+  let libraryFull = false; // 409 LIBRARY_FULL seen; dreaming makes room
+  let levelEl = null;
+  let meterEl = null;
+  let meterFill = null;
+  let sleepRow = null;
+  let sleepNote = null;
+  let sleepBtn = null;
+  let chatLocked = false;
+  let composer = null; // { form, input, sync, setTab }
+  let tabSelect = null;
+
+  // keepers currently dreaming; polling continues even if the panel closes
+  const sleepingIds = new Set();
+  let factoryDisposed = false;
+  const delay = (ms) => new Promise((r) => win.setTimeout(r, ms));
+
+  const el = (tag, className, text) => {
+    const node = doc.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  function toastError(message) {
+    if (notify) notify.error(message);
+    else bus?.emit("toast", { message, kind: "error" });
   }
 
-  openKeeper(keeper) {
-    this._open({
-      kind: "keeper", keeper,
-      title: `${keeper.name} · lv ${keeper.level}`,
-      modes: keeper.side === "light" ? ["ask", "tell"] : ["ask"],
-    });
-  }
-
-  openMonument() {
-    this._open({ kind: "monument", title: "The Monument", modes: [] });
-  }
-
-  _open(opts) {
-    this.close();
-    this.opts = opts;
-    this.mode = opts.modes[0] || "chat";
-    this.panel = holoPanel({ title: opts.title, root: this.root, width: "420px",
-      onClose: () => (this.panel = null) });
-
-    if (opts.kind === "keeper") {
-      this.meter = document.createElement("div");
-      this._renderMeter(opts.keeper.session);
-      this.panel.header.insertBefore(this.meter, this.panel.header.lastElementChild);
-    }
-    if (opts.modes.length > 1) {
-      const row = document.createElement("div");
-      row.className = "mode-row";
-      for (const mode of opts.modes) {
-        const button = document.createElement("button");
-        button.textContent = mode === "tell" ? "tell her a memory" : "ask her shelves";
-        button.dataset.mode = mode;
-        if (mode === this.mode) button.classList.add("active");
-        button.addEventListener("click", () => {
-          this.mode = mode;
-          row.querySelectorAll("button").forEach((b) =>
-            b.classList.toggle("active", b.dataset.mode === mode));
-          this.input.placeholder = this._placeholder();
-        });
-        row.append(button);
+  function keeperFor(keeperId) {
+    return (
+      state?.keepers?.find((a) => a.id === keeperId) ?? {
+        id: keeperId,
+        name: keeperId,
+        topic: "",
+        kind: "conscious",
+        palette: {},
       }
-      this.panel.el.insertBefore(row, this.panel.body);
+    );
+  }
+
+  // --- voice state ------------------------------------------------------------
+
+  function computedVizMode() {
+    if (typingActive || holdActive) return "speaking";
+    if (inFlight || micOn) return "listening";
+    return "idle";
+  }
+
+  function syncViz() {
+    if (!viz) return;
+    const mode = computedVizMode();
+    if (mode === lastVizMode) return;
+    lastVizMode = mode;
+    viz.setMode(mode);
+    bus?.emit("voice:state", { keeperId: currentId, mode });
+    if (statusEl) statusEl.style.display = mode === "listening" && inFlight ? "" : "none";
+  }
+
+  function cancelTyping() {
+    if (typeTimer !== null) win.clearTimeout(typeTimer);
+    if (holdTimer !== null) win.clearTimeout(holdTimer);
+    typeTimer = null;
+    holdTimer = null;
+    typingActive = false;
+    holdActive = false;
+  }
+
+  // Types `text` into the say area; markdown is swapped in once complete so
+  // the final render keeps its formatting.
+  function say(text, { md = false } = {}) {
+    cancelTyping();
+    lastReply = { text };
+    typingActive = true;
+    syncViz();
+    sayEl.textContent = "";
+    const step = typingStep(text.length);
+    let idx = 0;
+    const tick = () => {
+      idx = Math.min(text.length, idx + step);
+      sayEl.textContent = text.slice(0, idx);
+      if (idx >= text.length) {
+        typeTimer = null;
+        if (md) {
+          sayEl.textContent = "";
+          renderMd(sayEl, text);
+        }
+        typingActive = false;
+        holdActive = true; // the viz keeps pulsing a beat after the last word
+        syncViz();
+        holdTimer = win.setTimeout(() => {
+          holdTimer = null;
+          holdActive = false;
+          syncViz();
+        }, 650);
+        return;
+      }
+      typeTimer = win.setTimeout(tick, 14);
+    };
+    typeTimer = win.setTimeout(tick, 14);
+  }
+
+  // The previous reply collapses into the scrollback when a new send starts.
+  function archiveSay() {
+    if (lastReply?.text) pushHistory("keeper", lastReply.text);
+    lastReply = null;
+    if (sayEl) sayEl.textContent = "";
+    if (groundingBox) groundingBox.textContent = "";
+    if (noteBox) noteBox.textContent = "";
+  }
+
+  function pushHistory(kind, text) {
+    if (!histBox) return;
+    const row = el("div", `mk-dialog-hist-row mk-dialog-hist-row-${kind} holo-row`);
+    row.appendChild(el("span", "mk-dialog-hist-who", kind === "user" ? "you" : keeperName));
+    row.appendChild(el("span", "mk-dialog-hist-text", text));
+    histBox.appendChild(row);
+    while (histBox.children.length > 12) histBox.firstChild.remove();
+    histBox.scrollTop = histBox.scrollHeight;
+  }
+
+  function setInFlight(on) {
+    inFlight = on;
+    syncViz();
+    if (statusEl) statusEl.style.display = on ? "" : "none";
+  }
+
+  // --- rest / sleep ----------------------------------------------------------
+
+  function setChatDisabled(locked) {
+    chatLocked = locked;
+    composer?.sync();
+  }
+
+  // Header badge + meter + the send-to-sleep prompt reflect the local session.
+  function renderSession() {
+    const info = restTone(session);
+    if (levelEl) levelEl.textContent = `LV ${level}`;
+    if (meterEl && meterFill) {
+      const pct = Math.round(info.ratio * 100);
+      meterFill.style.width = `${pct}%`;
+      meterEl.className = `mk-dialog-rest mk-dialog-rest--${info.tone}`;
+      meterEl.setAttribute("aria-valuenow", String(pct));
     }
-
-    this.log = document.createElement("div");
-    this.log.className = "chat-log";
-    this.panel.body.append(this.log);
-
-    const inputRow = document.createElement("div");
-    inputRow.className = "chat-input";
-    this.input = document.createElement("input");
-    this.input.placeholder = this._placeholder();
-    this.input.setAttribute("aria-label", "message");
-    const send = document.createElement("button");
-    send.textContent = "➤";
-    send.setAttribute("aria-label", "send");
-    send.addEventListener("click", () => this._send());
-    this.input.addEventListener("keydown", (e) => e.key === "Enter" && this._send());
-    inputRow.append(this.input, send);
-
-    if (this.voiceOk && typeof MediaRecorder !== "undefined") {
-      this.mic = document.createElement("button");
-      this.mic.className = "mic";
-      this.mic.textContent = "🎙";
-      this.mic.setAttribute("aria-label", "speak");
-      this.mic.addEventListener("click", () => this._record());
-      inputRow.append(this.mic);
+    const dreaming = sleepingIds.has(currentId);
+    const needs = info.status === "unrested" || info.status === "needs_sleep";
+    if (sleepRow) {
+      sleepRow.style.display = dreaming || needs || libraryFull ? "" : "none";
+      sleepRow.classList.toggle(
+        "mk-dialog-sleeprow--red",
+        info.status === "needs_sleep" || libraryFull,
+      );
     }
-    this.panel.el.append(inputRow);
-    this.inputRow = inputRow;
-    this.input.focus();
-
-    this._info(opts.kind === "monument"
-      ? "Ask across all shelves, or ask for a new keeper."
-      : opts.keeper.side === "dark"
-        ? "She was born from your dreaming. Her books are not yours to write."
-        : "Her books ground every answer; she never invents a memory.");
+    if (sleepNote) {
+      sleepNote.textContent = dreaming
+        ? "dreaming..."
+        : libraryFull
+          ? "her library is full. she needs to dream to make room"
+          : info.status === "needs_sleep"
+            ? "she needs to dream"
+            : info.status === "unrested"
+              ? "she is getting tired"
+              : "";
+    }
+    if (sleepBtn) sleepBtn.disabled = dreaming;
+    setChatDisabled(dreaming);
   }
 
-  close() { this.panel?.close(); }
-
-  _placeholder() {
-    if (this.opts.kind === "monument") return "speak to the island...";
-    return this.mode === "tell" ? "tell her something to keep..." : "ask what she remembers...";
+  // A 409 NEEDS_SLEEP from tell/ask lands here: same prompt as a filling meter.
+  function showNeedsSleep() {
+    session = { ...(session ?? {}), status: "needs_sleep" };
+    renderSession();
   }
 
-  _renderMeter(session) {
-    if (!session || !this.meter) return;
-    const ratio = Math.min(1, session.tokens_used / session.budget);
-    this.meter.className = "meter " + session.status;
-    this.meter.title = `session ${session.status.replace("_", " ")}`;
-    this.meter.innerHTML = "";
-    const fill = document.createElement("i");
-    fill.style.width = (ratio * 100).toFixed(0) + "%";
-    this.meter.append(fill);
+  // A 409 LIBRARY_FULL from tell: her one bookcase holds no more books until
+  // she dreams (pruning and merging makes room). Same shortcut, warmer note.
+  function showLibraryFull() {
+    libraryFull = true;
+    renderSession();
   }
 
-  _bubble(kind, text) {
-    const div = document.createElement("div");
-    div.className = "turn " + kind;
-    div.textContent = text;
-    this.log.append(div);
-    this.log.scrollTop = this.log.scrollHeight;
-    return div;
-  }
-
-  _info(text) { return this._bubble("info", text); }
-
-  async _send() {
-    const text = this.input.value.trim();
-    if (!text || this.busy) return;
-    this.busy = true;
-    this.input.value = "";
-    this._bubble("you", text);
-    this.inputRow.classList.add("thinking");
+  // The full sleep lifecycle. Runs at factory scope so polling survives the
+  // panel closing; the header/inputs are only touched when the panel still
+  // shows this keeper.
+  async function runSleep(keeperId) {
     try {
-      if (this.opts.kind === "monument") {
-        const out = await this.api.monument(text);
-        this._bubble("them", out.reply);
-        this._speak(out.reply, "monument");
-        if (out.created_keeper) {
-          this._info(`${out.created_keeper.name} has a house now.`);
-          this.onWorldChanged?.();
-        }
-      } else if (this.mode === "tell") {
-        const out = await this.api.tell(this.opts.keeper.id, text);
-        this._bubble("them", out.reply);
-        this._speak(out.reply, this.opts.keeper.side);
-        this._renderMeter(out.session);
-        if (out.book) {
-          this._chips([out.book], "kept on the shelf");
-          this.onWorldChanged?.();
-        }
-      } else {
-        const out = await this.api.ask(this.opts.keeper.id, text);
-        this._bubble("them", out.answer);
-        this._speak(out.answer, this.opts.keeper.side);
-        this._renderMeter(out.session);
-        if (out.sources?.length) {
-          this._chips(out.sources, "from her books");
-          this.onSourcesUsed?.(this.opts.keeper.id, out.sources);
-        } else if (out.followup) {
-          this._info("nothing on the shelves for that yet");
-        }
+      const res = await api.sleep(keeperId);
+      bus?.emit("keeper:sleep", { keeperId });
+      const jobId = res?.job_id;
+      let status = res?.status ?? "running";
+      while (jobId && status !== "done" && status !== "failed" && !factoryDisposed) {
+        await delay(sleepPollMs);
+        const job = await api.sleepJob(keeperId, jobId);
+        status = job?.status ?? "running";
       }
-    } catch (error) {
-      this._handleError(error);
-    } finally {
-      this.busy = false;
-      this.inputRow.classList.remove("thinking");
-    }
-  }
-
-  _chips(books, label) {
-    const wrap = document.createElement("div");
-    wrap.className = "sources";
-    for (const book of books) {
-      const chip = document.createElement("button");
-      chip.className = "book-chip";
-      chip.textContent = "📖 " + book.title;
-      chip.title = label;
-      chip.addEventListener("click", async () => {
-        const full = await this.api.book(this.opts.keeper.id, book.slug);
-        openReader(full, { root: this.root });
-      });
-      wrap.append(chip);
-    }
-    this.log.append(wrap);
-    this.log.scrollTop = this.log.scrollHeight;
-  }
-
-  _handleError(error) {
-    if (error.code === "NEEDS_SLEEP") {
-      this._info("She is too tired to keep talking. Send her to sleep?");
-      const button = document.createElement("button");
-      button.className = "hud-btn";
-      button.textContent = "send her to sleep";
-      button.style.alignSelf = "center";
-      button.addEventListener("click", () => this._sleep(button));
-      this.log.append(button);
-    } else if (error.code === "SLEEP_RUNNING") {
-      this._info("She is asleep, dreaming her session smaller.");
-    } else if (error.code === "LIBRARY_FULL") {
-      this._info("Her bookcase is full. Sleep binds old books together to make room.");
-    } else {
-      this._info("something flickered: " + (error.message || error.code || error));
-    }
-  }
-
-  async _sleep(button) {
-    button.remove();
-    const keeper = this.opts.keeper;
-    const { job_id } = await this.api.sleep(keeper.id);
-    const status = this._info("She walks home to sleep...");
-    const timer = setInterval(async () => {
+      if (factoryDisposed) return;
+      if (status === "failed") throw new Error("the dreaming failed");
+      // Refresh the keeper record (session cleared, level may have grown).
+      let fresh = null;
       try {
-        const job = await this.api.sleepJob(keeper.id, job_id);
-        if (job.status === "running") return;
-        clearInterval(timer);
-        status.textContent = job.status === "done"
-          ? `She wakes rested. ${job.books_written.length} book(s) kept what mattered.`
-          : "Her sleep was restless; try again.";
-        this._renderMeter(job.session);
-        this.onWorldChanged?.();
+        fresh = await api.getKeeper(keeperId);
       } catch {
-        clearInterval(timer);
+        /* state:loaded after keeper:rested re-syncs anyway */
       }
-    }, 700);
+      const rec = state?.keepers?.find((a) => a.id === keeperId);
+      if (rec && fresh) Object.assign(rec, fresh);
+      sleepingIds.delete(keeperId);
+      if (currentId === keeperId) {
+        session = fresh?.session ? { ...fresh.session } : { ...(session ?? {}), status: "rested", tokens_used: 0 };
+        if (Number.isFinite(fresh?.level)) level = fresh.level;
+        libraryFull = false; // dreaming pruned and merged: room again
+        renderSession();
+      }
+      bus?.emit("keeper:rested", { keeperId });
+    } catch (err) {
+      sleepingIds.delete(keeperId);
+      if (currentId === keeperId) renderSession();
+      toastError(err?.message || "she could not fall asleep");
+    }
   }
 
-  async _record() {
-    if (this.recorder?.state === "recording") {
-      this.recorder.stop();
+  // --- panel ------------------------------------------------------------------
+
+  function close() {
+    if (!holo) return;
+    if (onKey) doc.removeEventListener("keydown", onKey, true);
+    onKey = null;
+    cancelTyping();
+    viz?.dispose();
+    viz = null;
+    holo.close();
+    holo = null;
+    currentId = null;
+    lastVizMode = null;
+    lastReply = null;
+    inFlight = false;
+    micOn = false;
+    ttsOn = false;
+    chatLocked = false;
+    session = null;
+    libraryFull = false;
+    sayEl = groundingBox = noteBox = histBox = statusEl = null;
+    levelEl = meterEl = meterFill = sleepRow = sleepNote = sleepBtn = null;
+    composer = null;
+    tabSelect = null;
+    bus?.emit("ui:close", { panel: "dialog" });
+  }
+
+  // "Save this as a memory": jump to the Tell tab with the question pre-filled.
+  function prefillTell(text) {
+    if (!composer || !tabSelect) return;
+    tabSelect(0);
+    composer.input.value = text;
+    composer.sync();
+    composer.input.focus();
+  }
+
+  // Grounded ask reply: the consulted-book list on the LEFT of the reply, one
+  // spine-colored bar + title per source, glow staggered (lead book
+  // strongest); up/down arrows page one book at a time when it overflows.
+  // Ungrounded + followup: the "she does not remember this" hint instead.
+  function renderAskResult(keeper, res, question) {
+    if (!groundingBox || !noteBox) return;
+    groundingBox.textContent = "";
+    noteBox.textContent = "";
+    if (res?.grounded === false && res?.followup === true) {
+      const hint = el("div", "mk-dialog-nomem");
+      hint.appendChild(el("p", "mk-dialog-nomem-title", "she does not remember this"));
+      if (res?.answer) hint.appendChild(el("p", "mk-dialog-nomem-q", res.answer));
+      if (keeper.kind !== "unconscious") {
+        const save = el("button", "holo-btn mk-dialog-save", "Save this as a memory");
+        save.type = "button";
+        save.addEventListener("click", () => prefillTell(question));
+        hint.appendChild(save);
+      }
+      noteBox.appendChild(hint);
       return;
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const chunks = [];
-      this.recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      this.recorder.ondataavailable = (e) => chunks.push(e.data);
-      this.recorder.onstop = async () => {
-        this.mic.classList.remove("recording");
-        stream.getTracks().forEach((t) => t.stop());
-        try {
-          const { text } = await this.api.stt(new Blob(chunks, { type: "audio/webm" }));
-          if (text) { this.input.value = text; this._send(); }
-        } catch (error) {
-          this._voiceDown(error);
-        }
+    const sources = res?.sources ?? [];
+    if (!sources.length) return;
+
+    const box = el("div", "mk-dialog-consulted");
+    box.setAttribute("aria-label", "consulted books");
+    const list = el("div", "mk-dialog-booklist");
+    sources.forEach((source, i) => {
+      const row = el("button", `mk-dialog-book${i === 0 ? " mk-dialog-book--lead" : ""}`);
+      row.type = "button";
+      const title = source.title || source.slug;
+      row.title = title;
+      row.setAttribute("aria-label", title);
+      row.style.animationDelay = `${i * 220}ms`;
+      const spine = el("span", "mk-dialog-spine");
+      spine.style.setProperty("--mk-book-spine", bookSpineColor(source.tags));
+      row.append(spine, el("span", "mk-dialog-booktitle", title));
+      row.addEventListener("click", () => {
+        bus?.emit("book:open", { keeperId: keeper.id, slug: source.slug });
+      });
+      list.appendChild(row);
+    });
+
+    if (sources.length > BOOKS_VISIBLE) {
+      // Overflow: cap the window and page one book per arrow press.
+      list.style.maxHeight = `${BOOKS_VISIBLE * BOOK_ROW_PX}px`;
+      const up = el("button", "mk-dialog-bookarrow", "▲");
+      up.type = "button";
+      up.setAttribute("aria-label", "scroll books up");
+      const down = el("button", "mk-dialog-bookarrow", "▼");
+      down.type = "button";
+      down.setAttribute("aria-label", "scroll books down");
+      const maxOffset = sources.length - BOOKS_VISIBLE;
+      let offset = 0;
+      const apply = () => {
+        list.scrollTop = offset * BOOK_ROW_PX;
+        list.dataset.offset = String(offset);
+        up.disabled = offset <= 0;
+        down.disabled = offset >= maxOffset;
       };
-      this.recorder.start();
-      this.mic.classList.add("recording");
-    } catch {
-      toast("microphone unavailable");
+      up.addEventListener("click", () => {
+        offset = Math.max(0, offset - 1);
+        apply();
+      });
+      down.addEventListener("click", () => {
+        offset = Math.min(maxOffset, offset + 1);
+        apply();
+      });
+      box.append(up, list, down);
+      apply();
+    } else {
+      box.appendChild(list);
     }
+
+    groundingBox.appendChild(box);
+    bus?.emit("memory:used", { keeperId: keeper.id, slugs: sources.map((s) => s.slug) });
   }
 
-  async _speak(text, side) {
-    if (!this.speakReplies || !this.voiceOk) return;
-    try {
-      const blob = await this.api.tts(text,
-        side === "monument" ? "monument" : side === "dark" ? "dark" : "light");
-      const orb = document.createElement("span");
-      orb.className = "speaking-orb";
-      this.inputRow.prepend(orb);
-      const audio = new Audio(URL.createObjectURL(blob));
-      audio.onended = () => orb.remove();
-      audio.play();
-    } catch (error) {
-      this._voiceDown(error);
-    }
+  // One composer serves both tabs: a pill input merging into the circular mic
+  // button, with a compact round send button inside the pill. Enter sends
+  // (native form submission). The Tell/Ask tabs only flip what a send means.
+  function buildComposer(keeper) {
+    const form = doc.createElement("form");
+    form.className = "mk-dialog-io";
+
+    const input = doc.createElement("input");
+    input.type = "text";
+    input.className = "mk-dialog-field";
+
+    const send = el("button", "holo-btn holo-btn--primary mk-dialog-send", "➤");
+    send.type = "submit";
+    send.disabled = true;
+
+    const micBtn = el("button", "holo-btn mk-dialog-mic", "🎙");
+    micBtn.type = "button";
+    micBtn.setAttribute("aria-label", "toggle microphone");
+    micBtn.setAttribute("aria-pressed", "false");
+    micBtn.addEventListener("click", () => {
+      micOn = !micOn;
+      micBtn.setAttribute("aria-pressed", String(micOn));
+      bus?.emit("voice:mic", { keeperId: keeper.id, on: micOn });
+      syncViz();
+    });
+
+    form.append(input, send, micBtn);
+
+    let tab = "tell";
+    let sending = false;
+
+    const sync = () => {
+      input.disabled = chatLocked;
+      send.disabled = chatLocked || sending || input.value.trim() === "";
+    };
+    input.addEventListener("input", sync);
+
+    const setTab = (name) => {
+      tab = name;
+      const who = keeper.name || keeper.id;
+      if (name === "tell") {
+        input.setAttribute("aria-label", `tell ${who}`);
+        input.placeholder = "tell her something to remember...";
+        send.setAttribute("aria-label", "Tell");
+      } else {
+        input.setAttribute("aria-label", `ask ${who}`);
+        input.placeholder = "ask her a question...";
+        send.setAttribute("aria-label", "Ask");
+      }
+    };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text || sending || chatLocked) return;
+      sending = true;
+      sync();
+      archiveSay();
+      setInFlight(true);
+      ensureThinking(form, true);
+      try {
+        if (tab === "tell") {
+          const res = await api.tell(keeper.id, text);
+          setInFlight(false);
+          ensureThinking(form, false);
+          pushHistory("user", text);
+          say(res?.reply ?? "...", { md: true });
+          input.value = "";
+          // Unconscious tells are conversational: she listens, no book is
+          // written, so there is nothing to count or announce.
+          if (res?.book) {
+            const rec = state?.keepers?.find((a) => a.id === keeper.id);
+            if (rec) rec.book_count = (rec.book_count ?? 0) + 1;
+            bus?.emit("book:created", { keeperId: keeper.id, book: res.book });
+          }
+          if (res?.session) {
+            session = { ...res.session };
+            renderSession();
+          }
+        } else {
+          const res = await api.ask(keeper.id, text);
+          setInFlight(false);
+          ensureThinking(form, false);
+          pushHistory("user", text);
+          renderAskResult(keeper, res, text);
+          say(res?.answer ?? "", { md: true });
+          input.value = "";
+          if (res?.session) {
+            session = { ...res.session };
+            renderSession();
+          }
+        }
+      } catch (err) {
+        setInFlight(false);
+        ensureThinking(form, false);
+        if (err?.code === "NEEDS_SLEEP") showNeedsSleep();
+        else if (err?.code === "LIBRARY_FULL") showLibraryFull();
+        else if (tab === "tell") toastError(err?.message || "she could not write that down");
+        else toastError(err?.message || "she could not find an answer");
+      } finally {
+        sending = false;
+        sync();
+      }
+    });
+
+    composer = { form, input, sync, setTab };
+    setTab("tell");
+    sync();
+    return form;
   }
 
-  _voiceDown(error) {
-    if (error.code === "VOICE_UNAVAILABLE") {
-      this.voiceOk = false;
-      this.mic?.remove();
-      toast("voice is offline here; text works fully");
+  function open(keeperId) {
+    if (!keeperId) return;
+    if (holo && currentId === keeperId) return;
+    close();
+    const keeper = keeperFor(keeperId);
+    currentId = keeperId;
+    keeperName = keeper.name || keeper.id;
+    session = keeper.session ? { ...keeper.session } : null;
+    level = Number.isFinite(keeper.level) ? keeper.level : 1;
+    libraryFull = false;
+
+    const content = el("div", "mk-dialog-inner");
+
+    if (keeper.topic) {
+      const chips = el("div", "mk-dialog-chips");
+      chips.appendChild(el("span", "holo-chip chip", keeper.topic));
+      content.appendChild(chips);
     }
+
+    // Primary action: join her. Closes the panel; the overworld walks her
+    // home with the camera following and fires "house:enter" on arrival.
+    const joinBtn = el(
+      "button",
+      "holo-btn holo-btn--primary mk-dialog-join",
+      `Join ${keeper.name || keeper.id}`,
+    );
+    joinBtn.type = "button";
+    joinBtn.addEventListener("click", () => {
+      const id = keeper.id;
+      close();
+      bus?.emit("keeper:join", { keeperId: id });
+    });
+    content.appendChild(joinBtn);
+
+    // Scrollback: recent exchanges, small, above the visualizer; the column
+    // is bottom-anchored so it grows upward.
+    histBox = el("div", "mk-dialog-hist holo-list");
+    histBox.setAttribute("aria-label", "recent exchanges");
+    content.appendChild(histBox);
+
+    // Hero: the voice visualizer with the speaker (voice replies) toggle.
+    const stage = el("div", "mk-dialog-stage");
+    const vizRow = el("div", "mk-dialog-viz-row");
+    viz = createVoiceViz({ size: 150 });
+    const ttsBtn = el("button", "holo-btn mk-dialog-tts", "🔊");
+    ttsBtn.type = "button";
+    ttsBtn.setAttribute("aria-label", "toggle voice replies");
+    ttsBtn.setAttribute("aria-pressed", "false");
+    ttsBtn.addEventListener("click", () => {
+      ttsOn = !ttsOn;
+      ttsBtn.setAttribute("aria-pressed", String(ttsOn));
+      bus?.emit("voice:tts", { keeperId: keeper.id, on: ttsOn });
+    });
+    vizRow.append(viz.el, ttsBtn);
+    stage.appendChild(vizRow);
+
+    statusEl = el("p", "mk-dialog-status", "listening...");
+    statusEl.setAttribute("role", "status");
+    statusEl.style.display = "none";
+    stage.appendChild(statusEl);
+    content.appendChild(stage);
+
+    // The "she does not remember" hint lands here, full width.
+    noteBox = el("div", "mk-dialog-notebox");
+    content.appendChild(noteBox);
+
+    // Reply area: consulted books on the left, the typed reply beside them.
+    const replyRow = el("div", "mk-dialog-reply");
+    groundingBox = el("div", "mk-dialog-grounding");
+    sayEl = el("div", "mk-dialog-say");
+    sayEl.setAttribute("aria-live", "polite");
+    replyRow.append(groundingBox, sayEl);
+    content.appendChild(replyRow);
+
+    // Sleep prompt: status line + Send to sleep, shown when she tires (or her
+    // library is full), right above the composer.
+    sleepRow = el("div", "mk-dialog-sleeprow");
+    sleepRow.style.display = "none";
+    sleepNote = el("span", "mk-dialog-sleepnote", "");
+    sleepNote.setAttribute("role", "status");
+    sleepBtn = el("button", "holo-btn mk-dialog-sleep", "Send to sleep");
+    sleepBtn.type = "button";
+    sleepBtn.addEventListener("click", () => {
+      const id = keeper.id;
+      if (sleepingIds.has(id)) return;
+      sleepingIds.add(id);
+      renderSession(); // disables the chat inputs, shows "dreaming..."
+      runSleep(id);
+    });
+    sleepRow.append(sleepNote, sleepBtn);
+    content.appendChild(sleepRow);
+
+    // Tabs flip what the composer's send means.
+    const tabs = el("div", "holo-tabs mk-dialog-tabs");
+    tabs.setAttribute("role", "tablist");
+    const tabDefs = ["Tell", "Ask"];
+    const tabBtns = tabDefs.map((name, i) => {
+      const btn = el("button", "holo-tab", name);
+      btn.type = "button";
+      btn.setAttribute("role", "tab");
+      btn.addEventListener("click", () => select(i));
+      tabs.appendChild(btn);
+      return btn;
+    });
+    content.appendChild(tabs);
+
+    // Unconscious keepers listen but keep no books of what you tell them.
+    let whisper = null;
+    if (keeper.kind === "unconscious") {
+      whisper = el(
+        "p",
+        "mk-dialog-whisper",
+        "she listens, but keeps no books of what you tell her. her books are born from dreaming.",
+      );
+      content.appendChild(whisper);
+    }
+
+    function select(index) {
+      tabBtns.forEach((btn, i) => {
+        btn.setAttribute("aria-selected", String(i === index));
+        btn.classList.toggle("holo-tab--active", i === index);
+      });
+      composer?.setTab(index === 0 ? "tell" : "ask");
+      if (whisper) whisper.style.display = index === 0 ? "" : "none";
+    }
+    tabSelect = select;
+
+    // The composer, pinned to the bottom of the panel.
+    content.appendChild(buildComposer(keeper));
+    select(0);
+
+    holo = createHoloPanel({
+      title: keeper.name || keeper.id,
+      content,
+      size: null, // .mk-dialog owns the footprint
+      onClose: close,
+      className: "mk-dialog",
+    });
+    holo.el.setAttribute("aria-label", `talk to ${keeper.name || keeper.id}`);
+    const accent = keeper.palette?.accent || keeper.palette?.primary || "#ffb658";
+    holo.el.style.setProperty("--mk-dialog-accent", accent);
+    holo.el.querySelector(".holo-close")?.setAttribute("aria-label", "close talk panel");
+
+    // Header session cluster: LV badge + thin rest meter, before the ✕.
+    const head = holo.el.querySelector(".holo-panel__head");
+    if (head) {
+      const sess = el("div", "mk-dialog-sess");
+      levelEl = el("span", "mk-dialog-level", `LV ${level}`);
+      levelEl.setAttribute("aria-label", "keeper level");
+      meterEl = el("div", "mk-dialog-rest");
+      meterEl.setAttribute("role", "progressbar");
+      meterEl.setAttribute("aria-label", "rest meter");
+      meterEl.setAttribute("aria-valuemin", "0");
+      meterEl.setAttribute("aria-valuemax", "100");
+      meterFill = el("div", "mk-dialog-rest-fill");
+      meterEl.appendChild(meterFill);
+      sess.append(levelEl, meterEl);
+      head.insertBefore(sess, head.querySelector(".holo-close"));
+    }
+    renderSession();
+
+    onKey = (e) => {
+      if (e.key !== "Escape") return;
+      // Modal overlays (confirm/howto/create) and the reader own Esc first.
+      if (doc.querySelector(".overlay-backdrop") || doc.querySelector(".mk-reader")) return;
+      e.stopPropagation();
+      close();
+    };
+    doc.addEventListener("keydown", onKey, true);
+
+    root.appendChild(holo.el);
+    lastVizMode = "idle";
+    bus?.emit("ui:open", { panel: "dialog", keeperId: keeper.id });
   }
+
+  offs.push(bus?.on?.("keeper:selected", (p) => open(typeof p === "string" ? p : p?.keeperId)) ?? (() => {}));
+
+  // Clicking elsewhere in the overworld deselects her: the scene emits
+  // "keeper:deselected" and the talk panel folds away with the ring.
+  offs.push(
+    bus?.on?.("keeper:deselected", () => {
+      if (holo) close();
+    }) ?? (() => {}),
+  );
+
+  // The header cluster (LV badge, rest meter, sleep prompt) tracks server
+  // truth: every state re-sync refreshes the open panel's local session copy
+  // (tell/ask/409 keep it fresh in-panel, but sleep can also be caused
+  // elsewhere; without this the row can go stale and hide the Sleep button).
+  offs.push(
+    bus?.on?.("state:loaded", () => {
+      if (!holo || !currentId) return;
+      const fresh = state?.keepers?.find((a) => a.id === currentId);
+      if (!fresh) return;
+      if (fresh.session) session = { ...fresh.session };
+      if (Number.isFinite(fresh.level)) level = fresh.level;
+      renderSession();
+    }) ?? (() => {}),
+  );
+
+  return {
+    open,
+    close,
+    isOpen: () => holo !== null,
+    dispose() {
+      factoryDisposed = true;
+      close();
+      for (const off of offs) off();
+    },
+  };
 }

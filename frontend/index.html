@@ -1,20 +1,26 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Memory Keepers</title>
-<link rel="stylesheet" href="styles.css">
-<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0703" />
+  <title>memory-keepers</title>
+  <!-- inline favicon: kills the browser's automatic /favicon.ico 404 without
+       shipping a binary asset (zero-network, zero-build) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='9' r='6' fill='%23f8a7c0'/%3E%3Ccircle cx='6' cy='8.4' r='1' fill='%233b2340'/%3E%3Ccircle cx='10' cy='8.4' r='1' fill='%233b2340'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.js",
+        "three/addons/": "./vendor/three/addons/"
+      }
+    }
+  </script>
 </head>
 <body>
-<canvas id="world"></canvas>
-<div id="bubbles"></div>
-<div id="hud"></div>
-<div id="panels"></div>
-<canvas id="minimap" width="180" height="180"></canvas>
-<div id="dream-movie" hidden><canvas id="dream-canvas"></canvas>
-  <div id="dream-narrative"></div><button id="dream-skip">wake up</button></div>
-<script type="module" src="src/main.js"></script>
+  <div id="app" aria-label="game canvas"></div>
+  <div id="ui"></div>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>
