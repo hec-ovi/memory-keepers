@@ -38,7 +38,6 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     dispatcher = dispatcher or DreamDispatcher(library, agents_api)
     budget = int(os.environ.get("SESSION_TOKEN_BUDGET", SESSION_TOKEN_BUDGET_DEFAULT))
     dev_routes = os.environ.get("DEV_ROUTES") == "1"
-    known_worlds: set[str] = set()
 
     app = FastAPI(title="memory-keepers", version=VERSION)
 
@@ -53,9 +52,7 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
         if not x_world or not x_world.strip():
             raise ApiError("VALIDATION", "X-World header is required")
         wid = x_world.strip()[:64]
-        if wid not in known_worlds:
-            library.ensure_world(wid)
-            known_worlds.add(wid)
+        library.ensure_world(wid)  # idempotent; re-seeds if the store was wiped
         return wid
 
     def keeper_payload(world: str, kid: str) -> dict:
@@ -83,8 +80,11 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
         world = world_of(x_world)
         meta = library.world_meta(world)
         running = False
-        if meta.get("latest_run_id"):
-            running = library.dream_latest(world).status == "running"
+        try:
+            if meta.get("latest_run_id"):
+                running = library.dream_latest(world).status == "running"
+        except LibraryError:
+            meta["latest_run_id"] = None
         return {"keepers": [k.payload(budget) for k in library.list_keepers(world)],
                 "dream": {"latest_run_id": meta.get("latest_run_id"), "running": running}}
 
@@ -242,7 +242,6 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
             world = world_of(x_world)
             for keeper in library.list_keepers(world):
                 library.delete_keeper(world, keeper.id)
-            known_worlds.discard(world)
             library._world(world).delete()
             return {"reset": True}
 
