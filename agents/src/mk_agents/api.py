@@ -1,6 +1,7 @@
 """The agents facade: everything the engine and the dreaming box call.
 Every flow survives a broken model through deterministic fallbacks."""
 import logging
+import re
 from datetime import date, datetime, timezone
 
 from google.adk.tools.agent_tool import AgentTool
@@ -9,8 +10,8 @@ from mk_library.records import Turn
 from mk_models import ModelGateway
 
 from . import chatter, dates
-from .fallbacks import (dated_citation, extract_book_fields, first_sentence,
-                        harvest_constraints, parse_json)
+from .fallbacks import (STOPWORDS, dated_citation, extract_book_fields,
+                        first_sentence, harvest_constraints, parse_json)
 from .prompting import index_block, prompt, session_block
 from .runtime import build_agent, run_agent
 
@@ -221,7 +222,8 @@ class AgentsApi:
 
     # -- shared ---------------------------------------------------------------
     def _shortlist(self, rows, question, resolved):
-        q_words = {w for w in question.lower().split() if len(w) > 3}
+        q_words = {w for w in re.findall(r"[a-z0-9]{3,}", question.lower())
+                   if w not in STOPWORDS}
         scored = []
         for row in rows:
             hay = " ".join([row["title"], row["one_liner"],

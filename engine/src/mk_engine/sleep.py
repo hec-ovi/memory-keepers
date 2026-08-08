@@ -1,0 +1,65 @@
+"""Sleep: the per-keeper compaction. Deterministic, always succeeds.
+Constraints are copied forward verbatim; dropped turns stay retrievable as a
+sleep book; the meter resets to the compacted session's size."""
+import asyncio
+import json
+import logging
+import uuid
+from datetime import date
+
+from mk_library import Library
+from mk_library.store import now_iso
+
+log = logging.getLogger(__name__)
+VERBATIM_TAIL_TURNS = 3
+
+
+def perform_sleep(library: Library, world: str, kid: str) -> list[dict]:
+    session = library.session_read(world, kid)
+    dropped = session.turns[:-VERBATIM_TAIL_TURNS]
+    books_written = []
+
+    if dropped:
+        digests, fits = library.make_room(world, kid, incoming=1)
+        books_written.extend(d.summary() for d in digests)
+        if fits:
+            today = date.today().isoformat()
+            body = "\n".join(f"- [{t.t}] {t.role}: {t.text}" for t in dropped)
+            book = library.write_book(
+                world, kid, title=f"Sleep notes, {today}", body_md=body, date=today,
+                source="sleep",
+                one_liner=f"What this shelf heard before sleeping on {today}.",
+                tags=["sleep"], enforce_cap=False)
+            books_written.append(book.summary())
+
+    user_texts = [t.text for t in dropped if t.role == "user"]
+    for text in user_texts[-4:]:
+        if text not in session.blocks["recent_topics"]:
+            session.blocks["recent_topics"] = (session.blocks["recent_topics"] + [text])[-4:]
+    session.turns = session.turns[-VERBATIM_TAIL_TURNS:]
+    session.sleep_count += 1
+    library.session_replace(world, kid, session)
+    library.meter_reset(world, kid, len(json.dumps(session.to_doc())) // 4)
+    return books_written
+
+
+def start_sleep_job(library: Library, world: str, kid: str) -> str:
+    job_id = f"sleep-{uuid.uuid4().hex[:8]}"
+    library.update_keeper(world, kid, sleep_job={
+        "job_id": job_id, "status": "running", "started_at": now_iso(),
+        "finished_at": None, "books_written": [], "error": None})
+
+    async def run():
+        try:
+            books = await asyncio.to_thread(perform_sleep, library, world, kid)
+            library.update_keeper(world, kid, sleep_job={
+                "job_id": job_id, "status": "done", "finished_at": now_iso(),
+                "books_written": books, "error": None})
+        except Exception as e:
+            log.exception("sleep job failed")
+            library.update_keeper(world, kid, sleep_job={
+                "job_id": job_id, "status": "failed", "finished_at": now_iso(),
+                "books_written": [], "error": str(e)})
+
+    asyncio.get_running_loop().create_task(run())
+    return job_id

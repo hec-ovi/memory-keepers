@@ -27,4 +27,4 @@ RUN uv sync --all-packages --all-extras --frozen
 FROM base AS serve
 COPY . .
 EXPOSE 8000
-CMD ["/opt/venv/bin/uvicorn", "mk_engine.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "/opt/venv/bin/uvicorn mk_engine.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
