@@ -8,6 +8,7 @@ import { createApi } from "../src/api/api.js";
 import { createToasts } from "../src/ui/toasts.js";
 import {
   createDialog,
+  MONUMENT_ID,
   restTone,
   bookSpineColor,
   BOOKS_VISIBLE,
@@ -822,5 +823,46 @@ describe("bookSpineColor (pure)", () => {
     expect(bookSpineColor(["ocean", "flying"])).toBe(bookSpineColor(["flying", "ocean"]));
     expect(bookSpineColor(["dream"])).toMatch(/^#[0-9a-f]{6}$/);
     expect(bookSpineColor(undefined)).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe("the main keeper rides the same dialog", () => {
+  it("opens via keeper:selected: same panel, no Join, no tabs, no session cluster", () => {
+    bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
+    expect(screen.getByRole("heading", { name: "Main Keeper" })).toBeTruthy();
+    expect(root.querySelectorAll(".mk-dialog")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /join/i })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Tell" })).toBeNull();
+    expect(root.querySelector(".mk-dialog-rest")).toBeNull();
+  });
+
+  it("re-selecting never stacks panels, and a keeper replaces her panel", () => {
+    bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
+    bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
+    expect(root.querySelectorAll(".mk-dialog")).toHaveLength(1);
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    expect(screen.getByRole("heading", { name: "Keeper of Dreams" })).toBeTruthy();
+    expect(root.querySelectorAll(".mk-dialog")).toHaveLength(1);
+  });
+
+  it("sends through api.monument and announces the created keeper", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post(`${BASE}/monument`, () =>
+        HttpResponse.json({
+          reply: "Done. Keeper of Films has her house now.",
+          created_keeper: { id: "films", name: "Keeper of Films", side: "light" },
+        }),
+      ),
+    );
+    const created = [];
+    bus.on("keeper:created", (k) => created.push(k));
+    bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
+    const input = screen.getByRole("textbox", { name: /speak to main keeper/i });
+    await user.type(input, "I want a keeper for films");
+    await user.keyboard("{Enter}");
+    await screen.findByText(/has her house now/i);
+    expect(created[0]?.id).toBe("films");
+    expect(input.value).toBe("");
   });
 });

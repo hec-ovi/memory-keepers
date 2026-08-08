@@ -2,6 +2,10 @@
 // writes to it at runtime.
 
 export const config = {
+  // The main keeper (the hologram over the plaza well): a virtual keeper id
+  // the dialog and the overworld share.
+  monumentId: "the-monument",
+
   // Day/night is spatial (see render/blend.js + sim/world.js nightMaskAt);
   // there is no global clock in the overworld.
 

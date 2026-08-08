@@ -57,6 +57,7 @@
 // first dibs on Esc).
 
 import { renderMd } from "./md.js";
+import { config as gameConfig } from "../config.js";
 import { createHoloPanel, ensureHoloStyles, ensureThinking } from "./holo/holo.js";
 import { createVoiceViz } from "./holo/voice.js";
 
@@ -198,6 +199,8 @@ export function bookSpineColor(tags = []) {
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
+export const MONUMENT_ID = gameConfig.monumentId ?? "the-monument";
+
 export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = SLEEP_POLL_MS } = {}) {
   const doc = root.ownerDocument;
   const win = doc.defaultView ?? globalThis;
@@ -262,6 +265,16 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   }
 
   function keeperFor(keeperId) {
+    if (keeperId === MONUMENT_ID) {
+      return {
+        id: MONUMENT_ID,
+        name: "Main Keeper",
+        topic: "the whole island",
+        kind: "conscious",
+        palette: { primary: "#57e6ff", accent: "#2fb9ff" },
+        monument: true,
+      };
+    }
     return (
       state?.keepers?.find((a) => a.id === keeperId) ?? {
         id: keeperId,
@@ -609,6 +622,11 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     const setTab = (name) => {
       tab = name;
       const who = keeper.name || keeper.id;
+      if (keeper.monument) {
+        input.setAttribute("aria-label", `speak to ${who}`);
+        input.placeholder = "ask across every shelf, or ask for a new keeper...";
+        return;
+      }
       if (name === "tell") {
         input.setAttribute("aria-label", `tell ${who}`);
         input.placeholder = "tell her something to remember...";
@@ -628,7 +646,17 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       setInFlight(true);
       ensureThinking(form, true);
       try {
-        if (tab === "tell") {
+        if (keeper.monument) {
+          const res = await api.monument(text);
+          setInFlight(false);
+          ensureThinking(form, false);
+          pushHistory("user", text);
+          say(res?.reply ?? "...", { md: true });
+          input.value = "";
+          if (res?.created_keeper) {
+            bus?.emit("keeper:created", res.created_keeper);
+          }
+        } else if (tab === "tell") {
           const res = await api.tell(keeper.id, text);
           setInFlight(false);
           ensureThinking(form, false);
@@ -664,6 +692,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
         ensureThinking(form, false);
         if (err?.code === "NEEDS_SLEEP") showNeedsSleep();
         else if (err?.code === "LIBRARY_FULL") showLibraryFull();
+        else if (keeper.monument) toastError(err?.message || "the island did not answer");
         else if (tab === "tell") toastError(err?.message || "she could not write that down");
         else toastError(err?.message || "she could not find an answer");
       } finally {
@@ -683,6 +712,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     if (holo && currentId === keeperId) return;
     close();
     const keeper = keeperFor(keeperId);
+    const isMonument = keeper.monument === true;
+    tabSelect = null; // a fresh panel wires its own tabs (the main keeper has none)
+    levelEl = meterEl = meterFill = null; // rebuilt per panel; absent for the main keeper
     currentId = keeperId;
     keeperName = keeper.name || keeper.id;
     session = keeper.session ? { ...keeper.session } : null;
@@ -699,6 +731,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
     // Primary action: join her. Closes the panel; the overworld walks her
     // home with the camera following and fires "house:enter" on arrival.
+    // The main keeper has no house to join.
+    if (!isMonument) {
     const joinBtn = el(
       "button",
       "holo-btn holo-btn--primary mk-dialog-join",
@@ -711,6 +745,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       bus?.emit("keeper:join", { keeperId: id });
     });
     content.appendChild(joinBtn);
+    }
 
     // Scrollback: recent exchanges, small, above the visualizer; the column
     // is bottom-anchored so it grows upward.
@@ -779,7 +814,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     sleepRow.append(sleepNote, sleepBtn);
     content.appendChild(sleepRow);
 
-    // Tabs flip what the composer's send means.
+    // Tabs flip what the composer's send means (the main keeper has one voice).
+    if (!isMonument) {
     const tabs = el("div", "holo-tabs mk-dialog-tabs");
     tabs.setAttribute("role", "tablist");
     const tabDefs = ["Tell", "Ask"];
@@ -813,10 +849,11 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       if (whisper) whisper.style.display = index === 0 ? "" : "none";
     }
     tabSelect = select;
+    }
 
     // The composer, pinned to the bottom of the panel.
     content.appendChild(buildComposer(keeper));
-    select(0);
+    tabSelect?.(0);
 
     holo = createHoloPanel({
       title: keeper.name || keeper.id,
@@ -831,7 +868,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     holo.el.querySelector(".holo-close")?.setAttribute("aria-label", "close talk panel");
 
     // Header session cluster: LV badge + thin rest meter, before the ✕.
-    const head = holo.el.querySelector(".holo-panel__head");
+    // The main keeper holds no session: keepers hold the memory.
+    const head = isMonument ? null : holo.el.querySelector(".holo-panel__head");
     if (head) {
       const sess = el("div", "mk-dialog-sess");
       levelEl = el("span", "mk-dialog-level", `LV ${level}`);

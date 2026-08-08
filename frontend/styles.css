@@ -511,33 +511,6 @@ button.chip:focus-visible { outline: 2px solid var(--lavender); outline-offset: 
   }
 }
 
-/* --- the monument panel --------------------------------------------------- */
-.mk-monument { display: flex; flex-direction: column; gap: 10px; min-width: 300px; }
-.mk-monument-log { display: flex; flex-direction: column; gap: 7px; max-height: 46vh;
-  overflow-y: auto; padding: 2px; }
-.mk-monument-line { font-size: 13.5px; line-height: 1.4; padding: 6px 9px;
-  border-radius: 7px; max-width: 92%; white-space: pre-wrap; }
-.mk-monument-line.is-you { align-self: flex-end;
-  background: rgba(87, 230, 255, 0.1); border: 1px solid rgba(87, 230, 255, 0.35); }
-.mk-monument-line.is-them { align-self: flex-start;
-  background: rgba(255, 182, 88, 0.1); border: 1px solid rgba(255, 182, 88, 0.3); }
-.mk-monument-line.is-hint { align-self: center; opacity: 0.75; font-size: 12px;
-  font-style: italic; border: none; }
-.mk-monument-composer { display: flex; gap: 6px; }
-.mk-monument-composer input { flex: 1; background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 182, 88, 0.4); color: inherit; padding: 8px 10px;
-  font: inherit; outline: none; border-radius: 6px; }
-.mk-monument-composer input:focus { border-color: rgba(87, 230, 255, 0.8); }
-.mk-monument-composer button { background: none; color: inherit; cursor: pointer;
-  border: 1px solid rgba(255, 182, 88, 0.4); padding: 0 14px; border-radius: 6px;
-  text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; }
-.mk-monument-composer button:hover { border-color: rgba(87, 230, 255, 0.8); }
-
-/* the monument panel docks where keeper talk panels dock */
-.mk-monument-panel { position: absolute; top: 70px; right: 16px;
-  width: min(370px, calc(100vw - 32px)); max-height: calc(100vh - 96px);
-  z-index: 30; }
-
 /* tooltips ride above every panel, no matter where they are */
 [data-tooltip]:hover, [data-tooltip]:focus-visible { z-index: 2147483000; }
 [data-tooltip]::after, [data-tooltip]::before { z-index: 2147483001; }

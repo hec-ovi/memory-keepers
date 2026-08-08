@@ -780,11 +780,13 @@ export function createOverworldScene(ctx = {}) {
       bus?.emit("house:enter", { keeperId });
       bus?.emit("mode:set", `interior:${keeperId}`);
     } else if (type === "monument") {
-      if (state.selectedKeeperId) {
+      const monumentId = config.monumentId ?? "the-monument";
+      if (state.selectedKeeperId && state.selectedKeeperId !== monumentId) {
         bus?.emit("keeper:deselected", { keeperId: state.selectedKeeperId });
-        deselect();
       }
-      bus?.emit("monument:open");
+      state.selectedKeeperId = monumentId;
+      if (bus) bus.emit("keeper:selected", { keeperId: monumentId });
+      else followSelected(monumentId);
     } else if (type === "deselect") {
       // Clicking elsewhere (empty ground, a tree, the sea) deselects: the
       // talk panel closes first ("keeper:deselected"), then the ring and the
@@ -810,7 +812,12 @@ export function createOverworldScene(ctx = {}) {
     pendingDeselect = false; // a fresh selection outlives any panel churn
     if (cine) return; // the join cinematic owns the camera
     const entry = population.get(keeperId);
-    if (!entry) return;
+    if (!entry) {
+      if (keeperId === (config.monumentId ?? "the-monument") && monumentHolo) {
+        cameraRig.follow(monumentHolo.group, { framing: FOLLOW_FRAMING });
+      }
+      return;
+    }
     cameraRig.follow(entry.mesh.group, { framing: FOLLOW_FRAMING });
   }
 

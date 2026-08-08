@@ -16,10 +16,11 @@ services:
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [firestore, pubsub]
 
+  # Firestore emulator + the Emulator Suite UI: browse the database live
+  # at http://localhost:4000 (Firestore tab).
   firestore:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
-    command: gcloud emulators firestore start --host-port=0.0.0.0:8480
-    ports: ["8480:8480"]
+    build: emulators
+    ports: ["8480:8480", "4000:4000"]
 
   pubsub:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
