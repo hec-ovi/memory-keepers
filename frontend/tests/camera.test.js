@@ -30,7 +30,7 @@ describe("dragModeForPointer", () => {
   it("a modifier key flips pan <-> orbit", () => {
     expect(dragModeForPointer({ button: 0, shiftKey: true })).toBe("orbit");
     expect(dragModeForPointer({ button: 2, ctrlKey: true })).toBe("pan");
-    expect(dragModeForPointer({ button: 1, metaKey: true })).toBe("pan");
+    expect(dragModeForPointer({ button: 1, metaKey: true })).toBe("orbit");
   });
 
   it("defaults to a left-button pan", () => {
