@@ -197,6 +197,26 @@ function makeZzzTexture() {
   return tex;
 }
 
+// White rounded-rect on black: alphaMap that rounds the visor's corners.
+function makeRoundedMask() {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext?.("2d");
+  if (!ctx) return null;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, 256, 128);
+  ctx.fillStyle = "#fff";
+  const r = 46;
+  ctx.beginPath();
+  ctx.roundRect(6, 6, 244, 116, r);
+  ctx.fill();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.NoColorSpace;
+  return tex;
+}
+
 function gradientBody(geometry, topHex, bottomHex) {
   const pos = geometry.attributes.position;
   const colors = new Float32Array(pos.count * 3);
@@ -253,31 +273,32 @@ export function createKeeperMesh({ keeper = {}, config = {} } = {}) {
   body.userData.pick = "keeper";
   root.add(track(body));
 
-  // Cat ears: white outer cone, glowing inner cone.
-  const earGeo = new THREE.ConeGeometry(0.15, 0.3, 14);
+  // Cat ears: tiny white cones, matte black inside.
+  const earGeo = new THREE.ConeGeometry(0.085, 0.17, 12);
   const earMat = mat({ color: pal.top, roughness: 0.55 });
-  const earInnerGeo = new THREE.ConeGeometry(0.075, 0.16, 12);
-  const earInnerMat = mat({ color: pal.eye, roughness: 0.35 });
-  earInnerMat.emissive = new THREE.Color(pal.eye);
-  earInnerMat.emissiveIntensity = 0.5;
+  const earInnerGeo = new THREE.ConeGeometry(0.045, 0.1, 10);
+  const earInnerMat = mat({ color: 0x14181c, roughness: 0.9 });
   for (const sx of [-1, 1]) {
     const ear = new THREE.Mesh(earGeo, earMat);
-    ear.position.set(0.28 * sx, 0.58, 0.03);
-    ear.rotation.z = -0.3 * sx;
+    ear.position.set(0.24 * sx, 0.55, 0.03);
+    ear.rotation.z = -0.28 * sx;
     const inner = new THREE.Mesh(earInnerGeo, earInnerMat);
-    inner.position.set(0, -0.02, 0.055);
+    inner.position.set(0, -0.01, 0.035);
     ear.add(inner);
     root.add(ear);
   }
   geometries.push(earGeo, earInnerGeo);
   materials.push(earMat, earInnerMat);
 
-  // Visor: a smoked glass band curving across the face.
+  // Visor: a smoked glass band curving across the face, corners rounded by
+  // an alpha mask (headless-safe: without a 2d context the band stays square).
   const visorGeo = new THREE.SphereGeometry(BODY_RADIUS + 0.045, 32, 12, 0, 1.9, 1.02, 0.72);
   const visorMat = new THREE.MeshStandardMaterial({
     color: pal.visor, transparent: true, opacity: 0.42, roughness: 0.06,
     metalness: 0.35, side: THREE.DoubleSide, depthWrite: false,
   });
+  const visorMask = makeRoundedMask();
+  if (visorMask) visorMat.alphaMap = visorMask;
   visorMat.emissive = new THREE.Color(pal.eye);
   visorMat.emissiveIntensity = 0.12;
   const visor = new THREE.Mesh(visorGeo, visorMat);
