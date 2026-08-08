@@ -65,6 +65,14 @@ describe("createMonument", () => {
     expect(document.body.textContent).toContain("No free plots");
   });
 
+  it("the X closes the panel", async () => {
+    open();
+    document.querySelector(".mk-monument-panel .holo-close").click();
+    await flush();
+    await new Promise((r) => setTimeout(r, 400)); // dissolve animation
+    expect(document.querySelector(".mk-monument")).toBeNull();
+  });
+
   it("dispose unsubscribes and closes", async () => {
     const monument = open();
     monument.dispose();

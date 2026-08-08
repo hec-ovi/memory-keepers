@@ -76,12 +76,16 @@ export function createMonument({ root, bus, api, toasts } = {}) {
     });
 
     holo = createHoloPanel({
-      title: "the monument",
+      title: "main keeper",
       content,
-      onClose: () => (holo = null),
+      onClose: () => {
+        const panel = holo;
+        holo = null;
+        panel?.close(); // the kit's X only notifies; closing is ours
+      },
       className: "mk-monument-panel",
     });
-    holo.el.setAttribute("aria-label", "the monument");
+    holo.el.setAttribute("aria-label", "main keeper");
     root.appendChild(holo.el); // mounting starts the materialize sequence
     input.focus();
   }
