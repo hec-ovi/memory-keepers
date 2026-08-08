@@ -1,31 +1,34 @@
 # agents
 
-Purpose: the ADK layer. Three agent kinds, all built here and nowhere else. Prompts live in `agents/prompts/*.md`, never inline in code.
+Purpose: the ADK layer. Every agent in the project is built here; prompts live in `src/mk_agents/prompts/*.md`, never inline in code. Every flow survives a broken model through deterministic fallbacks: the game never fails on a model error.
 
 ## Agent kinds
 
-- **Monument (root agent).** The figure at the village center. Routes and synthesizes; holds no corpus. Tools: `create_keeper`, `list_keepers`, and one AgentTool per existing keeper (call-and-return, so it can fan out to several keepers and combine answers). Creating a keeper through conversation and answering cross-memory questions both happen here.
-- **Keeper agent.** One per keeper, built on demand from her profile. Persona from her doc; context carries today's date, her index rows and session summary; opens full books through a `read_book` tool only when the index points at them. On a tell she writes a book (grounded extraction of title, tags, entities, one liner). On an ask she answers only from books she actually opened.
-- **Dream agents.** A per-keeper dream pass (reads her library, returns themes with cited slugs) and one synthesis agent (merges all passes into the knowledge graph, the dark keepers and the run narrative). Invoked only by the dreaming box.
+- **Monument (root agent).** The stone figure at the village center. Holds no corpus. Tools: `create_keeper`, `list_keepers`, plus one AgentTool per keeper (call-and-return), so one question can fan out to several shelves and come back as one synthesized answer.
+- **Keeper agent.** Built on demand from her profile. Context carries today's date, her shortlisted index and session summary; she opens full books only through her `read_book` tool. Tell extracts book fields; ask answers only from books actually opened.
+- **Dream prose agents.** Single completions used by the dreaming box: `dream_write` (a dark keeper's name, persona and book from a theme) and `dream_narrative` (the night's summary).
 
 ## Public API
 
+Class `AgentsApi(library, gateway)`.
+
 | method | in | out |
 |---|---|---|
-| `monument_chat(world, text)` | user message | `{reply, created_keeper?}` |
-| `keeper_tell(world, keeper, text)` | user message | `{reply, book?}` (dark keepers reply in archetype voice, never write) |
-| `keeper_ask(world, keeper, question)` | question | `{answer, sources: [slug], grounded, followup}` |
-| `keeper_chatter(world, keeper)` | | one short ambient line |
-| `dream_pass(world, keeper)` | | themes with cited slugs |
-| `dream_synthesis(world, passes)` | all passes | `{graph, dark_keepers, dark_books, narrative}` |
-
-## Errors (closed set)
-
-`MODEL_ERROR` (after retries; callers fall back deterministically, the game never 500s on it).
+| `keeper_tell(world, kid, text)` async | user message | `{reply, book?}`; dark keepers reply in archetype voice, never write; `LIBRARY_FULL` raises after the turns are still recorded |
+| `keeper_ask(world, kid, question)` async | question | `{answer, sources, grounded, followup}` |
+| `keeper_chatter(world, kid)` | | one bubble line (< 90 chars): deterministic per-keeper pools, time-bucketed rotation, no model, no writes |
+| `monument_chat(world, text)` async | user message | `{reply, created_keeper?}`; the monument holds no session, keepers hold the memory |
+| `dream_write(archetype, elements, evidence)` async | theme facts | `{name, persona, body_md, one_liner}` |
+| `dream_narrative(theme_keys)` async | keys | one paragraph |
 
 ## Invariants
 
-- Grounding is validated outside the model: any cited slug not in the keeper's index is dropped; with nothing left, `grounded: false` and the answer becomes a follow-up question or an offer to save the memory. A memory is never invented.
-- ADK session service keys sessions per `(world, keeper)`; the monument keys per `(world)`.
-- Every model call goes through `models.model_for(role)`.
-- Token usage per call is reported back to the caller so the engine can meter tiredness.
+- Grounding is validated outside the model: `used_slugs` are filtered to books the agent actually opened via `read_book`; nothing left means `grounded: false` plus a follow-up. A memory is never invented.
+- Relative dates in questions resolve by rules (`dates.py`) and bias the shortlist; no model involved.
+- Every tell/ask appends both turns to the keeper's session, harvests imperative constraint sentences verbatim, and meters reported token usage (estimate fallback).
+- Every model call goes through `gateway.model_for(role)`; roles used: `chat`, `dream`.
+- Model failures log and fall back deterministically (dated citation, extraction fields, template prose); no exception ever escapes a flow because of a model.
+
+## How to test
+
+`docker compose run --rm test /opt/venv/bin/pytest agents -q`: the full contract through `AgentsApi` on the fake tier and the fake Firestore, real ADK runner and tools in the loop.

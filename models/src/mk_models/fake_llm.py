@@ -111,9 +111,12 @@ class FakeLlm(BaseLlm):
                      f"{_first_sentence(first.get('body_md', ''), 140)}."
             return self._text({"answer": answer, "used_slugs": slugs,
                                "needs_followup": False})
-        question_words = _words(self._last_user_text(req))
+        question = self._last_user_text(req)
+        question_words = _words(question)
+        asked_dates = re.findall(r"\d{4}-\d{2}-\d{2}", question)
         slugs = list(dict.fromkeys(SLUG_RE.findall(system)))
-        scored = sorted(((len(question_words & _words(s.replace('-', ' '))), s)
+        scored = sorted(((len(question_words & _words(s.replace('-', ' ')))
+                          + (10 if any(s.startswith(d) for d in asked_dates) else 0), s)
                          for s in slugs), key=lambda p: (-p[0], p[1]))
         if scored and scored[0][0] > 0:
             return self._call("read_book", {"slug": scored[0][1]})
