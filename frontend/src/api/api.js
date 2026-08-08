@@ -210,6 +210,11 @@ export function createApi({
     getLatestConsolidation: () => request("/dreams/latest").then(normReport),
     getConsolidation: (runId) => request(`/dreams/${id(runId)}`).then(normReport),
 
+    // the monument (root agent at the plaza): cross-shelf asks + keeper creation
+    monument: (text) => request("/monument", { method: "POST", body: { text } })
+      .then((out) => out && out.created_keeper
+        ? { ...out, created_keeper: normKeeper(out.created_keeper) } : out),
+
     // dev helpers
     seed: () => request("/dev/seed", { method: "POST", body: {} }),
     reset: () => request("/dev/reset", { method: "POST", body: {} }),

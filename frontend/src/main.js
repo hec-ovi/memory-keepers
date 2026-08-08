@@ -22,6 +22,7 @@ import { createKeepersList } from "./ui/keepers_list.js";
 import { createMinimap } from "./ui/minimap.js";
 import { createCinematic } from "./ui/cinematic.js";
 import { createOnboarding } from "./ui/onboarding.js";
+import { createMonument } from "./ui/monument.js";
 import { startConsolidationWatch } from "./ui/graph_hud.js";
 import { createAudio } from "./render/audio.js";
 
@@ -110,6 +111,7 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
   ui.minimap = createMinimap({ root: uiEl, state, bus, config });
   ui.cinematic = createCinematic({ root: uiEl, state, bus });
   ui.onboarding = createOnboarding({ root: uiEl, bus, storage: win.localStorage ?? null });
+  ui.monument = createMonument({ root: uiEl, bus, api, toasts: ui.toasts });
   ui.audio = createAudio({ bus, target: win });
 
   // Cursor language for the canvas: CSS makes #app show a grab cursor;

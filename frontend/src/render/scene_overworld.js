@@ -375,6 +375,7 @@ export function clickOutcome(target, selectedKeeperId = null) {
     const { pick, keeperId } = target;
     if (pick === "keeper" || pick === "house") return { type: "select", keeperId };
     if (pick === "door") return { type: "enter", keeperId };
+    if (pick === "monument") return { type: "monument" };
     return null; // an unknown pick kind changes nothing
   }
   return selectedKeeperId ? { type: "deselect", keeperId: selectedKeeperId } : null;
@@ -579,6 +580,7 @@ export function createOverworldScene(ctx = {}) {
       texture: cobbles,
     });
     worldGroup.add(plaza.group);
+    pickables.push(plaza.group); // the well at the center opens the monument
     for (const m of plaza.glowMats) m.emissiveIntensity = 0.3;
     const hub = buildPlaza({
       center: world.hub.center,
@@ -756,6 +758,8 @@ export function createOverworldScene(ctx = {}) {
     } else if (type === "enter") {
       bus?.emit("house:enter", { keeperId });
       bus?.emit("mode:set", `interior:${keeperId}`);
+    } else if (type === "monument") {
+      bus?.emit("monument:open");
     } else if (type === "deselect") {
       // Clicking elsewhere (empty ground, a tree, the sea) deselects: the
       // talk panel closes first ("keeper:deselected"), then the ring and the

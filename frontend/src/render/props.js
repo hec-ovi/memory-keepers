@@ -994,11 +994,13 @@ export function buildPlaza({ center, radius, world, dark = false, texture = null
       side: THREE.DoubleSide,
     });
     const wall = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.55, 12, 1, true), stoneMat);
+    wall.userData.pick = "monument"; // the well IS the root agent's body
     wall.position.set(center.x, baseY + 0.27, center.z);
     wall.castShadow = true;
     wall.receiveShadow = true;
     group.add(wall);
     const rim = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.09, 8, 14), stoneMat);
+    rim.userData.pick = "monument";
     rim.rotation.x = Math.PI / 2;
     rim.position.set(center.x, baseY + 0.55, center.z);
     rim.castShadow = true;
@@ -1011,6 +1013,7 @@ export function buildPlaza({ center, radius, world, dark = false, texture = null
     });
     glowMats.push(waterMat);
     const disc2 = new THREE.Mesh(new THREE.CircleGeometry(0.72, 14), waterMat);
+    disc2.userData.pick = "monument";
     disc2.rotation.x = -Math.PI / 2;
     disc2.position.set(center.x, baseY + 0.48, center.z);
     group.add(disc2);
