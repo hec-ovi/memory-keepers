@@ -1,0 +1,34 @@
+# Full local stack, zero cloud credits: official Google emulators + the engine.
+# Model tiers: fake (default, deterministic), local (llama.cpp on the host), cloud.
+services:
+  engine:
+    build: { context: ., target: dev }
+    command: /opt/venv/bin/uvicorn mk_engine.main:app --host 0.0.0.0 --port 8000 --reload
+    ports: ["8000:8000"]
+    volumes: [".:/app"]
+    environment:
+      FIRESTORE_EMULATOR_HOST: firestore:8480
+      PUBSUB_EMULATOR_HOST: pubsub:8485
+      GOOGLE_CLOUD_PROJECT: memory-keepers-local
+      MODEL_TIER: ${MODEL_TIER:-fake}
+      LOCAL_MODEL_URL: ${LOCAL_MODEL_URL:-http://host.docker.internal:8080/v1}
+      LOCAL_MODEL_ID: ${LOCAL_MODEL_ID:-gemma-4-26b}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [firestore, pubsub]
+
+  firestore:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: gcloud emulators firestore start --host-port=0.0.0.0:8480
+    ports: ["8480:8480"]
+
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: gcloud beta emulators pubsub start --project=memory-keepers-local --host-port=0.0.0.0:8485
+    ports: ["8485:8485"]
+
+  # docker compose run --rm test
+  test:
+    build: { context: ., target: dev }
+    command: /opt/venv/bin/pytest library models agents engine dreaming voice -q
+    volumes: [".:/app"]
+    profiles: ["test"]
