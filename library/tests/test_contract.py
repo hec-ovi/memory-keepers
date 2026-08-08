@@ -135,3 +135,18 @@ def test_unseeded_library_starts_empty():
     lib = Library(FakeFirestore())  # no seed callable
     lib.ensure_world("bare")
     assert lib.list_keepers("bare") == []
+
+
+def test_make_room_digest_merge(library, world):
+    have = len(library.list_books(world, "dreams"))
+    for i in range(LIBRARY_CAP - have):
+        library.write_book(world, "dreams", title=f"old {i}", body_md=f"body {i}",
+                           date=f"2026-07-{(i % 28) + 1:02d}", source="told", one_liner="o")
+    digests, fits = library.make_room(world, "dreams", incoming=1)
+    assert fits and digests
+    books = library.list_books(world, "dreams")
+    assert len(books) <= LIBRARY_CAP - 2  # room for the incoming book plus a spare
+    digest = library.get_book(world, "dreams", digests[-1].slug)  # earlier digests may fold again
+    assert digest.source == "sleep" and len(digest.links) >= 2
+    for merged_slug in digest.links[:2]:
+        assert merged_slug.split("/")[-1] in digest.body_md  # nothing lost

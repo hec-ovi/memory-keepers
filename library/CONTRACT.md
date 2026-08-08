@@ -34,6 +34,7 @@ Class `Library(client=None, seed=None)`: `client` injected for tests, `seed` is 
 | `index_rows(world, keeper)` | | compact rows (slug, title, date, tags, entities, one_liner, tier) for prompts |
 | `session_read / session_append / session_replace` | `Turn` list + verbatim constraints / full `Session` | `Session` record |
 | `meter_add / meter_reset` | token counts | running total (meter lives on the keeper doc) |
+| `make_room(world, keeper, incoming)` | slots needed | `(digests_written, fits)`: binds the two oldest `told`/`sleep` books into one digest per merge until `incoming` fit plus one spare; nothing a merged book held is lost |
 | `dream_start / dream_update / dream_get / dream_latest` | run fields | `DreamRun` record |
 
 ## Errors (closed set)

@@ -140,6 +140,35 @@ class Library:
     def index_rows(self, wid: str, kid: str) -> list[dict]:
         return [b.summary() for b in self.list_books(wid, kid)]
 
+    MERGEABLE_SOURCES = ("told", "sleep")
+
+    def make_room(self, wid: str, kid: str, incoming: int = 1) -> tuple[list[Book], bool]:
+        """Frees bookcase slots by binding the two oldest mergeable books into one
+        digest per merge, until `incoming` new books fit plus one spare slot.
+        Returns (digests_written, fits). Nothing a merged book held is lost."""
+        digests: list[Book] = []
+        while True:
+            books = self.list_books(wid, kid)
+            if len(books) <= LIBRARY_CAP - incoming - 1:
+                return digests, True
+            olds = sorted((b for b in books if b.source in self.MERGEABLE_SOURCES),
+                          key=lambda b: (b.date, b.slug))
+            if len(olds) < 2:
+                return digests, len(books) <= LIBRARY_CAP - incoming
+            a, b = olds[0], olds[1]
+            body = (f"## {a.title} ({a.date}, was {a.slug})\n\n{a.body_md}\n\n"
+                    f"## {b.title} ({b.date}, was {b.slug})\n\n{b.body_md}")
+            self.delete_book(wid, kid, a.slug)
+            self.delete_book(wid, kid, b.slug)
+            digests.append(self.write_book(
+                wid, kid, title=f"Bound: {a.title} + {b.title}"[:80], body_md=body,
+                date=a.date, source="sleep",
+                one_liner=f"Two older books bound together: {a.title}; {b.title}."[:140],
+                tags=sorted({*a.tags, *b.tags})[:6],
+                entities=sorted({*a.entities, *b.entities})[:8],
+                links=sorted({a.slug, b.slug, *a.links, *b.links}),
+                enforce_cap=False))
+
     # -- sessions and meters ------------------------------------------------
     def _session_ref(self, wid, kid):
         return self._keeper(wid, kid).collection("session").document("current")
