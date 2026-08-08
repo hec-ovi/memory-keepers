@@ -1,0 +1,17 @@
+# private working notes, never published
+docs/IDEA.md
+docs/REQUIREMENTS.md
+docs/HACKATHON.md
+docs/raw.md
+
+# python
+__pycache__/
+.venv/
+*.egg-info/
+
+# node
+node_modules/
+
+# env / secrets
+.env
+*.key
