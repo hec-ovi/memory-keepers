@@ -30,7 +30,8 @@ export class GameCamera {
       const dx = e.clientX - lastX, dy = e.clientY - lastY;
       lastX = e.clientX; lastY = e.clientY;
       if (dragging === "orbit") {
-        this.yaw -= dx * 0.005;
+        // spin the world with the cursor: drag right, world turns right
+        this.yaw += dx * 0.005;
         this.pitch = THREE.MathUtils.clamp(this.pitch - dy * 0.004, 0.25, 1.35);
       } else {
         // grab the ground: the world moves with the cursor
