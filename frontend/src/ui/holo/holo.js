@@ -277,6 +277,31 @@ export function createHoloPanel({ title = "", content = null, size = "md", onClo
       closeBtn.addEventListener("click", () => onClose());
       head.appendChild(closeBtn);
     }
+    // Drag anywhere by the header; the panel stays where it is dropped.
+    head.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("button")) return;
+      const rect = el.getBoundingClientRect();
+      el.classList.add("holo-dragged");
+      Object.assign(el.style, {
+        position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`,
+        right: "auto", bottom: "auto", margin: "0", transform: "none",
+      });
+      const grabX = e.clientX - rect.left;
+      const grabY = e.clientY - rect.top;
+      const move = (ev) => {
+        const maxX = (win.innerWidth ?? 1e4) - 48;
+        const maxY = (win.innerHeight ?? 1e4) - 40;
+        el.style.left = `${Math.min(Math.max(ev.clientX - grabX, 48 - rect.width), maxX)}px`;
+        el.style.top = `${Math.min(Math.max(ev.clientY - grabY, 0), maxY)}px`;
+      };
+      const up = () => {
+        doc.removeEventListener("pointermove", move);
+        doc.removeEventListener("pointerup", up);
+      };
+      doc.addEventListener("pointermove", move);
+      doc.addEventListener("pointerup", up);
+      e.preventDefault();
+    });
     el.appendChild(head);
   }
 

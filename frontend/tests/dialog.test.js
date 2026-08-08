@@ -80,12 +80,9 @@ describe("createDialog", () => {
     const form = root.querySelector("form.mk-dialog-io");
     // bottom-pinned: the composer is the last block of the flex column
     expect(inner.lastElementChild).toBe(form);
-    // the input, the compact send and the mic all live INSIDE the pill
+    // the input and the mic live INSIDE the pill; Enter sends
     const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
     expect(input.closest("form")).toBe(form);
-    const send = screen.getByRole("button", { name: "Tell" });
-    expect(send.closest("form")).toBe(form);
-    expect(send.classList.contains("mk-dialog-send")).toBe(true);
     const mic = screen.getByRole("button", { name: /toggle microphone/i });
     expect(mic.closest("form")).toBe(form);
     expect(mic.classList.contains("mk-dialog-mic")).toBe(true);
@@ -100,12 +97,9 @@ describe("createDialog", () => {
 
     await user.click(screen.getByRole("tab", { name: "Ask" }));
     expect(input.getAttribute("aria-label")).toBe("ask Keeper of Dreams");
-    expect(screen.getByRole("button", { name: "Ask" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Tell" })).toBeNull();
 
     await user.click(screen.getByRole("tab", { name: "Tell" }));
     expect(input.getAttribute("aria-label")).toBe("tell Keeper of Dreams");
-    expect(screen.getByRole("button", { name: "Tell" })).toBeTruthy();
   });
 
   it("tell flow: typing enables submit, in-flight shows LISTENING, reply types out while SPEAKING", async () => {
@@ -129,14 +123,8 @@ describe("createDialog", () => {
     bus.emit("keeper:selected", "dreams");
 
     const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
-    const submit = screen.getByRole("button", { name: "Tell" });
-    expect(submit.disabled).toBe(true);
-
     await user.type(input, "I flew over a black ocean");
-    expect(submit.disabled).toBe(false);
-
-    await user.click(submit);
-    expect(submit.disabled).toBe(true);
+    await user.keyboard("{Enter}");
     // in flight: cyan listening strands + status line
     expect(vizMode()).toBe("listening");
     const status = screen.getByText(/listening/i);
@@ -148,7 +136,6 @@ describe("createDialog", () => {
     expect(screen.getByText("I flew over a black ocean")).toBeTruthy(); // scrollback
     expect(screen.getByText(/listening/i).style.display).toBe("none");
     expect(input.value).toBe("");
-    expect(submit.disabled).toBe(true); // empty again
     expect(created).toHaveBeenCalledWith({
       keeperId: "dreams",
       book: { slug: "2026-07-02-flying", title: "Flying" },
@@ -188,14 +175,11 @@ describe("createDialog", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     const input = screen.getByRole("textbox", { name: /tell/i });
     await user.type(input, "remember this");
-    await user.click(screen.getByRole("button", { name: "Tell" }));
+    await user.keyboard("{Enter}");
 
     await screen.findByText("the harness exploded"); // toast
     expect(input.value).toBe("remember this");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Tell" }).disabled).toBe(false),
-    );
-    expect(vizMode()).toBe("idle");
+    await waitFor(() => expect(vizMode()).toBe("idle"));
     expect(screen.getByText(/listening/i).style.display).toBe("none");
     expect(state.keepers[0].book_count).toBe(2); // unchanged
   });
@@ -218,7 +202,7 @@ describe("createDialog", () => {
 
     const input = screen.getByRole("textbox", { name: /tell the still water/i });
     await user.type(input, "I am afraid of the deep");
-    await user.click(screen.getByRole("button", { name: "Tell" }));
+    await user.keyboard("{Enter}");
 
     await screen.findByText("I hear you. The water is listening.");
     expect(created).not.toHaveBeenCalled(); // conversational: no book was born
@@ -250,10 +234,8 @@ describe("createDialog", () => {
 
     await user.click(screen.getByRole("tab", { name: "Ask" }));
     const input = screen.getByRole("textbox", { name: /ask keeper of dreams/i });
-    const askBtn = screen.getByRole("button", { name: "Ask" });
-    expect(askBtn.disabled).toBe(true);
     await user.type(input, "what did I dream?");
-    await user.click(askBtn);
+    await user.keyboard("{Enter}");
 
     await screen.findByText("You dreamt of water.");
     const row = screen.getByRole("button", { name: "Flying over water" });
@@ -276,7 +258,7 @@ describe("createDialog", () => {
     await user.click(screen.getByRole("tab", { name: "Ask" }));
     const input = screen.getByRole("textbox", { name: /ask/i });
     await user.type(input, "hello?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.keyboard("{Enter}");
     await screen.findByText("no answer today");
     expect(input.value).toBe("hello?");
   });
@@ -382,7 +364,7 @@ describe("createDialog", () => {
     expect(form.classList.contains("holo-thinking")).toBe(false);
 
     await user.type(screen.getByRole("textbox", { name: /tell/i }), "remember the rain");
-    await user.click(screen.getByRole("button", { name: "Tell" }));
+    await user.keyboard("{Enter}");
     expect(form.classList.contains("holo-thinking")).toBe(true); // spinning glow
 
     gate.resolve();
@@ -402,7 +384,7 @@ describe("createDialog", () => {
     const input = screen.getByRole("textbox", { name: /ask/i });
     const form = input.closest("form");
     await user.type(input, "anything?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.keyboard("{Enter}");
     await screen.findByText("boom");
     expect(form.classList.contains("holo-thinking")).toBe(false);
   });
@@ -430,7 +412,7 @@ describe("createDialog", () => {
 
     await user.click(screen.getByRole("tab", { name: "Ask" }));
     await user.type(screen.getByRole("textbox", { name: /ask/i }), "what did I dream?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.keyboard("{Enter}");
 
     const box = await screen.findByLabelText("consulted books");
     // memory:used fires exactly when the list appears, once, with the slugs
@@ -486,7 +468,7 @@ describe("createDialog", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     await user.click(screen.getByRole("tab", { name: "Ask" }));
     await user.type(screen.getByRole("textbox", { name: /ask/i }), "everything?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.keyboard("{Enter}");
 
     const box = await screen.findByLabelText("consulted books");
     expect(box.querySelectorAll(".mk-dialog-book")).toHaveLength(BOOKS_VISIBLE + 2);
@@ -537,7 +519,7 @@ describe("createDialog", () => {
 
     await user.click(screen.getByRole("tab", { name: "Ask" }));
     await user.type(screen.getByRole("textbox", { name: /ask/i }), "the concert we went to");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.keyboard("{Enter}");
 
     await screen.findByText(/she does not remember this/i);
     // the follow-up question shows inside the hint
@@ -552,7 +534,6 @@ describe("createDialog", () => {
     expect(tellTab.getAttribute("aria-selected")).toBe("true");
     const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
     expect(input.value).toBe("the concert we went to");
-    expect(screen.getByRole("button", { name: "Tell" }).disabled).toBe(false);
   });
 
   it("omits the save shortcut for unconscious keepers (telling writes no book)", async () => {
@@ -565,7 +546,7 @@ describe("createDialog", () => {
     bus.emit("keeper:selected", { keeperId: "still-water" });
     await user.click(screen.getByRole("tab", { name: "Ask" }));
     await user.type(screen.getByRole("textbox", { name: /ask/i }), "the deep?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.keyboard("{Enter}");
     await screen.findByText(/she does not remember this/i);
     expect(screen.queryByRole("button", { name: /save this as a memory/i })).toBeNull();
   });
@@ -710,7 +691,7 @@ describe("createDialog", () => {
     expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe("none");
 
     await user.type(screen.getByRole("textbox", { name: /tell/i }), "one more thing");
-    await user.click(screen.getByRole("button", { name: "Tell" }));
+    await user.keyboard("{Enter}");
 
     await waitFor(() =>
       expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe(""),
@@ -735,7 +716,7 @@ describe("createDialog", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     await user.click(screen.getByRole("tab", { name: "Ask" }));
     await user.type(screen.getByRole("textbox", { name: /ask/i }), "hello?");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.keyboard("{Enter}");
     await waitFor(() =>
       expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe(""),
     );
@@ -772,7 +753,7 @@ describe("createDialog", () => {
     expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe("none");
 
     await user.type(screen.getByRole("textbox", { name: /tell/i }), "one book too many");
-    await user.click(screen.getByRole("button", { name: "Tell" }));
+    await user.keyboard("{Enter}");
 
     // the warm inline note, not a toast
     await screen.findByText(/her library is full/i);

@@ -21,17 +21,15 @@ describe("dragModeForPointer", () => {
     expect(dragModeForPointer({ button: 0 })).toBe("pan");
   });
 
-  it("right drag pans (identical to left)", () => {
-    expect(dragModeForPointer({ button: 2 })).toBe("pan");
-  });
 
-  it("middle drag orbits", () => {
+  it("right or middle drag orbits", () => {
     expect(dragModeForPointer({ button: 1 })).toBe("orbit");
+    expect(dragModeForPointer({ button: 2 })).toBe("orbit");
   });
 
   it("a modifier key flips pan <-> orbit", () => {
     expect(dragModeForPointer({ button: 0, shiftKey: true })).toBe("orbit");
-    expect(dragModeForPointer({ button: 2, ctrlKey: true })).toBe("orbit");
+    expect(dragModeForPointer({ button: 2, ctrlKey: true })).toBe("pan");
     expect(dragModeForPointer({ button: 1, metaKey: true })).toBe("pan");
   });
 

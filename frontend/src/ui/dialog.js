@@ -8,8 +8,7 @@
 //
 // Layout: the panel is a flex column with the COMPOSER PINNED TO THE BOTTOM.
 // One composer serves both tabs (Tell / Ask select what a send means): a pill
-// input whose right end merges into a circular mic button, with a compact
-// send button inside the pill; Enter sends too.
+// input whose right end merges into a circular mic button; Enter sends.
 //
 // Chat grounding: an ask reply that is grounded in books renders a vertical
 // book list on the LEFT of the reply (spine-colored bars + titles, glow
@@ -93,7 +92,6 @@ const CSS = `
 .mk-dialog-field{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--holo-amber-hi,#ffd9a0);caret-color:var(--holo-cyan,#3fe0ff);font-family:var(--holo-font,inherit);font-size:.92rem;letter-spacing:.02em;padding:8px 0;}
 .mk-dialog-field::placeholder{color:rgba(255,182,88,.4);}
 .mk-dialog-field:disabled{opacity:.5;}
-.mk-dialog-send{width:32px;height:32px;min-width:32px;border-radius:50%;padding:0;font-size:.82rem;line-height:1;}
 .mk-dialog-mic{width:38px;height:38px;min-width:38px;border-radius:50%;padding:0;font-size:.95rem;margin:-1px;}
 .mk-dialog-mic[aria-pressed="true"]{background:var(--holo-cyan,#3fe0ff);border-color:transparent;color:#03272e;box-shadow:0 0 14px rgba(63,224,255,.6);}
 
@@ -580,10 +578,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     input.type = "text";
     input.className = "mk-dialog-field";
 
-    const send = el("button", "holo-btn holo-btn--primary mk-dialog-send", "➤");
-    send.type = "submit";
-    send.disabled = true;
-
     const micBtn = el("button", "holo-btn mk-dialog-mic", "🎙");
     micBtn.type = "button";
     micBtn.setAttribute("aria-label", "toggle microphone");
@@ -595,14 +589,20 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       syncViz();
     });
 
-    form.append(input, send, micBtn);
+    form.append(input, micBtn);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (form.requestSubmit) form.requestSubmit();
+        else form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      }
+    });
 
     let tab = "tell";
     let sending = false;
 
     const sync = () => {
       input.disabled = chatLocked;
-      send.disabled = chatLocked || sending || input.value.trim() === "";
     };
     input.addEventListener("input", sync);
 
@@ -612,11 +612,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       if (name === "tell") {
         input.setAttribute("aria-label", `tell ${who}`);
         input.placeholder = "tell her something to remember...";
-        send.setAttribute("aria-label", "Tell");
       } else {
         input.setAttribute("aria-label", `ask ${who}`);
         input.placeholder = "ask her a question...";
-        send.setAttribute("aria-label", "Ask");
       }
     };
 
@@ -724,16 +722,25 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     const stage = el("div", "mk-dialog-stage");
     const vizRow = el("div", "mk-dialog-viz-row");
     viz = createVoiceViz({ size: 150 });
-    const ttsBtn = el("button", "holo-btn mk-dialog-tts", "🔊");
-    ttsBtn.type = "button";
-    ttsBtn.setAttribute("aria-label", "toggle voice replies");
-    ttsBtn.setAttribute("aria-pressed", "false");
-    ttsBtn.addEventListener("click", () => {
+    // The visualizer itself is the speaker toggle (no extra button).
+    viz.el.setAttribute("role", "button");
+    viz.el.setAttribute("tabindex", "0");
+    viz.el.setAttribute("aria-label", "toggle voice replies");
+    viz.el.setAttribute("aria-pressed", "false");
+    const toggleTts = () => {
       ttsOn = !ttsOn;
-      ttsBtn.setAttribute("aria-pressed", String(ttsOn));
+      viz.el.setAttribute("aria-pressed", String(ttsOn));
+      viz.el.classList.toggle("is-on", ttsOn);
       bus?.emit("voice:tts", { keeperId: keeper.id, on: ttsOn });
+    };
+    viz.el.addEventListener("click", toggleTts);
+    viz.el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggleTts();
+      }
     });
-    vizRow.append(viz.el, ttsBtn);
+    vizRow.append(viz.el);
     stage.appendChild(vizRow);
 
     statusEl = el("p", "mk-dialog-status", "listening...");

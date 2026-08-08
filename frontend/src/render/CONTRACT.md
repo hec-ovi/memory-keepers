@@ -651,7 +651,7 @@ three.js wrapper, no pure logic).
 ### Purpose
 
 Camera rig on OrbitControls, "grab the ground" style: left/right drag pan,
-middle drag orbit, wheel zoom, modifier flips pan/orbit. Focus/follow tweens
+right or middle drag orbit, wheel zoom, modifier flips pan/orbit. Focus/follow tweens
 (follow optionally eases into a standard framing: the select-to-follow shot)
 plus a cinematic third-person chase solver (used by the join cinematic).
 

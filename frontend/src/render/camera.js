@@ -42,7 +42,7 @@ export function frameLerp(perFrame, dt) {
 // Which camera drag mode a pointer-down maps to. Buttons follow the
 // PointerEvent convention: 0 = left, 1 = middle, 2 = right.
 export function dragModeForPointer({ button = 0, ctrlKey = false, metaKey = false, shiftKey = false } = {}) {
-  const base = button === 1 ? "orbit" : "pan"; // left + right pan, middle orbits
+  const base = button === 1 || button === 2 ? "orbit" : "pan"; // left pans; right or middle orbits
   if (ctrlKey || metaKey || shiftKey) return base === "pan" ? "orbit" : "pan";
   return base;
 }
@@ -246,7 +246,7 @@ export function createCameraRig({ domElement, config: cam = {}, aspect = 1 } = {
   controls.minPolarAngle = cam.minPolarAngle ?? 0.15;
   controls.maxPolarAngle = cam.maxPolarAngle ?? Math.PI / 2 - 0.08;
   controls.screenSpacePanning = false; // pan slides along the ground plane
-  // Mouse bindings: left/right grab-drag pan, middle orbit, wheel zoom
+  // Mouse bindings: left grab-drag pan, right or middle orbit, wheel zoom
   // (modifier keys flip pan <-> orbit inside OrbitControls). Touch: one
   // finger pans, two fingers pinch-zoom and twist-rotate.
   controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN };

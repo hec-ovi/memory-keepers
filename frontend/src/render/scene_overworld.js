@@ -493,6 +493,9 @@ export function createOverworldScene(ctx = {}) {
   let floaters = []; // wisps bobbing on the spot
   let mists = []; // empty-plot mist sprites, drifting
   let pickables = [];
+  let monumentHolo = null; // the big holographic keeper floating over the well
+  let monumentBaseY = 0;
+  let monumentT = 0;
   let populationKey = null;
   let joining = null; // { keeperId } while she walks the graph route home
   const cineTimeline = createCinematicTimeline();
@@ -539,6 +542,8 @@ export function createOverworldScene(ctx = {}) {
     floaters = [];
     mists = [];
     pickables = [];
+    monumentHolo?.dispose();
+    monumentHolo = null;
     joining = null;
     abortCinematic(); // a mid-cinematic rebuild restores input + letterbox
     abortSleeps(); // sleep fx belong to the old cottages
@@ -582,6 +587,22 @@ export function createOverworldScene(ctx = {}) {
     worldGroup.add(plaza.group);
     pickables.push(plaza.group); // the well at the center opens the monument
     for (const m of plaza.glowMats) m.emissiveIntensity = 0.3;
+
+    // The Monument herself: a larger, translucent keeper hologram floating
+    // over the well. No visor, no shadow: light projected from the water.
+    monumentHolo = createKeeperMesh({ keeper: { id: "the-monument" }, config });
+    monumentBaseY = world.heightAt(world.plaza.center.x, world.plaza.center.z) + 2.6;
+    const holoGroup = monumentHolo.group;
+    holoGroup.scale.setScalar(2.1);
+    holoGroup.position.set(world.plaza.center.x, monumentBaseY, world.plaza.center.z);
+    holoGroup.traverse((obj) => {
+      obj.userData = { ...(obj.userData ?? {}), pick: "monument" };
+      if (obj.isMesh) obj.castShadow = false;
+      if (obj.name === "visor") obj.visible = false;
+    });
+    monumentHolo.setOpacity?.(0.35);
+    worldGroup.add(holoGroup);
+    pickables.push(holoGroup);
     const hub = buildPlaza({
       center: world.hub.center,
       radius: world.hub.radius,
@@ -1303,6 +1324,12 @@ export function createOverworldScene(ctx = {}) {
   let elapsed = 0;
 
   function update(dt) {
+    if (monumentHolo) {
+      monumentT += dt;
+      monumentHolo.update?.(dt);
+      monumentHolo.group.position.y = monumentBaseY + Math.sin(monumentT * 0.8) * 0.2;
+      monumentHolo.group.rotation.y += dt * 0.22;
+    }
     elapsed += dt;
 
     // Population changed (create/delete keeper, seed)? Rebuild.

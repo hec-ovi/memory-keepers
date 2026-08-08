@@ -532,3 +532,16 @@ button.chip:focus-visible { outline: 2px solid var(--lavender); outline-offset: 
   border: 1px solid rgba(255, 182, 88, 0.4); padding: 0 14px; border-radius: 6px;
   text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; }
 .mk-monument-composer button:hover { border-color: rgba(87, 230, 255, 0.8); }
+
+/* the monument panel docks where keeper talk panels dock */
+.mk-monument-panel { position: absolute; top: 70px; right: 16px;
+  width: min(370px, calc(100vw - 32px)); max-height: calc(100vh - 96px);
+  z-index: 30; }
+
+/* tooltips ride above every panel, no matter where they are */
+[data-tooltip]:hover, [data-tooltip]:focus-visible { z-index: 2147483000; }
+[data-tooltip]::after, [data-tooltip]::before { z-index: 2147483001; }
+
+/* holo panels drag by their header */
+.holo-panel > header { cursor: grab; user-select: none; }
+.holo-panel.holo-dragged > header { cursor: grabbing; }
