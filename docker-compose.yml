@@ -32,3 +32,14 @@ services:
     command: /opt/venv/bin/pytest library models agents engine dreaming voice -q
     volumes: [".:/app"]
     profiles: ["test"]
+
+  # docker compose run --rm test-frontend
+  test-frontend:
+    image: node:24-slim
+    working_dir: /app/frontend
+    command: sh -c "[ -x node_modules/.bin/vitest ] || npm install --no-audit --no-fund; npx vitest run"
+    volumes: [".:/app", "mk-node-modules:/app/frontend/node_modules"]
+    profiles: ["test"]
+
+volumes:
+  mk-node-modules:
