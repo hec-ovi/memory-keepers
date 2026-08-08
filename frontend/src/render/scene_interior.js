@@ -56,7 +56,7 @@
 // Three clickable views ("main" | "chairs" | "shelf"): the two armchairs are
 // a cozy pair angled toward one another, and the chairs view seats the camera
 // IN the guest chair looking AT her (she faces the camera; gentle sitting
-// sway); the shelf view dollies close to a bookcase wall so the spine titles
+// sway); the shelf view dollies close to the bookcase so the spine titles
 // are actually readable (the framing clamps to a legible distance and the
 // spine canvases re-render at higher resolution for the close-up). Enter a
 // view by clicking the guest chair or a bookcase (hover cursor + soft
@@ -69,7 +69,7 @@
 // jumps to main for the fetch and the previous view is restored on
 // "reader:closed".
 //
-// The bookcases hold exactly LIBRARY_CAP (24) slots in total: one full
+// The bookcase holds exactly LIBRARY_CAP (24) slots: one full
 // library IS the memory cap per keeper. Spine thickness scales into the slot
 // (tierSizing) so shelves at capacity read visibly full. The room
 // readout (ui/interior_views.js, bottom-left) shows her name, level, shelved
@@ -146,18 +146,18 @@ export function bookTier(book = {}) {
   return "small";
 }
 
-// The two bookcases hold exactly LIBRARY_CAP slots in total: ONE full library
+// The single bookcase holds exactly LIBRARY_CAP slots: ONE full library
 // IS the memory cap per keeper (BACKLOG 22). The backend pins the same number
 // in engine/limits.py; the UI (room readout) imports it from here.
 export const LIBRARY_CAP = 24;
 
 export const SHELF_LAYOUT = Object.freeze({
-  walls: 2, // left (0) and right (1)
-  shelvesPerWall: 3,
-  slotsPerShelf: 4, // 2 walls x 3 shelves x 4 slots = LIBRARY_CAP
-  shelfWidth: 1.8, // usable run along the wall, world units
-  shelfGapY: 0.85,
-  firstShelfY: 0.95,
+  walls: 1, // one bookcase, on the left wall
+  shelvesPerWall: 4,
+  slotsPerShelf: 6, // 1 wall x 4 shelves x 6 slots = LIBRARY_CAP
+  shelfWidth: 2.6, // usable run along the wall, world units
+  shelfGapY: 0.72,
+  firstShelfY: 0.72,
 });
 
 export function shelfCapacity(layout = SHELF_LAYOUT) {
@@ -1201,7 +1201,7 @@ export function createInteriorScene(ctx = {}) {
   stray.rotation.y = 0.9;
   scene.add(stray);
 
-  // --- bookcases along the two side walls ---
+  // --- the bookcase along the left wall ---
   const caseWood = night ? 0x554975 : 0x7a5c40;
   for (let wall = 0; wall < SHELF_LAYOUT.walls; wall++) {
     const x = wall === 0 ? -WALL_X : WALL_X;
@@ -1405,7 +1405,7 @@ export function createInteriorScene(ctx = {}) {
   }
 
   function makeFallbackKeeper() {
-    const body = solid(new THREE.SphereGeometry(0.5, 20, 16), 0xf8a7c0, { roughness: 0.6 });
+    const body = solid(new THREE.SphereGeometry(0.5, 20, 16), 0xf2f6fa, { roughness: 0.6 });
     body.userData.pick = "keeper";
     const group = new THREE.Group();
     group.add(body);

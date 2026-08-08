@@ -52,12 +52,12 @@ export function darkenHex(hex, t) {
   return mixHex(hex, 0x000000, t);
 }
 
-// The one true keeper pink, sampled from sample/keeper.png. Every conscious keeper
-// uses it: per-keeper palette variation is intentionally disabled for now, so
+// The android body white. Every conscious keeper uses the same shell:
+// per-keeper palette variation is intentionally disabled for now, so
 // Keeper.palette is ignored here (houses and UI accents still use it).
-export const KEEPER_PINK = 0xf8a7c0;
-const DEFAULT_PRIMARY = KEEPER_PINK;
-const DEFAULT_ACCENT = 0x7c4a6b;
+export const KEEPER_WHITE = 0xf2f6fa;
+export const VISOR_BLUE = 0x2fb9ff;
+const DEFAULT_PRIMARY = KEEPER_WHITE;
 const UNCONSCIOUS_TINT = 0x6d5a8f;
 
 // Shared material palette for every keeper (the `palette` argument is accepted
@@ -65,24 +65,25 @@ const UNCONSCIOUS_TINT = 0x6d5a8f;
 // everything darker/violet; the body stays fully opaque (BACKLOG 11).
 export function derivePalette(_palette = {}, kind = "conscious") {
   const primary = DEFAULT_PRIMARY;
-  const accent = DEFAULT_ACCENT;
   let out = {
-    top: lightenHex(primary, 0.3), // lighter crown, like the sample render
-    bottom: mixHex(darkenHex(primary, 0.1), primary, 0.4),
-    eye: mixHex(accent, 0x2c1836, 0.55), // deep glossy purple
-    highlight: 0xffffff,
-    blush: mixHex(primary, 0xf25a92, 0.55),
-    mouth: mixHex(accent, 0x40202e, 0.6),
+    top: lightenHex(primary, 0.5), // porcelain crown
+    bottom: mixHex(darkenHex(primary, 0.16), 0x9fb6c8, 0.35), // cool shaded base
+    eye: VISOR_BLUE, // digital eyes glowing behind the visor
+    highlight: 0xe8fbff,
+    blush: mixHex(VISOR_BLUE, 0xffffff, 0.45), // cheek status LEDs
+    mouth: mixHex(0x51606e, 0x2c3a46, 0.5),
+    visor: 0x0e2233, // smoked glass band
     opacity: 1,
   };
   if (kind === "unconscious") {
     out = {
-      top: mixHex(out.top, UNCONSCIOUS_TINT, 0.55),
-      bottom: mixHex(out.bottom, darkenHex(UNCONSCIOUS_TINT, 0.35), 0.6),
-      eye: mixHex(out.eye, 0x1a1030, 0.5),
+      top: mixHex(out.top, UNCONSCIOUS_TINT, 0.5),
+      bottom: mixHex(out.bottom, darkenHex(UNCONSCIOUS_TINT, 0.35), 0.55),
+      eye: mixHex(out.eye, 0x7a5cff, 0.45), // night-shifted glow
       highlight: 0xd9d2ff,
       blush: mixHex(out.blush, UNCONSCIOUS_TINT, 0.5),
       mouth: mixHex(out.mouth, 0x241530, 0.5),
+      visor: mixHex(out.visor, 0x1a1030, 0.5),
       opacity: 1, // fully opaque: only the moonlit tint marks her unconscious
     };
   }
@@ -239,7 +240,7 @@ export function createKeeperMesh({ keeper = {}, config = {} } = {}) {
     return m;
   };
 
-  // Body: soft pink sphere, subtle vertical gradient via vertex colors.
+  // Body: white android shell, subtle vertical gradient via vertex colors.
   const bodyGeo = new THREE.SphereGeometry(BODY_RADIUS, 32, 24);
   bodyGeo.scale(1, 0.94, 1); // a hair squatter than a perfect sphere
   gradientBody(bodyGeo, pal.top, pal.bottom);
@@ -252,23 +253,47 @@ export function createKeeperMesh({ keeper = {}, config = {} } = {}) {
   body.userData.pick = "keeper";
   root.add(track(body));
 
-  // Tiny ear nubs.
-  const nubGeo = new THREE.SphereGeometry(0.09, 12, 10);
-  const nubMat = mat({ color: pal.top, roughness: 0.6 });
+  // Cat ears: white outer cone, glowing inner cone.
+  const earGeo = new THREE.ConeGeometry(0.15, 0.3, 14);
+  const earMat = mat({ color: pal.top, roughness: 0.55 });
+  const earInnerGeo = new THREE.ConeGeometry(0.075, 0.16, 12);
+  const earInnerMat = mat({ color: pal.eye, roughness: 0.35 });
+  earInnerMat.emissive = new THREE.Color(pal.eye);
+  earInnerMat.emissiveIntensity = 0.5;
   for (const sx of [-1, 1]) {
-    const nub = new THREE.Mesh(nubGeo, nubMat);
-    nub.position.set(0.26 * sx, 0.47, 0.05);
-    root.add(nub);
+    const ear = new THREE.Mesh(earGeo, earMat);
+    ear.position.set(0.28 * sx, 0.58, 0.03);
+    ear.rotation.z = -0.3 * sx;
+    const inner = new THREE.Mesh(earInnerGeo, earInnerMat);
+    inner.position.set(0, -0.02, 0.055);
+    ear.add(inner);
+    root.add(ear);
   }
-  geometries.push(nubGeo);
-  materials.push(nubMat);
+  geometries.push(earGeo, earInnerGeo);
+  materials.push(earMat, earInnerMat);
 
-  // Eyes: big glossy dark-purple spheres, each with two white highlights.
+  // Visor: a smoked glass band curving across the face.
+  const visorGeo = new THREE.SphereGeometry(BODY_RADIUS + 0.045, 32, 12, 0, 1.9, 1.02, 0.72);
+  const visorMat = new THREE.MeshStandardMaterial({
+    color: pal.visor, transparent: true, opacity: 0.42, roughness: 0.06,
+    metalness: 0.35, side: THREE.DoubleSide, depthWrite: false,
+  });
+  visorMat.emissive = new THREE.Color(pal.eye);
+  visorMat.emissiveIntensity = 0.12;
+  const visor = new THREE.Mesh(visorGeo, visorMat);
+  visor.name = "visor"; // translucent by design (glass)
+  visor.rotation.y = Math.PI / 2 - 0.95;
+  geometries.push(visorGeo); // material is NOT tracked: opacity stays fixed glass
+  root.add(visor);
+
+  // Eyes: digital blue, glowing behind the glass, each with two highlights.
   const eyes = new THREE.Group(); // scaled in y for blinking + tired droop
   eyes.name = "eyes";
   root.add(eyes);
   const eyeGeo = new THREE.SphereGeometry(0.155, 20, 16);
-  const eyeMat = mat({ color: pal.eye, roughness: 0.08, metalness: 0.05 });
+  const eyeMat = mat({ color: pal.eye, roughness: 0.15, metalness: 0.05 });
+  eyeMat.emissive = new THREE.Color(pal.eye);
+  eyeMat.emissiveIntensity = 0.85;
   const hiGeoBig = new THREE.SphereGeometry(0.052, 10, 8);
   const hiGeoSmall = new THREE.SphereGeometry(0.024, 8, 6);
   const hiMat = new THREE.MeshBasicMaterial({ color: pal.highlight, toneMapped: false });

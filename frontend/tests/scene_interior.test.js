@@ -134,13 +134,13 @@ describe("shelfSlot", () => {
     }
   });
 
-  it("fills a shelf before moving up, and a wall before switching walls", () => {
+  it("fills a shelf before moving up, and wraps at the single case's capacity", () => {
     const perShelf = SHELF_LAYOUT.slotsPerShelf;
-    const perWall = perShelf * SHELF_LAYOUT.shelvesPerWall;
+    const capacity = perShelf * SHELF_LAYOUT.shelvesPerWall * SHELF_LAYOUT.walls;
     expect(shelfSlot(0)).toMatchObject({ wall: 0, shelf: 0, slot: 0 });
     expect(shelfSlot(perShelf - 1)).toMatchObject({ wall: 0, shelf: 0, slot: perShelf - 1 });
     expect(shelfSlot(perShelf)).toMatchObject({ wall: 0, shelf: 1, slot: 0 });
-    expect(shelfSlot(perWall)).toMatchObject({ wall: 1, shelf: 0, slot: 0 });
+    expect(shelfSlot(capacity)).toMatchObject({ wall: 0, shelf: 0, slot: 0 });
   });
 
   it("raises the shelf height with each shelf row", () => {
@@ -743,7 +743,7 @@ describe("createInteriorScene (headless, no WebGL)", () => {
   const pressEscape = () =>
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 
-  it("builds the guest armchair and both bookcases as pickable hotspots", async () => {
+  it("builds the guest armchair and the bookcase as pickable hotspots", async () => {
     const { scene } = makeScene();
     await flush();
     const hotspots = { chair: 0, shelfWalls: new Set() };
@@ -752,7 +752,7 @@ describe("createInteriorScene (headless, no WebGL)", () => {
       if (o.userData?.hotspot === "shelf") hotspots.shelfWalls.add(o.userData.wall);
     });
     expect(hotspots.chair).toBeGreaterThan(0);
-    expect([...hotspots.shelfWalls].sort()).toEqual([0, 1]);
+    expect([...hotspots.shelfWalls]).toEqual([0]); // one bookcase
     scene.dispose();
   });
 
@@ -876,7 +876,7 @@ describe("createInteriorScene (headless, no WebGL)", () => {
     scene.dispose();
   });
 
-  it("shelves a full library of 24 books (digests included) inside the cases", async () => {
+  it("shelves a full library of 24 books (digests included) inside the case", async () => {
     const manyBooks = Array.from({ length: LIBRARY_CAP }, (_, i) => ({
       slug: `2026-06-${String(i + 1).padStart(2, "0")}-memory-${i}`,
       title: `Memory ${i}`,
@@ -899,7 +899,7 @@ describe("createInteriorScene (headless, no WebGL)", () => {
       );
       walls.add(mesh.position.x < 0 ? 0 : 1);
     }
-    expect([...walls].sort()).toEqual([0, 1]); // both cases in use
+    expect([...walls]).toEqual([0]); // the single case holds the full library
 
     // a digest book got a plain spine like everyone else
     const digest = meshes.find((m) => m.userData.slug === manyBooks[0].slug);

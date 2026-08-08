@@ -181,7 +181,7 @@ export function createMinimap({ root, state, bus, config } = {}) {
   ensureStyles(doc);
   const win = doc.defaultView ?? globalThis;
   const colors = config?.colors ?? {};
-  const keeperPink = cssHex(colors.keeperPink ?? 0xf8a7c0);
+  const keeperTone = cssHex(colors.keeperTone ?? 0x9fdcff);
   const islandGreen = cssHex(colors.island ?? 0x7fb069);
 
   const panel = doc.createElement("div");
@@ -336,12 +336,12 @@ export function createMinimap({ root, state, bus, config } = {}) {
     // House dots, tinted by each keeper's palette.
     for (const [keeperId, home] of Object.entries(layout.homes)) {
       const p = projector.toCanvas(home.x, home.z);
-      ctx.fillStyle = paletteOf(keeperId).primary ?? keeperPink;
+      ctx.fillStyle = paletteOf(keeperId).primary ?? keeperTone;
       ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
     }
 
     // Live keeper dots: all the same pink.
-    ctx.fillStyle = keeperPink;
+    ctx.fillStyle = keeperTone;
     for (const a of live.keepers ?? []) {
       if (!Number.isFinite(a?.x) || !Number.isFinite(a?.z)) continue;
       const p = projector.toCanvas(a.x, a.z);

@@ -38,7 +38,7 @@ export const config = {
     waterNight: 0x1b2340,
     island: 0x7fb069,
     fogNight: 0x2a2145,
-    keeperPink: 0xf8a7c0,
+    keeperTone: 0x9fdcff,
     keeperBlush: 0xf27ba4,
     unconsciousTint: 0x6d5a8f,
     selectionRing: 0xffd3a6,

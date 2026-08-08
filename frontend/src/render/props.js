@@ -99,7 +99,7 @@ const ROOF_FAMILY = {
 // variant's wall/roof families. The dark variant (night quarter) shifts
 // everything cold and dim, with warm window glow against the moonlit blues.
 export function cottagePalette(palette = {}, dark = false, variant = null) {
-  const primary = palette.primary ?? 0xf8a7c0;
+  const primary = palette.primary ?? 0x7c9fe8;
   const accent = palette.accent ?? 0x7c4a6b;
   const wallBase = WALL_FAMILY[variant?.wallFamily] ?? WALL_FAMILY.cream;
   const roofBase = ROOF_FAMILY[variant?.roofFamily] ?? 0x9a5b47;

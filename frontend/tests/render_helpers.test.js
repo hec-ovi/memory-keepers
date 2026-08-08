@@ -17,7 +17,7 @@ import {
   zzzPulse,
   TIRED_STATUS,
   createKeeperMesh,
-  KEEPER_PINK,
+  KEEPER_WHITE,
 } from "../src/render/keeper_mesh.js";
 import { wrapBubbleText, popScale, bubbleSeconds, createSpeech } from "../src/render/speech.js";
 import { frameLerp } from "../src/render/camera.js";
@@ -70,7 +70,7 @@ describe("render/keeper_mesh derivePalette", () => {
     mesh.group.traverse((o) => {
       const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
       for (const m of mats) {
-        if (o.name === "zzz") continue; // the Zzz sprite fades by design
+        if (o.name === "zzz" || o.name === "visor") continue; // sprite fades, glass is glass
         if (m.transparent && m.opacity < 1) translucent++;
       }
     });
@@ -78,13 +78,13 @@ describe("render/keeper_mesh derivePalette", () => {
     mesh.dispose();
   });
 
-  it("ignores Keeper.palette: every conscious keeper gets the same body pink", () => {
+  it("ignores Keeper.palette: every conscious keeper gets the same android shell", () => {
     const pink = derivePalette({ primary: "#f8a7c0", accent: "#7c4a6b" });
     const blue = derivePalette({ primary: "#7ca7f8", accent: "#123456" });
     const none = derivePalette(undefined);
     expect(blue).toEqual(pink);
     expect(none).toEqual(pink);
-    expect(pink.top).toBe(lightenHex(KEEPER_PINK, 0.3)); // anchored to sample/keeper.png pink
+    expect(pink.top).toBe(lightenHex(KEEPER_WHITE, 0.5)); // anchored to the android white
   });
 
   it("unconscious variants are unified too", () => {

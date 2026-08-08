@@ -12,7 +12,7 @@ services:
       GOOGLE_CLOUD_PROJECT: memory-keepers-local
       MODEL_TIER: ${MODEL_TIER:-fake}
       LOCAL_MODEL_URL: ${LOCAL_MODEL_URL:-http://host.docker.internal:8080/v1}
-      LOCAL_MODEL_ID: ${LOCAL_MODEL_ID:-gemma-4-26b}
+      LOCAL_MODEL_ID: ${LOCAL_MODEL_ID:-gemma-4-26b-a4b-qat-q4}
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [firestore, pubsub]
 

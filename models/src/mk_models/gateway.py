@@ -29,7 +29,7 @@ class ModelGateway:
             except ImportError as e:
                 raise ModelsError("local tier needs the mk-models[local] extra") from e
             return LiteLlm(
-                model=f"openai/{os.environ.get('LOCAL_MODEL_ID', 'gemma-4-26b')}",
+                model=f"openai/{os.environ.get('LOCAL_MODEL_ID', 'gemma-4-26b-a4b-qat-q4')}",
                 api_base=os.environ.get("LOCAL_MODEL_URL", "http://127.0.0.1:8080/v1"),
                 api_key=os.environ.get("LOCAL_MODEL_KEY", "local"),
             )
