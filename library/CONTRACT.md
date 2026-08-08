@@ -23,15 +23,18 @@ worlds/{world_id}                     meta: created_at, seeded
 
 ## Public API (Python class `Library`)
 
+Class `Library(client=None, seed=None)`: `client` injected for tests, `seed` is a callable `(library, world_id)` applied on first world touch (the engine passes `mk_library.seed.apply`).
+
 | method | in | out |
 |---|---|---|
 | `ensure_world(world_id)` | id from the engine | world meta; seeds demo content on first touch |
-| `create_keeper / get / list / delete` | profile fields | keeper doc; errors below |
-| `write_book / get_book / list_books / delete_book` | keeper, book fields | book doc, newest first listing |
-| `index_rows(keeper)` | | compact rows (slug, title, date, tags, entities, one_liner) for prompts |
-| `session_read / session_append / session_replace` | turns or full blocks | session doc |
-| `meter_add / meter_reset` | token counts | session meter `{tokens_used, budget, status}` |
-| `dream_start / dream_update / dream_get / dream_latest` | run fields | dream run doc |
+| `world_meta / list_worlds` | | meta dict / world ids (the nightly dream sweep) |
+| `create_keeper / get_keeper / list_keepers / update_keeper / delete_keeper` | profile fields | `Keeper` record; `payload(budget)` is the API shape |
+| `write_book / get_book / list_books / delete_book` | book fields; `enforce_cap=False` only for sleep and dreaming digest writes | `Book` record, newest first listing |
+| `index_rows(world, keeper)` | | compact rows (slug, title, date, tags, entities, one_liner, tier) for prompts |
+| `session_read / session_append / session_replace` | `Turn` list + verbatim constraints / full `Session` | `Session` record |
+| `meter_add / meter_reset` | token counts | running total (meter lives on the keeper doc) |
+| `dream_start / dream_update / dream_get / dream_latest` | run fields | `DreamRun` record |
 
 ## Errors (closed set)
 
@@ -44,4 +47,4 @@ worlds/{world_id}                     meta: created_at, seeded
 - Every read and write is scoped to one world; no cross-world query exists.
 - Dark keepers and `dream` books are written only by the dreaming box.
 - Level is derived, never stored: `1 + isqrt(book_count)`.
-- Dev and tests run against the Firestore emulator (`FIRESTORE_EMULATOR_HOST`); the code path is identical to production.
+- Tests inject `mk_library.testing.FakeFirestore`, a faithful in-process fake of the client subset used; the same suites pass against the real emulator when `FIRESTORE_EMULATOR_HOST` is set. Dev via docker-compose runs the official emulator; production code path is identical.

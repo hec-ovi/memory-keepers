@@ -1,0 +1,13 @@
+[project]
+name = "mk-library"
+version = "0.1.0"
+description = "Firestore store: worlds, keepers, books, sessions, dream runs"
+requires-python = ">=3.12"
+dependencies = ["google-cloud-firestore>=2.28"]
+
+[build-system]
+requires = ["uv_build>=0.11"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mk_library"
