@@ -78,11 +78,7 @@ export function createMonument({ root, bus, api, toasts } = {}) {
     holo = createHoloPanel({
       title: "main keeper",
       content,
-      onClose: () => {
-        const panel = holo;
-        holo = null;
-        panel?.close(); // the kit's X only notifies; closing is ours
-      },
+      onClose: () => close(), // the kit's X only notifies; closing is ours
       className: "mk-monument-panel",
     });
     holo.el.setAttribute("aria-label", "main keeper");
@@ -90,15 +86,25 @@ export function createMonument({ root, bus, api, toasts } = {}) {
     input.focus();
   }
 
-  const off = bus?.on?.("monument:open", open) ?? null;
+  function close() {
+    const panel = holo;
+    holo = null;
+    panel?.close();
+  }
+
+  // One talk panel at a time: selecting a keeper or changing mode closes this
+  // one, exactly like the keeper dialogs behave.
+  const offs = [
+    bus?.on?.("monument:open", open),
+    bus?.on?.("keeper:selected", close),
+    bus?.on?.("mode:changed", close),
+  ].filter(Boolean);
   return {
     open,
-    close() {
-      holo?.close();
-    },
+    close,
     dispose() {
-      off?.();
-      holo?.close();
+      for (const off of offs) off?.();
+      close();
     },
   };
 }

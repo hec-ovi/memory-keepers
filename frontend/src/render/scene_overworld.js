@@ -780,6 +780,10 @@ export function createOverworldScene(ctx = {}) {
       bus?.emit("house:enter", { keeperId });
       bus?.emit("mode:set", `interior:${keeperId}`);
     } else if (type === "monument") {
+      if (state.selectedKeeperId) {
+        bus?.emit("keeper:deselected", { keeperId: state.selectedKeeperId });
+        deselect();
+      }
       bus?.emit("monument:open");
     } else if (type === "deselect") {
       // Clicking elsewhere (empty ground, a tree, the sea) deselects: the

@@ -219,7 +219,7 @@ describe("createGame wiring", () => {
     document.dispatchEvent(pointer("pointerup"));
     expect(appEl.classList.contains("is-grabbing")).toBe(false);
 
-    appEl.dispatchEvent(pointer("pointerdown", 1)); // middle-drag = orbit
+    appEl.dispatchEvent(pointer("pointerdown", 2)); // right-drag = orbit
     expect(appEl.classList.contains("is-orbiting")).toBe(true);
     document.dispatchEvent(pointer("pointercancel"));
     expect(appEl.classList.contains("is-orbiting")).toBe(false);

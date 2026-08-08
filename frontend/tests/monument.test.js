@@ -73,6 +73,14 @@ describe("createMonument", () => {
     expect(document.querySelector(".mk-monument")).toBeNull();
   });
 
+  it("selecting a keeper closes it, like any other talk panel", async () => {
+    open();
+    expect(document.querySelector(".mk-monument")).toBeTruthy();
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    await new Promise((r) => setTimeout(r, 400));
+    expect(document.querySelector(".mk-monument")).toBeNull();
+  });
+
   it("dispose unsubscribes and closes", async () => {
     const monument = open();
     monument.dispose();

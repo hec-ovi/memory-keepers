@@ -22,8 +22,8 @@ describe("dragModeForPointer", () => {
   });
 
 
-  it("right or middle drag orbits", () => {
-    expect(dragModeForPointer({ button: 1 })).toBe("orbit");
+  it("right drag orbits; middle pans like left", () => {
+    expect(dragModeForPointer({ button: 1 })).toBe("pan");
     expect(dragModeForPointer({ button: 2 })).toBe("orbit");
   });
 
@@ -60,9 +60,9 @@ describe("createDragTracker (click vs drag)", () => {
     expect(up.mode).toBe("pan");
   });
 
-  it("middle-button drags report orbit", () => {
+  it("right-button drags report orbit", () => {
     const t = createDragTracker();
-    t.down({ x: 0, y: 0, time: 0, button: 1 });
+    t.down({ x: 0, y: 0, time: 0, button: 2 });
     expect(t.move({ x: 20, y: 20 })).toBe("orbit");
     expect(t.up({ time: 80 }).mode).toBe("orbit");
   });

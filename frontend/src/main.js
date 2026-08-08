@@ -118,7 +118,7 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
   // while a pointer is held down we flip to grabbing (pan) or move (middle
   // -drag orbit). Classes only, the camera rig in render/ is untouched.
   function onCanvasPointerDown(e) {
-    appEl.classList.add(e.button === 1 || e.button === 2 ? "is-orbiting" : "is-grabbing");
+    appEl.classList.add(e.button === 2 ? "is-orbiting" : "is-grabbing");
   }
   function onCanvasPointerEnd() {
     appEl.classList.remove("is-grabbing", "is-orbiting");
