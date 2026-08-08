@@ -40,8 +40,8 @@ export class KeeperAvatar {
     this.group.userData = { pickable: true, kind: "keeper", keeperId: keeper.id };
   }
 
-  place(x, z, heading = 0) {
-    this.group.position.set(x, 0, z);
+  place(x, z, heading = 0, y = 0) {
+    this.group.position.set(x, y, z);
     this.group.rotation.y = -heading + Math.PI / 2;
   }
 

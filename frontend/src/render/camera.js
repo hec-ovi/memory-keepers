@@ -33,11 +33,15 @@ export class GameCamera {
         this.yaw -= dx * 0.005;
         this.pitch = THREE.MathUtils.clamp(this.pitch - dy * 0.004, 0.25, 1.35);
       } else {
+        // grab the ground: the world moves with the cursor
         this.release();
         const s = this.distance * 0.0016;
-        const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
-        this.target.x -= (dx * -sin + dy * cos) * s * -1;
-        this.target.z -= (dx * cos + dy * sin) * s;
+        const forward = new THREE.Vector3(
+          this.target.x - this.camera.position.x, 0,
+          this.target.z - this.camera.position.z).normalize();
+        const right = new THREE.Vector3(-forward.z, 0, forward.x);
+        this.target.addScaledVector(right, -dx * s);
+        this.target.addScaledVector(forward, dy * s);
       }
     });
     canvas.addEventListener("wheel", (e) => {

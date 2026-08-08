@@ -80,6 +80,7 @@ function rebuildWorldObjects() {
   for (const plot of layout.plots) {
     const keeper = occupancy.get(plot.id);
     const mesh = keeper ? buildHouse(plot, keeper.palette) : buildVacantSign(plot);
+    mesh.position.y = island.heightAt(plot.x, plot.z) + 0.02;
     houseMeshes.set(plot.id, mesh);
     island.group.add(mesh);
     if (keeper && !avatars.has(keeper.id)) {
@@ -201,7 +202,8 @@ function frame(now) {
   if (mode === "overworld") {
     stepAll([...avatars.values()].map((a) => a.walker), layout.network, dt);
     for (const { avatar, walker } of avatars.values()) {
-      avatar.place(walker.pos.x, walker.pos.z, walker.heading || 0);
+      avatar.place(walker.pos.x, walker.pos.z, walker.heading || 0,
+        island.heightAt(walker.pos.x, walker.pos.z));
       avatar.bob(t + hashSeed(walker.keeperId) % 7, walker.paused <= 0);
     }
     island.waterUpdate(t);
