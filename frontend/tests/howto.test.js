@@ -23,7 +23,7 @@ describe("createHowto", () => {
     expect(screen.getByRole("dialog", { name: "How to play" })).toBeTruthy();
     expect(screen.getByText(/two-finger scroll/i)).toBeTruthy();
     expect(screen.getByText(/orbit/i)).toBeTruthy();
-    expect(screen.getByText(/middle-drag/i)).toBeTruthy();
+    expect(screen.getByText(/right-drag/i)).toBeTruthy();
     expect(screen.getByText(/pan: grab the ground/i)).toBeTruthy();
     expect(screen.getByText(/click an keeper/i)).toBeTruthy();
     expect(screen.getByText(/esc \/ back/i)).toBeTruthy();
