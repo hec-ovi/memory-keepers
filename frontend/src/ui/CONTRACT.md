@@ -164,7 +164,10 @@ tired"|"needs to dream"} exported pure.
 Every keeper from `state.keepers`, grouped "the village" (conscious) then
 "across the ridge" (unconscious): per row a tiredness dot (restHint tone +
 title), her name + topic, an `LV n` badge and her book count ("1 book" /
-"n books"); rows re-render on every open and on `state:loaded`. Row click:
+"n books"); rows re-render on every open and on `state:loaded`. A search box
+(aria-label "search keepers", reset each open) filters rows live by name,
+topic or id, case-insensitive; no match renders "no keeper answers to
+that...". Row click:
 close, then `mode:set` "overworld" first when `state.mode` is an interior,
 then `keeper:selected` {keeperId} (the comm panel opens; the overworld focuses
 her). Footer keeps the crossing shortcut: a "Cross the ridge" button that

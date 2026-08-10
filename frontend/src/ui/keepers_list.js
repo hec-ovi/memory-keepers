@@ -1,5 +1,6 @@
 // View keepers: a holo list panel of everyone on the island, day and night
-// side. Each row shows her tiredness dot, name, topic, level and book count;
+// side, with a search box filtering rows by name or topic as you type.
+// Each row shows her tiredness dot, name, topic, level and book count;
 // clicking a row closes the panel and selects her (the comm panel opens and
 // the overworld focuses her). A small footer keeps the old crossing shortcut:
 // "Cross the ridge" glides the camera to the other district.
@@ -34,6 +35,7 @@ const STYLE_ID = "mk-keepers-style";
 const CSS = `
 .mk-keepers{position:absolute;top:70px;left:16px;width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow:hidden;z-index:30;}
 .mk-keepers .holo-panel__body{flex:1;min-height:0;display:flex;flex-direction:column;}
+.mk-keepers-search{flex:none;width:100%;margin:0 0 8px;}
 .mk-keepers-scroll{flex:1;min-height:0;overflow-y:auto;}
 .mk-keepers-group{margin:0 0 4px;padding:6px 2px 2px;font-size:.66rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);text-shadow:0 0 8px rgba(63,224,255,.4);}
 .mk-keepers-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;cursor:pointer;font-family:inherit;}
@@ -72,6 +74,7 @@ export function createKeepersList({ root, state, bus } = {}) {
   let holo = null;
   let scroll = null;
   let onKey = null;
+  let query = "";
   const offs = [];
 
   const el = (tag, className, text) => {
@@ -130,10 +133,20 @@ export function createKeepersList({ root, state, bus } = {}) {
   function renderRows() {
     if (!scroll) return;
     scroll.textContent = "";
-    const keepers = state?.keepers ?? [];
-    if (!keepers.length) {
+    const all = state?.keepers ?? [];
+    if (!all.length) {
       scroll.appendChild(
         el("p", "mk-keepers-empty", "nobody lives here yet. create an keeper and she moves in."),
+      );
+      return;
+    }
+    const q = query.trim().toLowerCase();
+    const keepers = q
+      ? all.filter((k) => `${k.name ?? ""} ${k.topic ?? ""} ${k.id}`.toLowerCase().includes(q))
+      : all;
+    if (!keepers.length) {
+      scroll.appendChild(
+        el("p", "mk-keepers-empty", "no keeper answers to that. clear the search to see everyone."),
       );
       return;
     }
@@ -157,6 +170,16 @@ export function createKeepersList({ root, state, bus } = {}) {
     if (holo) return;
 
     const content = el("div", "mk-keepers-inner");
+    query = "";
+    const search = el("input", "input mk-keepers-search");
+    search.type = "search";
+    search.placeholder = "search name or topic";
+    search.setAttribute("aria-label", "search keepers");
+    search.addEventListener("input", () => {
+      query = search.value;
+      renderRows();
+    });
+    content.appendChild(search);
     scroll = el("div", "mk-keepers-scroll");
     content.appendChild(scroll);
     renderRows();

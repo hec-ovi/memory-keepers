@@ -63,6 +63,24 @@ describe("createKeepersList", () => {
     expect(still.textContent).toContain("fear of water"); // her topic
   });
 
+  it("search filters rows by name or topic; clearing brings everyone back", async () => {
+    const user = userEvent.setup();
+    bus.emit("keepers_list:open");
+    const search = screen.getByLabelText("search keepers");
+
+    await user.type(search, "water");
+    expect(screen.getByRole("button", { name: "view The Still Water" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "view Keeper of Dreams" })).toBeNull();
+
+    await user.type(search, "zzz");
+    expect(screen.queryAllByRole("button", { name: /^view / })).toHaveLength(0);
+    expect(screen.getByText(/no keeper answers to that/)).toBeTruthy();
+
+    await user.clear(search);
+    expect(screen.getByRole("button", { name: "view Keeper of Dreams" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "view The Still Water" })).toBeTruthy();
+  });
+
   it("shows a tiredness dot per row (cyan rested, red needs to dream)", () => {
     bus.emit("keepers_list:open");
     const dreams = screen.getByRole("button", { name: "view Keeper of Dreams" });
