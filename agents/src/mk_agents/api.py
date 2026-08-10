@@ -100,14 +100,13 @@ class AgentsApi:
         except Exception:
             log.exception("ask model failed, using fallbacks")
 
+        used, grounded, answer, followup = [], False, "", True
         if data and isinstance(data.get("used_slugs"), list):
             used = [s for s in data["used_slugs"] if s in set(opened)]
             grounded = bool(used)
             answer = str(data.get("answer") or "").strip()
             followup = bool(data.get("needs_followup")) or not grounded
-            if not answer:
-                data = None
-        if not data:
+        if not answer:
             if shortlist:
                 used, grounded, followup = [shortlist[0]["slug"]], True, False
                 answer = dated_citation(shortlist[0])

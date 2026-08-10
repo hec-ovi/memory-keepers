@@ -53,6 +53,25 @@ async def test_ask_resolves_relative_dates(api):
     assert out["sources"][0]["date"] == "2026-08-02"
 
 
+async def test_ask_model_reply_without_slugs_falls_back(library):
+    """CONTRACT: no exception escapes a flow because of a model reply shape."""
+    from mk_agents import AgentsApi
+    from mk_models.fake_llm import FakeLlm
+
+    class SluglessLlm(FakeLlm):
+        def _keeper_ask(self, req, system):
+            return self._text({"answer": "The launch went well."})
+
+    class SluglessGateway:
+        def model_for(self, role):
+            return SluglessLlm()
+
+    library.ensure_world("w")
+    api = AgentsApi(library, SluglessGateway())
+    out = await api.keeper_ask("w", "dreams", "what did I dream about the launch?")
+    assert out["answer"] and out["grounded"] and out["sources"]
+
+
 def test_chatter_rotates_and_matches_pool(api):
     from mk_agents.chatter import BUCKET_SECONDS, TOPIC_POOLS, line_for
     assert api.keeper_chatter("w", "dreams") in TOPIC_POOLS["dreams"]
