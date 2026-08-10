@@ -5,7 +5,7 @@ Purpose: the only store. Firestore holds every world, keeper, book, session and 
 ## Data model (Firestore)
 
 ```
-worlds/{world_id}                     meta: created_at, seeded
+worlds/{world_id}                     meta: created_at, seeded, dream_counter, latest_run_id
   keepers/{keeper_id}                 profile: name, topic, side, archetype, persona,
                                       palette, created_at, book_count, session meter
     books/{slug}                      title, date, tags, entities, source, one_liner,
@@ -35,7 +35,7 @@ Class `Library(client=None, seed=None)`: `client` injected for tests, `seed` is 
 | `session_read / session_append / session_replace` | `Turn` list + verbatim constraints / full `Session` | `Session` record |
 | `meter_add / meter_reset` | token counts | running total (meter lives on the keeper doc) |
 | `make_room(world, keeper, incoming)` | slots needed | `(digests_written, fits)`: binds the two oldest `told`/`sleep` books into one digest per merge until `incoming` fit plus one spare; nothing a merged book held is lost |
-| `dream_start / dream_update / dream_get / dream_latest` | run fields | `DreamRun` record |
+| `dream_start / dream_update / dream_get / dream_latest` | run fields; `dream_start(world, reason, status="running")` can pre-queue with `status="queued"` | `DreamRun` record |
 
 ## Errors (closed set)
 

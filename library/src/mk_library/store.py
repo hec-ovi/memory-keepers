@@ -200,10 +200,10 @@ class Library:
         self.update_keeper(wid, kid, tokens_used=max(0, tokens))
 
     # -- dream runs ---------------------------------------------------------
-    def dream_start(self, wid: str, reason: str) -> DreamRun:
+    def dream_start(self, wid: str, reason: str, status: str = "running") -> DreamRun:
         meta = self.world_meta(wid)
         n = meta.get("dream_counter", 0) + 1
-        run = DreamRun(run_id=f"run-{n:04d}", status="running", reason=reason,
+        run = DreamRun(run_id=f"run-{n:04d}", status=status, reason=reason,
                        started_at=now_iso())
         self._world(wid).collection("dreams").document(run.run_id).set(run.to_doc())
         self._world(wid).set({"dream_counter": n, "latest_run_id": run.run_id}, merge=True)
