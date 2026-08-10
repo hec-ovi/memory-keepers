@@ -1,7 +1,66 @@
 {
   "keepers": [
     {
+      "topic": "keto diet",
+      "ask": {
+        "question": "how did week two of keto go?",
+        "expect": "week"
+      },
+      "memories": [
+        "Week two of keto: the fog lifted around day ten. Breakfast is eggs and avocado, coffee with MCT oil, and I stopped missing bread on Thursday.",
+        "Made a big pot of bone broth for the week and grilled salmon with butter. Salmon twice a week is the one rule I never break.",
+        "Tested ketones after dinner: 1.8 mmol. The trick was cutting the hidden sugars in sauces, not the obvious desserts.",
+        "Slipped at Mariana's birthday, one slice of cake. Back in ketosis after a 16 hour fast and a long walk. No guilt, just data.",
+        "Batch-cooked cauliflower rice and roasted almonds for snacks. Electrolytes matter more than anyone tells you: magnesium at night ended the leg cramps."
+      ]
+    },
+    {
+      "topic": "songs",
+      "ask": {
+        "question": "which melody did Beethoven put in the Ninth?",
+        "expect": "joy"
+      },
+      "memories": [
+        "Learned Greensleeves on the guitar, the old English tune everyone claims Henry VIII wrote. Six centuries of hands have passed it along.",
+        "Scarborough Fair stuck in my head all day. Parsley, sage, rosemary and thyme, a riddle song older than any record of who made it.",
+        "Sang the Ode to Joy with the whole crowd at the plaza. Schiller's words, Beethoven's melody from the Ninth, and nobody needed a hymn sheet.",
+        "House of the Rising Sun, the traditional version. Nobody knows which New Orleans house it mourns, and that is half its power.",
+        "Hummed Danny Boy while cooking the salmon. The Londonderry Air carries any words you pour into it, and it still undoes me at the last verse."
+      ]
+    },
+    {
+      "topic": "dreams",
+      "ask": {
+        "question": "what did I dream about the white sea?",
+        "expect": "whale"
+      },
+      "memories": [
+        "Dreamed I sailed a white sea that was not water but pages, and a whale surfaced with Moby-Dick written along its flank. I was not afraid.",
+        "Flying dream again: wax feathers like Icarus, but this time I felt the sun's warning as a sound and landed on my own.",
+        "Dreamed of a library where every bookcase was a person asleep, and the books breathed. One keeper opened her own chest like a cabinet and showed me the index.",
+        "A countdown dream: ten, nine, eight over the harbor, and when it reached zero the stars rearranged into a map of Jupiter's moons."
+      ]
+    },
+    {
+      "topic": "everyday life",
+      "ask": {
+        "question": "what did I watch in the sky in August?",
+        "expect": "perseid"
+      },
+      "memories": [
+        "Fixed the bike's rear brake, then rode to the Mercado Central for avocados and salmon. The keto week starts stocked.",
+        "Watched the Perseids from the roof with mate and a blanket. Counted nineteen meteors and thought of Caroline Herschel sweeping her comets.",
+        "Sang Greensleeves badly while the bone broth simmered. The neighbor applauded from her balcony, which was generous.",
+        "Finished the chapter where Ahab nails the doubloon to the mast, then slept and dreamed of the white sea again. Books leak into nights.",
+        "Quiet Sunday: cleaned the telescope lens, tuned the guitar, meal-prepped cauliflower rice. Small maintenance of every hobby at once."
+      ]
+    },
+    {
       "topic": "sea voyages",
+      "ask": {
+        "question": "who survived the wreck of the Pequod?",
+        "expect": "ishmael"
+      },
       "memories": [
         "Finished Moby-Dick tonight. Captain Ahab chased the white whale across every ocean and it cost him everything. Ishmael alone survived to tell it, floating on Queequeg's coffin.",
         "Read Treasure Island in one sitting. Jim Hawkins found the map in Billy Bones' sea chest, and Long John Silver played every side of the crew of the Hispaniola.",
@@ -26,7 +85,11 @@
         "The 1769 transit of Venus: Cook sailed to Tahiti so astronomers could time a black dot crossing the sun and measure the distance to it.",
         "Charles Messier catalogued a hundred smudges so comet hunters would not be fooled. His list of distractions became the map of nebulae and galaxies.",
         "Laplace claimed the solar system needed no further hypothesis to run. Napoleon asked him where God fit, and he answered with mathematics."
-      ]
+      ],
+      "ask": {
+        "question": "who discovered Uranus?",
+        "expect": "herschel"
+      }
     },
     {
       "topic": "old myths",
@@ -37,7 +100,11 @@
         "Persephone ate six pomegranate seeds in the dark, so Demeter mourns half the year. Winter is a mother missing her daughter.",
         "Theseus followed Ariadne's thread out of the labyrinth after killing the Minotaur, then forgot to change the black sails. Aegeus jumped into his sea.",
         "Pandora opened the jar and every ill flew out into the world. Only hope stayed under the lid, which I have never decided is mercy or cruelty."
-      ]
+      ],
+      "ask": {
+        "question": "who stole fire from Olympus?",
+        "expect": "prometheus"
+      }
     },
     {
       "topic": "music",
@@ -45,20 +112,32 @@
         "The premiere of Beethoven's Ninth, Vienna 1824: he was fully deaf and had to be turned around to see the applause he could not hear.",
         "Bach's Goldberg Variations were written, the story goes, for Count Keyserlingk's sleepless nights. Thirty variations on one aria, and the aria returns at the end unchanged.",
         "Mozart left the Requiem unfinished at the Lacrimosa. Sussmayr stitched the rest from sketches, and nobody fully agrees where one hand ends and the other begins."
-      ]
+      ],
+      "ask": {
+        "question": "what happened at the premiere of Beethoven's Ninth?",
+        "expect": "deaf"
+      }
     },
     {
       "topic": "poetry",
       "memories": [
         "Emily Dickinson wrote nearly eighteen hundred poems and published almost none. Hope is the thing with feathers that perches in the soul.",
         "Walt Whitman set Leaves of Grass in type himself in 1855 and kept rewriting it his whole life. I contain multitudes, he said, and meant it as a fact."
-      ]
+      ],
+      "ask": {
+        "question": "what is the thing with feathers?",
+        "expect": "hope"
+      }
     },
     {
       "topic": "inventions",
       "memories": [
         "Ada Lovelace's notes on Babbage's Analytical Engine, 1843: she saw that a machine for numbers could weave symbols and even music, a century before any computer existed."
-      ]
+      ],
+      "ask": {
+        "question": "who wrote the notes on the Analytical Engine?",
+        "expect": "lovelace"
+      }
     }
   ]
 }
