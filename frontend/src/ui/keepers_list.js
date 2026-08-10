@@ -136,7 +136,7 @@ export function createKeepersList({ root, state, bus } = {}) {
     const all = state?.keepers ?? [];
     if (!all.length) {
       scroll.appendChild(
-        el("p", "mk-keepers-empty", "nobody lives here yet. create an keeper and she moves in."),
+        el("p", "mk-keepers-empty", "nobody lives here yet. create a keeper and she moves in."),
       );
       return;
     }

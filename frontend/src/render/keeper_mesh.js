@@ -1,8 +1,8 @@
-// The keeper: a procedural kawaii pink blob matching sample/keeper.png.
-// Soft pink sphere with a subtle vertical gradient (vertex colors), two big
-// glossy dark-purple eyes with white highlights, blush discs, a tiny smile.
-// All conscious keepers share the same keeper.png pink (Keeper.palette is ignored
-// for the body); unconscious keepers keep the darker moonlit variant.
+// The keeper: a procedural android look. White porcelain shell with a subtle
+// vertical gradient (vertex colors), a smoked-glass visor band with digital
+// blue eyes glowing behind it, cheek status LEDs, cat ears, a tiny smile.
+// All conscious keepers share the same KEEPER_WHITE shell (Keeper.palette is
+// ignored for the body); unconscious keepers keep the darker moonlit variant.
 // Locomotion is a squash-stretch hop with a ground-contact squish; idle has
 // breathing and periodic blinks. Unconscious keepers are darker, hover-float
 // and blink slower, but fully OPAQUE like everyone else (the old body
@@ -510,6 +510,8 @@ export function createKeeperMesh({ keeper = {}, config = {} } = {}) {
     dispose() {
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();
+      visorMat.alphaMap?.dispose();
+      visorMat.dispose();
       zzzMat.dispose();
       zzzTex.dispose();
       group.removeFromParent();

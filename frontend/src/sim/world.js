@@ -143,7 +143,7 @@ export function flattenPlots(h, x, z, plots) {
 
 // Clamp a point into a sector disc (center + radius). NPCs never cross
 // districts: walkers run every wander/goto target AND their live position
-// through this, so even a bad sample or a steering push cannot leak an keeper
+// through this, so even a bad sample or a steering push cannot leak a keeper
 // across the ridge. Pure; tested.
 export function clampToSector(sector, point, margin = 1.0) {
   const { center, radius } = sector;
@@ -471,7 +471,7 @@ export function planPlots(options = {}) {
 // its sector starting at its own hash-preferred index; the first free plot
 // wins. Arrival ordering makes first-fit add-stable: a new keeper is always
 // processed after everyone already placed, so adding her can never move
-// anyone; removing an keeper simply frees her plot. Keepers beyond plot
+// anyone; removing a keeper simply frees her plot. Keepers beyond plot
 // capacity land in `unplaced` (sorted). Pure; tested.
 export function assignPlots(keepers = [], plots = planPlots()) {
   const pools = { day: plots.filter((p) => p.sector === "day"), night: plots.filter((p) => p.sector === "night") };

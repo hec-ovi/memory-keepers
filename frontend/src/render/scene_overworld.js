@@ -28,7 +28,7 @@
 //                      third-person chase (camera.startChase) while she walks
 //                      home over the street graph (world.routeToDoorFrom),
 //                      pause + gentle push at the door,
-//                      fade, then "house:enter"; an keeper already at home gets
+//                      fade, then "house:enter"; a keeper already at home gets
 //                      the mini version (pan to her, fade, enter); user input
 //                      is locked for the duration and a second "keeper:join"
 //                      is ignored,
@@ -801,7 +801,7 @@ export function createOverworldScene(ctx = {}) {
   dom.addEventListener("pointerup", onPointerUp);
 
   // --- select-to-follow (BACKLOG 14) -----------------------------------------
-  // Selecting an keeper (click on her, on her cottage, or any module emitting
+  // Selecting a keeper (click on her, on her cottage, or any module emitting
   // "keeper:selected") tweens the camera to the standard framing and FOLLOWS
   // her while she walks. The rig already cancels follow on any user camera
   // input (pan/orbit/zoom) and clicking elsewhere reaches OrbitControls too,
@@ -988,7 +988,7 @@ export function createOverworldScene(ctx = {}) {
   }
 
   // Short-lived fx: a sprite group that rises and fades (in and out) over
-  // ttl seconds, parented anywhere (an keeper's group, the worldGroup).
+  // ttl seconds, parented anywhere (a keeper's group, the worldGroup).
   function spawnTransientFx({ parent, position, parts, ttl, rise = 0.35 }) {
     const group = new THREE.Group();
     group.position.set(position.x, position.y, position.z);

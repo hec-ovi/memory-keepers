@@ -1,7 +1,7 @@
-// Transport-agnostic engine client (docs/api.md contract).
+// Transport-agnostic engine client (routes per engine/CONTRACT.md).
 //
 //   createApi({ baseUrl })  -> fetch transport against the REST engine
-//   createApi({ invoke })   -> transport-style transport; invoke(path, {method, body})
+//   createApi({ invoke })   -> invoke transport; invoke(path, {method, body})
 //                              (invoke wins when both are given)
 //
 // One internal request() peels the three envelope shapes:

@@ -94,7 +94,7 @@ describe("createKeepersList", () => {
     expect(tiredDot.title).toBe("needs to dream");
   });
 
-  it("clicking an keeper closes the panel and emits keeper:selected", async () => {
+  it("clicking a keeper closes the panel and emits keeper:selected", async () => {
     const user = userEvent.setup();
     const selected = vi.fn();
     const modeSet = vi.fn();

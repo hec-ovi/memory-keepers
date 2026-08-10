@@ -234,10 +234,10 @@ describe("createCameraRig", () => {
     for (let i = 0; i < steps; i++) rig.update(1 / 60);
   };
 
-  it("binds left/right to pan, middle to orbit, and keeps limits from config", () => {
+  it("binds left/middle to pan, right to orbit, and keeps limits from config", () => {
     expect(rig.controls.mouseButtons.LEFT).toBe(THREE.MOUSE.PAN);
-    expect(rig.controls.mouseButtons.RIGHT).toBe(THREE.MOUSE.PAN);
-    expect(rig.controls.mouseButtons.MIDDLE).toBe(THREE.MOUSE.ROTATE);
+    expect(rig.controls.mouseButtons.MIDDLE).toBe(THREE.MOUSE.PAN);
+    expect(rig.controls.mouseButtons.RIGHT).toBe(THREE.MOUSE.ROTATE);
     expect(rig.controls.touches.ONE).toBe(THREE.TOUCH.PAN);
     expect(rig.controls.minDistance).toBe(config.camera.minDistance);
     expect(rig.controls.maxDistance).toBe(config.camera.maxDistance);

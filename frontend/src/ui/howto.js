@@ -8,7 +8,7 @@ const CONTROLS = [
   ["Drag", "pan: grab the ground and drag it"],
   ["Right-drag", "orbit around the island"],
   ["Wheel / two-finger scroll", "zoom the camera"],
-  ["Click an keeper", "select her and open the talk panel (Tell / Ask)"],
+  ["Click a keeper", "select her and open the talk panel (Tell / Ask)"],
   ["Click a house door", "step inside her library"],
   ["Click a book", "she picks it up so you can read it"],
   ["Minimap", "click it to jump the camera anywhere"],

@@ -76,9 +76,9 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 | `howto:open` | none | ui/hud | main.js, render/audio |
 | `create_keeper:open` | none | ui/hud | ui/create_keeper, render/audio |
 | `keepers_list:open` | none | ui/hud (View keepers) | ui/keepers_list |
-| `keeper:created` | Keeper object | ui/create_keeper | main.js (refreshState), ui/hud |
+| `keeper:created` | Keeper object | ui/create_keeper, ui/dialog (monument reply carrying `created_keeper`) | main.js (refreshState), ui/hud |
 | `keeper:selected` | `{ keeperId }` (consumers also accept a bare id) | render/scene_overworld (pick: the keeper herself OR any part of her cottage; the door alone keeps its enter pick), render/scene_interior (hint book, clicking the keeper herself), ui/keepers_list (row click) | main.js (records `state.selectedKeeperId`, so a scene that builds after the emit still sees the selection), ui/dialog (open), render/audio, render/scene_overworld (select-to-follow: camera tweens to the standard framing and follows her; any user camera input or a deselect exits) |
-| `keeper:deselected` | `{ keeperId }` | render/scene_overworld (a true click on nothing pickable while someone is selected; the scene then clears the ring + follow itself) | ui/dialog (close the open talk panel) |
+| `keeper:deselected` | `{ keeperId }` | render/scene_overworld (a true click on nothing pickable while someone is selected, and a monument click while a different keeper is selected; the scene then clears the ring + follow itself) | ui/dialog (close the open talk panel) |
 | `keeper:join` | `{ keeperId }` | ui/dialog | render/scene_overworld |
 | `house:enter` | `{ keeperId }` | render/scene_overworld | main.js (setMode interior) |
 | `interior:exit` | none | render/scene_interior (Esc from the settled main view), ui/interior_views ("Back to the island") | main.js (setMode overworld) |
@@ -135,5 +135,5 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 
 ## How to test
 
-`cd frontend && npm test` (vitest + jsdom, 37 files / 721 tests as of this
+`cd frontend && npm test` (vitest + jsdom, 37 files / 726 tests as of this
 writing). Boot/mode/bus wiring: `tests/main.test.js`, `tests/bus.test.js`.

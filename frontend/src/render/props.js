@@ -26,7 +26,7 @@ function ctx2d(canvas) {
 }
 
 // Seeded per-keeper cottage variation: same silhouette language, clearly
-// individual. Deterministic for an keeper id. Pure; tested.
+// individual. Deterministic for a keeper id. Pure; tested.
 export function cottageVariant(keeperId) {
   const rng = mulberry32(hashString("cottage-variant:" + (keeperId ?? "?")));
   const roofs = ["gable", "hip", "steep"];

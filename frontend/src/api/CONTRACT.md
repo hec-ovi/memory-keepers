@@ -1,10 +1,10 @@
 # CONTRACT: frontend/src/api (engine client)
 
 Purpose: the ONE module that talks to the engine. Transport-agnostic: fetch
-against the REST API today, an transport-style `invoke` function later, same
-surface either way (see `harness/contract.md` "Plug-in plan"). No other file
-in `frontend/src` may call `fetch`. The route/shape source of truth is
-`docs/api.md`.
+against the REST API today, a transport-style `invoke` function later, same
+surface either way. No other file in `frontend/src` may call `fetch`. The
+route/shape source of truth is the engine's contract (`engine/CONTRACT.md`
+at the repo root).
 
 ## Public API (exact signatures)
 
@@ -15,8 +15,8 @@ createApi({ baseUrl = "", invoke = null, fetchFn = (...args) => globalThis.fetch
 ```
 
 - `baseUrl` REST prefix, trailing slashes stripped; `""` = same origin.
-- `invoke(path, {method, body}) -> Promise<raw>` transport transport; wins over
-  `baseUrl` when both are given.
+- `invoke(path, {method, body}) -> Promise<raw>` alternate transport; wins
+  over `baseUrl` when both are given.
 - `fetchFn` / `sleep` injectable for tests (`sleep(ms) -> Promise`).
 
 `api` methods (all return a Promise of the peeled JSON payload, all reject
@@ -24,12 +24,12 @@ with `ApiError`):
 
 ```js
 request(path, { method = "GET", body } = {})   // escape hatch; prefer wrappers
-health()                                       // GET /health
+health()                                       // GET /health (no UI caller today)
 getState()                                     // GET /state
 createKeeper({ topic, name, persona } = {})      // POST /keepers (name/persona sent only when defined)
-listKeepers()                                    // GET /keepers
+listKeepers()                                    // GET /keepers (no UI caller today)
 getKeeper(keeperId)                                // GET /keepers/{id}
-deleteKeeper(keeperId)                             // DELETE /keepers/{id}
+deleteKeeper(keeperId)                             // DELETE /keepers/{id} (no UI caller today)
 tell(keeperId, text)                             // POST /keepers/{id}/tell {text}
 ask(keeperId, question)                          // POST /keepers/{id}/ask {question}
 getChatter(keeperId)                             // GET /keepers/{id}/chatter
@@ -46,8 +46,12 @@ stt(blob)                                      // POST /voice/stt (raw opus body
 tts(text, kind = "light")                      // POST /voice/tts {text, kind} -> audio Blob
 setAccessCode(code)                            // remember the island key (localStorage "mk-access"); sent as X-Access-Code on every call; falsy clears it
 seed()                                         // POST /dev/seed {}
-reset()                                        // POST /dev/reset {}
+reset()                                        // POST /dev/reset {} (no UI caller today)
 ```
+
+The `(no UI caller today)` methods mirror real engine routes and serve tests
+and dev tooling; they stay on the surface so the client covers the whole
+engine contract.
 
 Path params go through `encodeURIComponent`.
 
@@ -63,7 +67,7 @@ class ApiError extends Error { name = "ApiError"; status; code; message }
 ```
 
 `status` 0 means network/transport-level failure. `code` comes from the
-engine error body (`docs/api.md` symbols like `KEEPER_EXISTS`, `KEEPERS_FULL`,
+engine error body (`engine/CONTRACT.md` symbols like `KEEPER_EXISTS`, `KEEPERS_FULL`,
 `NEEDS_SLEEP`, `SLEEP_RUNNING`, `VOICE_UNAVAILABLE`), or `NETWORK`,
 `BAD_RESPONSE` (non-JSON body), `SERVER_ERROR` (5xx without a code),
 `UNKNOWN`.
@@ -106,7 +110,7 @@ after api calls resolve.
 
 ## How to test
 
-`cd frontend && npx vitest run tests/api.test.js` (27 tests; MSW at the
+`cd frontend && npx vitest run tests/api.test.js` (29 tests; MSW at the
 network layer, injected no-op sleep). Covers peeling of all three envelope
 shapes, error mapping, GET retry/backoff, non-retry of POST/DELETE, the
 sleep endpoints, round-5 field passthrough, and the voice routes.

@@ -22,8 +22,9 @@ amber #ffb658, `--lavender` is cyan #3fe0ff).
 `typingStep(length, maxTicks = 220)`, `restTone(session)` -> {ratio, tone
 "cyan"|"amber"|"red", label "getting tired"|"needs to dream"|"", status},
 `bookSpineColor(tags)` (same formula as the interior's spineColorFromTags so
-chat spine bars match shelf spines), `SLEEP_POLL_MS` = 1500, and the book
-list paging constants `BOOKS_VISIBLE` = 4 / `BOOK_ROW_PX` = 26)
+chat spine bars match shelf spines), `SLEEP_POLL_MS` = 1500,
+`MONUMENT_ID` (= `config.monumentId`), and the book list paging constants
+`BOOKS_VISIBLE` = 4 / `BOOK_ROW_PX` = 26)
 Keeper name = amber holo header, joined by a session cluster: an amber `LV n`
 level badge (`keeper.level`, default 1) and a thin rest meter
 (role=progressbar "rest meter") fed from `keeper.session` {tokens_used,
@@ -48,6 +49,10 @@ writes no book, so a reply without `book` bumps nothing and emits no
 `book:created`), and a soft `.mk-dialog-whisper` hint on the Tell tab says
 she listens but keeps no books of what you tell her (her books are born
 from dreaming).
+The main keeper rides the same panel: opening `MONUMENT_ID` renders her
+card with no Join button, no tabs and no level/meter cluster; the composer
+(aria-label "speak to {name}") sends through `api.monument`, and a reply
+carrying `created_keeper` emits `keeper:created`.
 Chat grounding (ask replies):
 - grounded reply (grounded not false, sources non-empty): a consulted-books
   list (`.mk-dialog-consulted`, aria-label "consulted books") renders on the
@@ -85,7 +90,8 @@ toast and unlock.
   header or a hidden Sleep button (tell/ask responses and 409s keep it
   fresh in-panel)
 - emits `keeper:join` {keeperId} (closes first), `book:created` {keeperId, book}
-  (only when the tell reply carries a book), `book:open` {keeperId, slug}
+  (only when the tell reply carries a book), `keeper:created` (Keeper; a
+  monument reply carrying `created_keeper`), `book:open` {keeperId, slug}
   (consulted book row)
 - emits `memory:used` {keeperId, slugs} (grounded ask reply lands),
   `keeper:sleep` {keeperId} (after api.sleep succeeds), `keeper:rested` {keeperId}

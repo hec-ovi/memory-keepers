@@ -21,7 +21,7 @@ import {
   CAMERA_OVERRIDES,
 } from "../src/sim/world.js";
 
-// Real keepers always carry created_at (docs/api.md); assignment stability
+// Real keepers always carry created_at (library/CONTRACT.md); assignment stability
 // leans on that arrival order, so the fixtures carry it too.
 const keeper = (id, kind = "conscious", i = 0) => ({
   id,
@@ -209,7 +209,7 @@ describe("sim/world plot grid (fixed geography)", () => {
 });
 
 describe("sim/world plot assignment (stable)", () => {
-  it("adding an keeper never moves anyone already placed", () => {
+  it("adding a keeper never moves anyone already placed", () => {
     let prev = new Map();
     const seq = [];
     for (const a of MANY) {
@@ -234,7 +234,7 @@ describe("sim/world plot assignment (stable)", () => {
     expect(new Set([...prev.values()].map((p) => p.id)).size).toBe(16);
   });
 
-  it("removing an keeper frees her plot", () => {
+  it("removing a keeper frees her plot", () => {
     const { assigned: before } = assignPlots(MANY);
     const { assigned: after } = assignPlots(MANY.filter((a) => a.id !== "music"));
     expect(after.has("music")).toBe(false);

@@ -48,7 +48,7 @@ describe("createOnboarding", () => {
     bus.emit("state:loaded", {});
     expect(onboarding.isOpen()).toBe(true);
     const card = within(root).getByLabelText("welcome hints");
-    expect(card.textContent).toMatch(/click an keeper/i);
+    expect(card.textContent).toMatch(/click a keeper/i);
     expect(card.textContent).toMatch(/join/i);
     expect(card.textContent).toMatch(/drag/i);
     expect(card.textContent).toMatch(/middle-drag/i);

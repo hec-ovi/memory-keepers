@@ -1,7 +1,7 @@
 // Camera rig built on OrbitControls, "grab the ground" style:
 //   hold LEFT drag   = pan (drag the ground under the cursor)
-//   hold RIGHT drag  = pan (identical feel)
-//   hold MIDDLE drag = orbit / rotate
+//   hold MIDDLE drag = pan (identical feel)
+//   hold RIGHT drag  = orbit / rotate
 //   wheel / two-finger scroll = zoom
 //   click (below the drag threshold) = select, handled by scene picking
 // A modifier key (shift/ctrl/meta) flips pan <-> orbit, which OrbitControls
@@ -11,7 +11,7 @@
 // arrival. follow(target, {framing}) keeps tracking a moving target until
 // stopFollow() or any user camera input; with a framing preset the camera
 // also eases to a standard distance + pitch (keeping its azimuth), which is
-// the select-to-follow shot: close enough to see an keeper's face, not macro.
+// the select-to-follow shot: close enough to see a keeper's face, not macro.
 //
 // startChase(target, opts) enters a cinematic third-person chase: the camera
 // sits behind-and-above the target relative to its heading (a low
@@ -104,7 +104,7 @@ export const FOLLOW_FRAMING = {
 };
 
 // Retarget a camera offset (camera minus pivot) to a framing preset while
-// preserving its azimuth, so selecting an keeper dollies/tilts the camera but
+// preserving its azimuth, so selecting a keeper dollies/tilts the camera but
 // never spins it. Degenerate (vertical) offsets fall back to azimuth 0.
 export function frameOffset(offset = {}, framing = FOLLOW_FRAMING) {
   const f = { ...FOLLOW_FRAMING, ...framing };
@@ -249,7 +249,7 @@ export function createCameraRig({ domElement, config: cam = {}, aspect = 1 } = {
   // Mouse bindings: left or middle grab-drag pan, right orbit, wheel zoom
   // (modifier keys flip pan <-> orbit inside OrbitControls). Touch: one
   // finger pans, two fingers pinch-zoom and twist-rotate.
-  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN };
+  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
   controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
   controls.target.set(0, 0.5, 0);
   controls.update();

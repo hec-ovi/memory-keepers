@@ -5,11 +5,10 @@ books, the engine API, or the bus. It renders whatever content element it is
 given and owns all holographic styling. The game side (frontend/src/ui/*.js)
 consumes it; menus/UI iterate here without touching game logic.
 
-Reference look: sample/refs/ui-style.png (amber/orange chrome and type, cyan
-selection fill, scan lines), sample/refs/menu/1..7.png (materialize sequence),
-sample/refs/voice-ring.webp (listening), sample/refs/voice-orb.webp (speaking).
-Zero-network at runtime: the references are design input only, everything is
-drawn procedurally (canvas + CSS).
+The look: amber/orange chrome and type, cyan selection fill, scan lines, a
+shard materialize sequence, and ring (listening) / orb (speaking) voice
+moods. Zero-network at runtime: everything is drawn procedurally
+(canvas + CSS).
 
 ## Files
 
@@ -49,6 +48,10 @@ createHoloPanel({ title, content, size, onClose, className })
               tests never await the animation) and plays a ~350 ms scatter
               ghost canvas at the old rect. Does NOT call `onClose`.
 - `setTitle(t)` swaps the header text.
+- Dragging: pointer down on the header (outside its buttons) drags the
+  panel: the shell flips to inline `position: fixed` at its current rect,
+  follows the pointer clamped to the viewport, stays where it is dropped,
+  and wears the `holo-dragged` marker class.
 
 ```js
 import { createVoiceViz } from "./holo/voice.js";
@@ -62,8 +65,7 @@ createVoiceViz({ size }) -> { el, setMode(mode), dispose() }
   arcs; `speakerGeometry(size)` is the pure shape source) wrapped by
   `STRAND_COUNT` (6) concentric wavy waveform strands (`strandParams(i)`
   spreads radius/phase/alpha). Colors follow the mode hue: faint cyan idle,
-  bright cyan listening, purple center fading to blue edges speaking
-  (voice-ring / voice-orb references).
+  bright cyan listening, purple center fading to blue edges speaking.
 - `setMode("idle" | "listening" | "speaking")` cross-fades (~450 ms) all
   params (alpha, wobble, waves, speed, scale, hue, hueSpread). Unknown modes
   are ignored. `el.dataset.mode` mirrors the current mode (test/style hook).
@@ -138,12 +140,15 @@ One `<style id="holo-kit-style">` per document, injected on first use:
 | `holo-input` | dark field, amber border, cyan caret + focus glow |
 | `holo-thinking` | thinking border: spinning amber/cyan/magenta conic ring + glow around the element (reduced motion: pulse). Toggle via `ensureThinking` |
 | `holo-voice` | voice visualizer host |
+| `holo-dragged` | marker set once a panel has been dragged (no styling of its own; the drag writes inline styles) |
 
 ## Theming variables (override on :root or any ancestor)
 
 `--holo-amber, --holo-amber-hi, --holo-amber-dim, --holo-cyan,
 --holo-cyan-dim, --holo-ink, --holo-ink-cyan, --holo-text, --holo-danger,
---holo-bg, --holo-bg-2, --holo-line, --holo-glow, --holo-font, --holo-scan`
+--holo-bg, --holo-bg-2, --holo-line, --holo-glow, --holo-font, --holo-scan,
+--holo-magenta` (magenta feeds the thinking sweep only and has no :root
+default, just its inline `#ff5ad0` fallback)
 
 ## Bus events
 
@@ -154,8 +159,10 @@ ui/ modules emit `ui:open` / `ui:close` / `voice:*`; see ../CONTRACT.md).
 
 - No imports outside this directory; no game vocabulary; no network; no
   module-level side effects (styles inject on first factory call).
-- The kit never wins a positioning fight against its host: `position` on the
-  panel shell is declared only inside `:where()` (specificity 0). Hosts that
+- At rest the kit never wins a positioning fight against its host:
+  `position` on the panel shell is declared only inside `:where()`
+  (specificity 0). The one exception is a user drag, which pins the panel
+  with inline `position: fixed` styles until it closes. Hosts that
   anchor a panel (dialog top-right, keepers list top-left, reader centered,
   onboarding bottom-right) do it with their own single-class rule;
   belt-and-suspenders, those hosts also call `ensureHoloStyles(doc)` BEFORE

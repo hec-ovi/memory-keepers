@@ -61,7 +61,7 @@ describe("createCreateKeeper", () => {
     expect(submit.disabled).toBe(true);
   });
 
-  it("creates an keeper: emits keeper:created, pushes to state, toasts, closes", async () => {
+  it("creates a keeper: emits keeper:created, pushes to state, toasts, closes", async () => {
     const user = userEvent.setup();
     let sent = null;
     const keeper = { id: "night-walks", name: "Keeper of Night Walks", topic: "night-walks", kind: "conscious", book_count: 0 };

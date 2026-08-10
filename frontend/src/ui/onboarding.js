@@ -18,7 +18,7 @@ import { createHoloPanel, ensureHoloStyles } from "./holo/holo.js";
 export const ONBOARDING_KEY = "memory-keepers:onboarded";
 
 const TIPS = [
-  ["Click an keeper", "to talk to her"],
+  ["Click a keeper", "to talk to her"],
   ["Join", "follows her home into her library"],
   ["Drag", "pans the camera"],
   ["Middle-drag", "orbits around the island"],

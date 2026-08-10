@@ -42,7 +42,7 @@ describe("createCinematicTimeline (pure)", () => {
     expect(run(tl, 1.1)).toEqual(["enter"]);
   });
 
-  it("plays the mini version for an keeper already at home: pan -> fade -> enter", () => {
+  it("plays the mini version for a keeper already at home: pan -> fade -> enter", () => {
     const tl = createCinematicTimeline({ panS: 1, fadeS: 0.5 });
     expect(tl.start({ mini: true })).toEqual(["started", "pan"]);
     expect(tl.phase).toBe("pan");

@@ -171,11 +171,9 @@ export function createCreateKeeper({ root, state, bus, api, toasts, ui } = {}) {
       } catch (err) {
         inFlight = false;
         if (err?.code === "KEEPERS_FULL") {
-          showError(
-            "the village has no free plots yet. clear a house first, then she can move in",
-          );
+          showError("the village has no free plots yet; every house is lived in");
         } else if (err?.status === 409 || err?.code === "KEEPER_EXISTS") {
-          showError(err?.message || "an keeper for this topic already exists");
+          showError(err?.message || "a keeper for this topic already exists");
         } else {
           toastError(err?.message || "she could not move in");
         }

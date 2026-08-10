@@ -267,7 +267,7 @@ describe("wrapper methods", () => {
     });
   });
 
-  it("hits every endpoint path from docs/api.md", async () => {
+  it("hits every endpoint path from engine/CONTRACT.md", async () => {
     const hits = [];
     const record = (method, path, body) =>
       http[method](`${BASE}${path}`, ({ request }) => {

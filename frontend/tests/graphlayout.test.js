@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeGraphLayout, edgeId, hashString, mulberry32 } from "../src/sim/graphlayout.js";
 
-// Small fixture matching the docs/api.md Graph shape: 3 keepers, their books,
+// Small fixture matching the dream report graph shape (dreaming/CONTRACT.md): 3 keepers, their books,
 // bridging entities, mixed-weight edges.
 const fixtureGraph = () => ({
   nodes: [

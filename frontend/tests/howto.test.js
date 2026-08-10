@@ -25,7 +25,7 @@ describe("createHowto", () => {
     expect(screen.getByText(/orbit/i)).toBeTruthy();
     expect(screen.getByText(/right-drag/i)).toBeTruthy();
     expect(screen.getByText(/pan: grab the ground/i)).toBeTruthy();
-    expect(screen.getByText(/click an keeper/i)).toBeTruthy();
+    expect(screen.getByText(/click a keeper/i)).toBeTruthy();
     expect(screen.getByText(/esc \/ back/i)).toBeTruthy();
     // the unconscious quarter is a place you travel to, not a time of day
     expect(screen.getByText(/across the ridge/i)).toBeTruthy();

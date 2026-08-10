@@ -9,12 +9,12 @@ parallel work merges cleanly: add or edit ONLY your module's section.
 ### Purpose
 
 The keeper's library home. The 3D books are the interface (no list panel):
-shelves on two walls, one spine mesh per book with the title drawn on a canvas
-texture. The two bookcases hold exactly `LIBRARY_CAP` (24) slots in total: ONE
-full library is the memory cap per keeper (the backend pins the same number in
-`engine/limits.py`); each spine is sized by the book's corpus tier
+one bookcase on the left wall, one spine mesh per book with the title drawn
+on a canvas texture. The bookcase holds exactly `LIBRARY_CAP` (24) slots: ONE
+full library is the memory cap per keeper (the backend pins the same number
+in `library`, mk_library/limits.py); each spine is sized by the book's corpus tier
 (`BookSummary.tier`, small | medium | big | large by body length, see
-docs/api.md): `bookTier(book)` picks the tier (one_liner-length fallback for
+`library/CONTRACT.md`): `bookTier(book)` picks the tier (one_liner-length fallback for
 payloads without the field), `tierSizing(tier)` maps it to spine thickness and
 height inside the slot. A "digest"
 book (source `sleep`, written by the dreaming merge) is just a normal book
@@ -34,7 +34,7 @@ clicks; when the whole case fits, the drag never arms. The offset resets on
 every view change.
 The chair pair geometry is exported (`CHAIR_POS`, `CHAIR_ANGLE`,
 `SECOND_CHAIR`, `CHAIRS_POSE`) and unit-tested; her fetch pathing (hop-off
-spot in front of her chair, walks to either case) stays clear of the guest
+spot in front of her chair, walks to the case) stays clear of the guest
 chair.
 
 Round 5: on `memory:used` she physically fetches the FIRST used book without
@@ -176,7 +176,7 @@ island" (and calls `onExit()`); the readout consumes `"state:loaded"`.
   screen, never closer than 1.05 world units; spine canvases on the framed
   wall re-render upscaled (`shelfLabelSizing`, cap 3x, never downscaled) so
   the close-up stays crisp.
-- The guest armchair and both bookcases are raycast hotspots (hover cursor +
+- The guest armchair and the bookcase are raycast hotspots (hover cursor +
   soft emissive highlight); books and the hint book always win the raycast
   over hotspots; a hotspot for the view you are in does nothing. The keeper's
   body meshes are raycast targets too (`userData.pick === "keeper"`).
@@ -496,11 +496,13 @@ empty visible list so timers keep ticking); `resolvePickTarget(obj) ->
 {pick, keeperId} | null` (walks up the parents to the first `userData.pick`;
 hidden chains resolve null; door meshes keep "door", other cottage parts
 bubble to "house"); `clickOutcome(target, selectedKeeperId) -> {type:
-"select"|"enter"|"deselect", keeperId} | null` (pure mapping of the first
-resolved pick to what a click means: keeper/house selects, the door enters,
-and a click that resolves NOTHING while someone is selected deselects her;
-the scene then emits `keeper:deselected` {keeperId} so the talk panel closes,
-and clears the ring + follow itself).
+"select"|"enter"|"deselect", keeperId} | {type: "monument"} | null` (pure
+mapping of the first resolved pick to what a click means: keeper/house
+selects, the door enters, the plaza well/hologram maps to "monument" (no
+keeperId; the scene selects `config.monumentId`), and a click that resolves
+NOTHING while someone is selected deselects her; the scene then emits
+`keeper:deselected` {keeperId} so the talk panel closes, and clears the
+ring + follow itself).
 
 Walkers: each keeper gets `createWalker` with
 `sampleRoute: makeGraphWanderPlanner(world, {sector, plotId})`, so NPCs walk
@@ -517,9 +519,12 @@ door pause + push + fade (join) or the door fade (sleep).
 ### Bus events
 
 Emitted: `keeper:selected {keeperId}` (picking her OR any part of her cottage;
-the door keeps its enter pick), `keeper:deselected {keeperId}` (a true click on
-nothing pickable while someone is selected; the talk panel closes on it and
-the scene clears the ring + follow), `house:enter {keeperId}`,
+the door keeps its enter pick; the plaza well and its floating hologram
+carry `userData.pick = "monument"` and select `config.monumentId`, while
+she is selected the follow tracks the hologram group), `keeper:deselected
+{keeperId}` (a true click on nothing pickable while someone is selected, and
+a monument click while a different keeper is selected; the talk panel closes
+on it and the scene clears the ring + follow), `house:enter {keeperId}`,
 `mode:set "interior:<id>"`, `district:changed {district}`,
 `minimap:update {keepers, camera}`, `cinematic:started {keeperId, name}`,
 `cinematic:fade {seconds}`, `cinematic:ended {keeperId}`.
@@ -554,16 +559,15 @@ cleanly). The dream always shows for at least `minDreamS`. `tiredLevelFor`
 comes from keeper_mesh.js. Select-to-follow never fights the cinematic (the
 chase owns the camera; selection is locked during cinematics anyway).
 
-Draw-call impact of the organic-island round: street ribbons ~48 meshes
-(was ~30), gardens add 1 ribbon + 2-3 prop groups per occupied plot, empty
-plots 6 instanced draws (was 4, VACANT faces), clouds fewer sprites, water
-200x200 segments (was 120).
+Draw-call impact of the organic-island round: street ribbons ~48 meshes,
+gardens add 2-3 prop groups per occupied plot, empty plots 5 instanced
+draws (stones, posts, boards, VACANT faces front/back), clouds few sprites,
+water 200x200 segments.
 
 ### How to test
 
 `cd frontend && npx vitest run tests/scene_overworld_cinematic.test.js tests/scene_overworld_sleep.test.js tests/scene_overworld_behaviors.test.js tests/world.test.js tests/walker.test.js`
-(the scene's logic lives in the pure timelines + helpers + sim modules; for
-a live look run `bash scripts/dev.sh`).
+(the scene's logic lives in the pure timelines + helpers + sim modules).
 
 ## scene_graph.js
 
@@ -650,8 +654,9 @@ three.js wrapper, no pure logic).
 
 ### Purpose
 
-Camera rig on OrbitControls, "grab the ground" style: left/right drag pan,
-right drag orbit, wheel zoom, modifier flips pan/orbit. Focus/follow tweens
+Camera rig on OrbitControls, "grab the ground" style: left and middle drag
+pan, right drag orbits, wheel zoom, a modifier key flips pan/orbit.
+Focus/follow tweens
 (follow optionally eases into a standard framing: the select-to-follow shot)
 plus a cinematic third-person chase solver (used by the join cinematic).
 
@@ -702,9 +707,11 @@ ground; `update` is safe with dt = 0.
 
 ### Purpose
 
-The keeper: procedural kawaii pink blob matching sample/keeper.png, built from
-geometry and vertex colors only (the one exception: the tiny Zzz canvas
-sprite). Conscious keepers all share KEEPER_PINK; unconscious ones are darker
+The keeper: a procedural android. White porcelain shell with a vertical
+vertex-color gradient, a smoked-glass visor band (corners rounded by a small
+canvas alphaMap) with digital blue eyes glowing behind it, cheek status LEDs
+and cat ears; the only other canvas texture is the tiny Zzz sprite.
+Conscious keepers all share KEEPER_WHITE; unconscious ones are darker
 (moonlit tint), hover-float and blink slower, but fully OPAQUE like everyone
 else: the old body translucency was removed per owner feedback (BACKLOG 11
 visual half; `derivePalette("unconscious").opacity` is 1). Locomotion is a
@@ -716,8 +723,8 @@ to slow deep breathing (the interior doze).
 ### Public API
 
 Pure (tested): `hexToRgb(hex)`, `rgbToHex({r, g, b})`, `mixHex(a, b, t)`,
-`lightenHex(hex, t)`, `darkenHex(hex, t)`, `KEEPER_PINK = 0xf8a7c0`,
-`derivePalette(_palette = {}, kind = "conscious")`,
+`lightenHex(hex, t)`, `darkenHex(hex, t)`, `KEEPER_WHITE = 0xf2f6fa`,
+`VISOR_BLUE = 0x2fb9ff`, `derivePalette(_palette = {}, kind = "conscious")`,
 `hopPose(u, {height, squash, stretch, contact})`, `blinkOpenness(u)`,
 `breathScale(t, {amplitude, hz})`,
 `TIRED_STATUS = {rested: 0, unrested: 1, needs_sleep: 2}`,
@@ -742,12 +749,13 @@ None; the scenes drive it directly (both apply `setTired` from
 
 ### Invariants
 
-`Keeper.palette` is ignored for the conscious body color (all pink);
-`setOpacity` multiplies every material and hides the group under 0.01 (the
-Zzz sprite follows it and never shows on a hidden mesh); blinking still runs
+`Keeper.palette` is ignored for the conscious body color (every keeper
+shares the white shell); `setOpacity` multiplies every tracked material and
+hides the group under 0.01 (the Zzz sprite follows it and never shows on a
+hidden mesh; the visor glass keeps its fixed opacity); blinking still runs
 under drooped lids and is suspended while sleeping; eyelid changes ease in
 (never pop); `update` tolerates invalid dt; `dispose()` frees all geometries
-and materials including the Zzz sprite's.
+and materials including the visor's and the Zzz sprite's.
 
 ### How to test
 
@@ -757,7 +765,7 @@ and materials including the Zzz sprite's.
 
 ### Purpose
 
-Speech bubbles: canvas-texture sprites above an keeper. Pop-in with overshoot,
+Speech bubbles: canvas-texture sprites above a keeper. Pop-in with overshoot,
 hold, fade-out; big font so lines read at game camera distance.
 
 ### Public API

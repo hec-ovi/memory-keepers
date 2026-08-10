@@ -1,4 +1,4 @@
-// Speech bubbles: canvas-texture sprites floating above an keeper. Pop-in with
+// Speech bubbles: canvas-texture sprites floating above a keeper. Pop-in with
 // a little overshoot, hold, fade-out. Big font on the canvas so lines stay
 // readable at game camera distance.
 //

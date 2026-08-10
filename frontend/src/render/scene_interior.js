@@ -132,7 +132,7 @@ export function spineColorFromTags(tags = []) {
 }
 
 // Book size tiers: the engine reports how much corpus a book holds
-// (summary.tier, docs/api.md); the shelf renders each tier at its own spine
+// (summary.tier, library/CONTRACT.md); the shelf renders each tier at its own spine
 // size so a fat transcript reads bigger than a one-line dream. Older
 // payloads without the field fall back to the one_liner length.
 export const BOOK_TIERS = Object.freeze(["small", "medium", "big", "large"]);
@@ -148,7 +148,7 @@ export function bookTier(book = {}) {
 
 // The single bookcase holds exactly LIBRARY_CAP slots: ONE full library
 // IS the memory cap per keeper (BACKLOG 22). The backend pins the same number
-// in engine/limits.py; the UI (room readout) imports it from here.
+// in library (mk_library/limits.py); the UI (room readout) imports it from here.
 export const LIBRARY_CAP = 24;
 
 export const SHELF_LAYOUT = Object.freeze({

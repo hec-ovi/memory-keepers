@@ -58,7 +58,9 @@ export function createHud({ root, state, bus, api, toasts, ui } = {}) {
   const notify = toasts ?? ui?.toasts ?? null;
   ensureStyles(doc);
 
-  let running = !!state?.consolidation?.running;
+  // "state:loaded" carries consolidation as its own payload field; the shared
+  // state object never holds it, so a run is only known once that event lands.
+  let running = false;
   let consolidating = false;
   let seeding = false;
   let muted = false;
