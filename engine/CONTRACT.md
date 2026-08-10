@@ -22,7 +22,7 @@ The frontend sends `X-World: <id>` (generated once, kept in localStorage). First
 | `GET /keepers/{id}/chatter` | | `{line}` (short bubble text) |
 | `POST /keepers/{id}/sleep` | `{}` | 202 `{job_id}`; poll `GET .../sleep/{job_id}` |
 | `POST /monument` | `{text}` | `{reply, created_keeper?}` (the root agent) |
-| `POST /dream` | `{}` | 202 `{status: queued}`; 409 `DREAM_RUNNING`; watch `/dreams/latest` |
+| `POST /dream` | `{}` | 202 `{status: queued, run_id}`; 409 `DREAM_RUNNING`; watch `/dreams/{run_id}` |
 | `GET /dreams/latest` / `GET /dreams/{run_id}` | | dream report with graph and narrative |
 | `POST /internal/dream-run?token=` | Pub/Sub push envelope | runs the dream in-request; token-gated |
 | `POST /internal/nightly?token=` | | dispatches a dream for every world (Cloud Scheduler target) |

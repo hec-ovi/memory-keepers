@@ -82,7 +82,7 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
         running = False
         try:
             if meta.get("latest_run_id"):
-                running = library.dream_latest(world).status == "running"
+                running = library.dream_latest(world).status in ("queued", "running")
         except LibraryError:
             meta["latest_run_id"] = None
         return {"keepers": [k.payload(budget) for k in library.list_keepers(world)],
@@ -191,10 +191,12 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     async def dream(x_world: str | None = Header(default=None)):
         world = world_of(x_world)
         meta = library.world_meta(world)
-        if meta.get("latest_run_id") and library.dream_latest(world).status == "running":
+        if (meta.get("latest_run_id")
+                and library.dream_latest(world).status in ("queued", "running")):
             raise ApiError("DREAM_RUNNING", "the island is already dreaming")
-        await dispatcher.dispatch(world, "asked")
-        return {"status": "queued"}
+        run = library.dream_start(world, "asked", status="queued")
+        await dispatcher.dispatch(world, "asked", run.run_id)
+        return {"status": "queued", "run_id": run.run_id}
 
     @app.get("/dreams/latest")
     async def dream_latest(x_world: str | None = Header(default=None)):

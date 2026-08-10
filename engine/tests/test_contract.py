@@ -102,15 +102,17 @@ async def test_sleep_running_gates_chat_and_delete(client, library):
 
 async def test_dream_end_to_end(client):
     assert (await client.get("/dreams/latest")).status_code == 404
-    assert (await client.post("/dream")).status_code == 202
+    queued = await client.post("/dream")
+    assert queued.status_code == 202 and queued.json()["run_id"]
 
     async def done():
         r = await client.get("/dreams/latest")
         if r.status_code != 200:
             return None
-        return r.json() if r.json()["status"] != "running" else None
+        return r.json() if r.json()["status"] not in ("queued", "running") else None
 
     report = await poll(done)
+    assert report["run_id"] == queued.json()["run_id"]
     assert report["status"] == "done" and report["narrative"]
     assert report["created_keepers"] and report["graph"]["nodes"]
     state = (await client.get("/state")).json()
