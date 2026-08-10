@@ -95,10 +95,21 @@ class FakeLlm(BaseLlm):
         title = _first_sentence(text, 60) or "A new memory"
         tags = sorted(_words(text))[:3]
         entities = list(dict.fromkeys(ENTITY_RE.findall(text)))[:4]
+        names = ", ".join(entities) if entities else "no one by name"
+        body = "\n\n".join([
+            f"# {title}", text,
+            f"The shelf keeps the day with it. This one names {names}, and it "
+            f"was told plainly, the way memories arrive before they settle. "
+            f"What it carries sits beside the older books now, close enough "
+            f"to touch spines.",
+            f"Margin note: bound the evening it was told, filed under "
+            f"{', '.join(tags) if tags else 'no tags yet'}.",
+        ])
         return self._text({
             "reply": f"It is on the shelf now: {title}.",
             "title": title, "tags": tags, "entities": entities,
             "one_liner": _first_sentence(text, 140) + ".",
+            "body_md": body,
         })
 
     def _keeper_ask(self, req, system) -> types.Content:

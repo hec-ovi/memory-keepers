@@ -4,11 +4,13 @@ from mk_library import LIBRARY_CAP, LibraryError
 
 
 async def test_tell_writes_grounded_book_and_records(api, library):
-    out = await api.keeper_tell(
-        "w", "dreams", "I dreamed of Harbor Tower again. Never tell Luna about this.")
+    told = "I dreamed of Harbor Tower again. Never tell Luna about this."
+    out = await api.keeper_tell("w", "dreams", told)
     assert out["book"]["source"] == "told"
     assert "Harbor Tower" in out["book"]["entities"]
     assert out["reply"]
+    body = library.get_book("w", "dreams", out["book"]["slug"]).body_md
+    assert told in body and len(body) > len(told)  # the keeper authors the book
 
     session = library.session_read("w", "dreams")
     assert [t.role for t in session.turns] == ["user", "keeper"]

@@ -52,13 +52,15 @@ class AgentsApi:
             if value:
                 fields[key] = value
         reply = reply_data.get("reply") or f"It is on the shelf now: {fields['title']}."
+        body = reply_data.get("body_md")  # the keeper authors the book
+        body = body.strip() if isinstance(body, str) and body.strip() else text
 
         book = None
         error = None
         if keeper.side == "light":
             try:
                 book = self.library.write_book(
-                    world, kid, title=fields["title"], body_md=text, date=_today(),
+                    world, kid, title=fields["title"], body_md=body, date=_today(),
                     source="told", one_liner=fields["one_liner"],
                     tags=fields["tags"], entities=fields["entities"])
             except LibraryError as e:
