@@ -208,7 +208,7 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
 
     def _gate_internal(request: Request):
         token = os.environ.get("INTERNAL_TOKEN")
-        if token and request.query_params.get("token") != token:
+        if not token or request.query_params.get("token") != token:
             return JSONResponse(status_code=403, content={"error": {
                 "code": "VALIDATION", "message": "bad token"}})
         return None

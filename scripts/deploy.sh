@@ -9,6 +9,9 @@ REGION="${REGION:-us-central1}"
 SERVICE="${SERVICE:-memory-keepers}"
 TOPIC="${DREAM_TOPIC:-dream-runs}"
 TOKEN="${INTERNAL_TOKEN:?export INTERNAL_TOKEN=<random secret> first}"
+# Free-tier defaults: scale to zero, request-based billing. For the judging
+# window export MIN_INSTANCES=1 CPU_ALWAYS=1 (no cold starts, CPU always on).
+MIN_INSTANCES="${MIN_INSTANCES:-0}"
 
 gcloud config set project "$PROJECT"
 gcloud services enable run.googleapis.com firestore.googleapis.com \
@@ -18,7 +21,8 @@ gcloud services enable run.googleapis.com firestore.googleapis.com \
 gcloud firestore databases create --location="$REGION" 2>/dev/null || true
 
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --allow-unauthenticated \
-  --min-instances 1 --no-cpu-throttling --memory 1Gi --timeout 300 \
+  --min-instances "$MIN_INSTANCES" ${CPU_ALWAYS:+--no-cpu-throttling} \
+  --memory 1Gi --timeout 300 \
   --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT,GOOGLE_CLOUD_LOCATION=$REGION,GOOGLE_GENAI_USE_VERTEXAI=TRUE,MODEL_TIER=cloud,DREAM_DISPATCH=pubsub,DREAM_TOPIC=$TOPIC,INTERNAL_TOKEN=$TOKEN"
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')"

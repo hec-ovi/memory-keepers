@@ -26,6 +26,8 @@ The frontend sends `X-World: <id>` (generated once, kept in localStorage). First
 | `GET /dreams/latest` / `GET /dreams/{run_id}` | | dream report with graph and narrative |
 | `POST /internal/dream-run?token=` | Pub/Sub push envelope | runs the dream in-request; token-gated |
 | `POST /internal/nightly?token=` | | dispatches a dream for every world (Cloud Scheduler target) |
+
+Internal routes answer 403 unless env `INTERNAL_TOKEN` is set and matches the `token` query param.
 | `POST /voice/tts` | `{text, kind?}` | `audio/ogg` (voice box; 503 `VOICE_UNAVAILABLE` when unconfigured) |
 | `POST /voice/stt` | audio body | `{text}` (voice box) |
 

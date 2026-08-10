@@ -159,6 +159,12 @@ async def test_dev_routes_gated(client, library, monkeypatch):
         assert (await dev_client.post("/dev/reset")).json()["reset"] is True
 
 
+async def test_internal_routes_closed_when_no_token_is_configured(client, monkeypatch):
+    monkeypatch.delenv("INTERNAL_TOKEN", raising=False)
+    assert (await client.post("/internal/nightly")).status_code == 403
+    assert (await client.post("/internal/dream-run", json={})).status_code == 403
+
+
 async def test_internal_nightly_dispatches_all_worlds(client, monkeypatch):
     monkeypatch.setenv("INTERNAL_TOKEN", "s3cret")
     await client.get("/state")  # creates the world
