@@ -35,12 +35,13 @@ async def _dream(library: Library, agents_api, world: str) -> dict:
     dark = {k.topic: k for k in keepers if k.side == "dark"}
     created_keepers, created_books, skipped = [], [], []
     for theme in themes[:DARK_CAP]:
+        evidence = [f"{e['title']}: {e['body_md'][:200]}" for e in theme["evidence"]]
+        evidence_slugs = [f"{e['keeper_id']}/{e['slug']}" for e in theme["evidence"]]
         keeper = dark.get(theme["key"])
         if keeper is None:
             try:
                 prose = await agents_api.dream_write(
-                    theme["archetype"], [theme["element"]],
-                    [f"{e['title']}: {e['body_md'][:200]}" for e in theme["evidence"]])
+                    theme["archetype"], [theme["element"]], evidence)
                 keeper = library.create_keeper(
                     world, theme["key"], name=prose["name"], persona=prose["persona"],
                     side="dark", archetype=theme["archetype"])
@@ -50,14 +51,12 @@ async def _dream(library: Library, agents_api, world: str) -> dict:
                 skipped.append({"key": theme["key"], "archetype": theme["archetype"]})
                 continue
         else:
+            already = {s for b in library.list_books(world, keeper.id) for s in b.links}
+            if set(evidence_slugs) <= already:
+                continue  # this reading already exists; recreate only when sources change
             prose = await agents_api.dream_write(
-                theme["archetype"], [theme["element"]],
-                [f"{e['title']}: {e['body_md'][:200]}" for e in theme["evidence"]])
+                theme["archetype"], [theme["element"]], evidence)
 
-        already = {s for b in library.list_books(world, keeper.id) for s in b.links}
-        evidence_slugs = [f"{e['keeper_id']}/{e['slug']}" for e in theme["evidence"]]
-        if set(evidence_slugs) <= already:
-            continue  # this reading already exists; recreate only when sources change
         _, fits = library.make_room(world, keeper.id, incoming=1)
         if not fits:
             skipped.append({"key": theme["key"], "archetype": theme["archetype"]})

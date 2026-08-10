@@ -66,7 +66,7 @@ async def test_dream_never_breaks_caps(rig):
 async def test_failed_run_settles_as_failed(rig):
     library, _ = rig
 
-    class Boom:
+    class Boom:  # the seeded world has themes, so dream_write is always reached
         async def dream_write(self, *a, **k):
             raise RuntimeError("boom")
 
@@ -74,4 +74,4 @@ async def test_failed_run_settles_as_failed(rig):
             raise RuntimeError("boom")
 
     report = await run_dream(library, Boom(), "w", "nightly")
-    assert report["status"] in ("done", "failed")  # settled either way, never hangs
+    assert report["status"] == "failed" and "boom" in report["error"]

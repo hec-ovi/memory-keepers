@@ -1,7 +1,7 @@
 [project]
 name = "mk-dreaming"
 version = "0.1.0"
-description = "Consolidation: linking pass, dream agents fan-out, dark side writer"
+description = "Consolidation: deterministic linking, sequential theme pass, dark side writer"
 requires-python = ">=3.12"
 dependencies = ["mk-library", "mk-agents"]
 
