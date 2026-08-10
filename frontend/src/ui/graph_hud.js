@@ -187,7 +187,7 @@ export function createGraphHud({ root, bus, report = null } = {}) {
 // --- consolidation polling ----------------------------------------------------
 //
 // Call after bus "consolidation:started" fires with a run id. Polls
-// GET /consolidations/{run_id} with backoff until the report leaves "running":
+// GET /dreams/{run_id} with backoff until the report settles:
 //   done   -> bus "consolidation:finished" {report}
 //   failed -> bus "toast" {message, kind: "error"} + "consolidation:failed"
 // Returns {stop(), done} where done resolves with the final report (or null

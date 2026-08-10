@@ -128,7 +128,7 @@ chattable night keepers who keep no books of what you tell them.
 `createHud({ root, state, bus, api, toasts, ui } = {})`.
 Buttons: View keepers (cyan, opens the roster; the crossing shortcut moved
 into that list), Create keeper, Dreaming (label "Dreaming", tooltip "Send your
-keepers to sleep so they can consolidate"; POST /consolidate, disabled while a
+keepers to sleep so they can consolidate"; POST /dream, disabled while a
 run is active; a 409 always toasts the warm "they are already dreaming",
 never the engine's consolidation-worded message), How to play, Demo data
 (zero keepers only), mute.

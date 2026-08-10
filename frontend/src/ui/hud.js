@@ -6,7 +6,7 @@
 //
 // Bus wiring:
 //   emits   "create_keeper:open"                     Create keeper button
-//   emits   "consolidation:started" { runId }      after POST /consolidate
+//   emits   "consolidation:started" { runId }      after POST /dream
 //   emits   "howto:open"                           How to play button
 //   emits   "keepers_list:open"                      View keepers button (opens the
 //                                                  holo list of everyone on the

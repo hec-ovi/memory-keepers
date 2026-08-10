@@ -60,7 +60,7 @@ describe("createHud", () => {
     const user = userEvent.setup();
     server.use(
       http.post(`${BASE}/dream`, () =>
-        HttpResponse.json({ run_id: "run-9", status: "running" }, { status: 202 }),
+        HttpResponse.json({ run_id: "run-9", status: "queued" }, { status: 202 }),
       ),
     );
     const started = vi.fn();
@@ -82,7 +82,7 @@ describe("createHud", () => {
     server.use(
       http.post(`${BASE}/dream`, async () => {
         await gate.promise;
-        return HttpResponse.json({ run_id: "run-1", status: "running" }, { status: 202 });
+        return HttpResponse.json({ run_id: "run-1", status: "queued" }, { status: 202 });
       }),
     );
     const btn = screen.getByRole("button", { name: "Dreaming" });

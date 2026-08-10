@@ -38,9 +38,10 @@ sleepJob(keeperId, jobId)                        // GET /keepers/{id}/sleep/{job
 listBooks(keeperId)                              // GET /keepers/{id}/books
 getBook(keeperId, slug)                          // GET /keepers/{id}/books/{slug}
 deleteBook(keeperId, slug)                       // DELETE /keepers/{id}/books/{slug}
-consolidate()                                  // POST /consolidate {}
-getLatestConsolidation()                       // GET /consolidations/latest
-getConsolidation(runId)                        // GET /consolidations/{runId}
+consolidate()                                  // POST /dream {} -> {status, run_id}
+getLatestConsolidation()                       // GET /dreams/latest
+getConsolidation(runId)                        // GET /dreams/{runId}
+monument(text)                                 // POST /monument {text}
 seed()                                         // POST /dev/seed {}
 reset()                                        // POST /dev/reset {}
 ```
