@@ -105,7 +105,7 @@ def test_session_and_meter(library, world):
     s = library.session_read(world, "dreams")
     assert len(s.turns) == 2 and s.blocks["constraints"] == ["never tell Luna about the door"]
 
-    s.blocks["standing_facts"] = ["the user works on the Mars mission"]
+    s.blocks["recent_topics"] = ["the user works on the Mars mission"]
     s.turns = s.turns[-1:]
     s.sleep_count = 1
     library.session_replace(world, "dreams", s)

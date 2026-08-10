@@ -10,8 +10,8 @@ worlds/{world_id}                     meta: created_at, seeded, dream_counter, l
                                       palette, created_at, book_count, session meter
     books/{slug}                      title, date, tags, entities, source, one_liner,
                                       links, tier, body_md
-    session/current                   summary blocks (standing facts, constraints,
-                                      open threads, recent topics) + capped turn log
+    session/current                   summary blocks (constraints, recent topics)
+                                      + capped turn log
   dreams/{run_id}                     status, narrative, graph, created keepers/books
 ```
 
@@ -46,6 +46,6 @@ Class `Library(client=None, seed=None)`: `client` injected for tests, `seed` is 
 
 - Caps: 16 light keepers, 8 dark keepers, 24 books per library (one bookcase). Defined once here, imported everywhere.
 - Every read and write is scoped to one world; no cross-world query exists.
-- Dark keepers and `dream` books are written only by the dreaming box.
+- By convention of the callers, dark keepers and `dream` books come only from the dreaming box; the library itself does not enforce it.
 - Level is derived, never stored: `1 + isqrt(book_count)`.
 - Tests inject `mk_library.testing.FakeFirestore`, a faithful in-process fake of the client subset used; the same suites pass against the real emulator when `FIRESTORE_EMULATOR_HOST` is set. Dev via docker-compose runs the official emulator; production code path is identical.

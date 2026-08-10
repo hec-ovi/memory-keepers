@@ -8,9 +8,6 @@ SESSION_TOKEN_BUDGET_DEFAULT = 12_000
 UNRESTED_THRESHOLD = 0.70
 NEEDS_SLEEP_THRESHOLD = 0.85
 
-ARCHETYPES = ("desire", "fear", "ambition", "obsession")
-BOOK_SOURCES = ("told", "dream", "seed", "sleep")
-
 
 def session_status(tokens_used: int, budget: int) -> str:
     ratio = tokens_used / budget if budget else 1.0

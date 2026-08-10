@@ -84,7 +84,7 @@ class Turn:
     text: str
 
 
-BLOCK_KEYS = ("standing_facts", "constraints", "open_threads", "recent_topics")
+BLOCK_KEYS = ("constraints", "recent_topics")
 
 
 @dataclass
