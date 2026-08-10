@@ -34,7 +34,9 @@ Internal routes answer 403 unless env `INTERNAL_TOKEN` is set and matches the `t
 Voice mounts the real Cloud TTS/STT router by default (credentials via ADC, per-request degrade to 503); env `VOICE=off` mounts the always-503 stub for offline dev and tests.
 | `POST /dev/reset` | `{}` | only with `DEV_ROUTES=1`, absent in deployment |
 
-Errors are `{"error": {"code": SYMBOL, "message": str}}`. Closed set: the library symbols plus `NEEDS_SLEEP`, `SLEEP_RUNNING`, `DREAM_RUNNING`, `VALIDATION`, `VOICE_UNAVAILABLE`.
+Errors are `{"error": {"code": SYMBOL, "message": str}}`. Closed set: the library symbols plus `NEEDS_SLEEP`, `SLEEP_RUNNING`, `DREAM_RUNNING`, `VALIDATION`, `VOICE_UNAVAILABLE`, `ACCESS_REQUIRED`.
+
+With env `ACCESS_CODE` set, every API route (not /health, statics, or /internal) answers 401 `ACCESS_REQUIRED` unless the request carries `X-Access-Code: <code>`; anonymous traffic never reaches a model or speech service.
 
 ## Bookkeeping owned here
 

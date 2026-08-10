@@ -159,6 +159,26 @@ async def test_dev_routes_gated(client, library, monkeypatch):
         assert (await dev_client.post("/dev/reset")).json()["reset"] is True
 
 
+async def test_access_code_gates_the_api_before_any_model_call(library, monkeypatch):
+    import httpx
+    from mk_engine import create_app
+    from mk_models import ModelGateway
+
+    monkeypatch.setenv("ACCESS_CODE", "island-key")
+    monkeypatch.setenv("DREAM_DISPATCH", "inline")
+    monkeypatch.setenv("VOICE", "off")
+    app = create_app(library=library, gateway=ModelGateway(tier="fake"))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),
+                                 base_url="http://t",
+                                 headers={"X-World": "w-test"}) as c:
+        denied = await c.get("/state")
+        assert denied.status_code == 401
+        assert denied.json()["error"]["code"] == "ACCESS_REQUIRED"
+        assert (await c.get("/health")).status_code == 200
+        ok = await c.get("/state", headers={"X-Access-Code": "island-key"})
+        assert ok.status_code == 200
+
+
 async def test_internal_routes_closed_when_no_token_is_configured(client, monkeypatch):
     monkeypatch.delenv("INTERNAL_TOKEN", raising=False)
     assert (await client.post("/internal/nightly")).status_code == 403

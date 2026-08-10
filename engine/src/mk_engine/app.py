@@ -41,6 +41,20 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
 
     app = FastAPI(title="memory-keepers", version=VERSION)
 
+    # The island key: with ACCESS_CODE set, the API answers only callers who
+    # carry it, so anonymous traffic never reaches a model or speech service.
+    # Statics and /health stay open; /internal has its own token gate.
+    access_code = os.environ.get("ACCESS_CODE")
+    GATED = ("/state", "/keepers", "/monument", "/dream", "/voice", "/dev")
+
+    @app.middleware("http")
+    async def gate_access(request: Request, call_next):
+        if (access_code and request.url.path.startswith(GATED)
+                and request.headers.get("X-Access-Code") != access_code):
+            return JSONResponse(status_code=401, content={"error": {
+                "code": "ACCESS_REQUIRED", "message": "this island asks for its key"}})
+        return await call_next(request)
+
     @app.exception_handler(LibraryError)
     @app.exception_handler(ApiError)
     async def on_error(request: Request, exc):
