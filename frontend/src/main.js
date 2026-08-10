@@ -38,6 +38,12 @@ export function resolveWorldId(loc = globalThis.location) {
   return new URLSearchParams(loc.search).get("world");
 }
 
+export function resolveAccessKey(loc = globalThis.location) {
+  // ?key=... carries the island key inside a shared link, so judges land
+  // straight in the game; it is remembered and never needs typing.
+  return new URLSearchParams(loc.search).get("key");
+}
+
 function modeKey(mode) {
   return String(mode).split(":")[0];
 }
@@ -440,6 +446,8 @@ async function bootInBrowser() {
   const uiEl = document.getElementById("ui");
   const baseUrl = resolveBaseUrl();
   const api = createApi({ baseUrl, worldId: resolveWorldId() });
+  const urlKey = resolveAccessKey();
+  if (urlKey) api.setAccessCode(urlKey);
   const game = createGame({ appEl, uiEl, api });
   globalThis.__keeperBrain = game; // console access for debugging
 

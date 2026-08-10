@@ -29,6 +29,8 @@ createBus() -> { on(event, fn) -> off, off(event, fn), emit(event, payload) }
 
 // main.js
 resolveBaseUrl(loc = globalThis.location) -> string   // ?api=<url> override, else ""
+resolveWorldId(loc = globalThis.location) -> string?  // ?world=<name> opens a named world, else per-browser
+resolveAccessKey(loc = globalThis.location) -> string? // ?key=<island key> in a shared link; remembered
 createGame({ appEl, uiEl, api, bus = createBus(), win = globalThis } = {})
   -> { state, bus, api, ui, boot(), setMode(mode), refreshState(), start(), stop(), get activeScene }
 ```
