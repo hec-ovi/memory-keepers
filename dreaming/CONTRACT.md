@@ -13,7 +13,7 @@ Delivery is a Pub/Sub push subscription to the engine's `/internal/dream-run` ro
 
 ## Public API
 
-`async run_dream(library, agents_api, world_id, reason) -> dream run doc` (status `done` or `failed`, never hangs; failures are recorded on the run).
+`async run_dream(library, agents_api, world_id, reason, run_id=None) -> dream run doc` (status `done` or `failed`, never hangs; failures are recorded on the run). Pass `run_id` to take over a run the caller already queued in the library; without it the run is allocated here.
 
 ## Run (one world)
 

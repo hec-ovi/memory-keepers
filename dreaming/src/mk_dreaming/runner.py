@@ -9,17 +9,21 @@ from .linking import link
 log = logging.getLogger(__name__)
 
 
-async def run_dream(library: Library, agents_api, world: str, reason: str) -> dict:
-    run = library.dream_start(world, reason)
+async def run_dream(library: Library, agents_api, world: str, reason: str,
+                    run_id: str | None = None) -> dict:
+    if run_id is None:
+        run_id = library.dream_start(world, reason).run_id
+    else:  # the caller queued the run up front; take it over
+        library.dream_update(world, run_id, status="running", started_at=now_iso())
     try:
         report = await _dream(library, agents_api, world)
-        library.dream_update(world, run.run_id, status="done",
+        library.dream_update(world, run_id, status="done",
                              finished_at=now_iso(), **report)
     except Exception as e:  # a dream must always settle
         log.exception("dream run failed")
-        library.dream_update(world, run.run_id, status="failed",
+        library.dream_update(world, run_id, status="failed",
                              finished_at=now_iso(), error=str(e))
-    return library.dream_get(world, run.run_id).to_doc()
+    return library.dream_get(world, run_id).to_doc()
 
 
 async def _dream(library: Library, agents_api, world: str) -> dict:
