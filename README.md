@@ -6,6 +6,8 @@ Built for the All Things Agentic Hackathon (The Collaborative Partner track).
 
 Stack: Gemini on Vertex AI, Google ADK agents, Cloud Run, Firestore, Pub/Sub, Cloud Text-to-Speech and Speech-to-Text, with a local Gemma tier.
 
+Interactive architecture map: [hec-ovi.github.io/memory-keepers](https://hec-ovi.github.io/memory-keepers/)
+
 ## Run locally (zero cloud cost)
 
 ```
