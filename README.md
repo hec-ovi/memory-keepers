@@ -1,6 +1,6 @@
 # memory-keepers
 
-A 3D game where keepers (small blob librarians) manage your memories. Each keeper owns a topic (dreams, meetings, music, anything you create), lives in a cottage on a floating island, and keeps a library of books. Tell her something and she writes a book; ask her and she reads her shelves back to you, always grounded in real books. At night the island dreams: everything that connects across shelves becomes a knowledge graph, and dark keepers are born from what keeps returning.
+A 3D game where keepers (small blob librarians) manage your memories. Each keeper owns a topic (dreams, meetings, music, anything you create), lives in a cottage on a floating island, and keeps a library of books. Tell her something and she writes a book; ask her and she reads her shelves back to you, always grounded in real books. Hold T in any dialog to talk instead of typing, and she answers in her own voice. At night the island dreams: everything that connects across shelves becomes a knowledge graph, and dark keepers are born from what keeps returning.
 
 Built for the All Things Agentic Hackathon (The Collaborative Partner track).
 
@@ -17,8 +17,8 @@ The game is at http://localhost:8000, running against the official Firestore and
 ## Tests
 
 ```
-docker compose run --rm test            # python boxes (49 tests)
-docker compose run --rm test-frontend   # frontend (14 tests)
+docker compose run --rm test            # python boxes (52 tests)
+docker compose run --rm test-frontend   # frontend (721 tests)
 ```
 
 Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set); frontend on vitest + jsdom + Testing Library + MSW.
