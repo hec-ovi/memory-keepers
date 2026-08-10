@@ -1,0 +1,64 @@
+{
+  "keepers": [
+    {
+      "topic": "sea voyages",
+      "memories": [
+        "Finished Moby-Dick tonight. Captain Ahab chased the white whale across every ocean and it cost him everything. Ishmael alone survived to tell it, floating on Queequeg's coffin.",
+        "Read Treasure Island in one sitting. Jim Hawkins found the map in Billy Bones' sea chest, and Long John Silver played every side of the crew of the Hispaniola.",
+        "Twenty Thousand Leagues Under the Sea again. Captain Nemo showed Professor Aronnax the ruins of Atlantis from the salon of the Nautilus. Jules Verne wrote machines before they existed.",
+        "The storm in the Odyssey kept me up. Poseidon wrecked Odysseus within sight of Ithaca, and Calypso held him seven years on her island.",
+        "Darwin's voyage on the Beagle: five years, and the finches of the Galapagos quietly rewrote everything we thought about living things.",
+        "Robinson Crusoe counted his days on the island with notches on a post. Twenty-eight years, and the footprint in the sand still frightened him more than the solitude.",
+        "Gulliver woke tied down by threads in Lilliput. Jonathan Swift disguised a whole critique of empires as a sailor's tall tale.",
+        "Two Years Before the Mast, Richard Henry Dana's log of rounding Cape Horn as a common sailor. The frozen rigging, the hides on the California coast, the honesty of it."
+      ]
+    },
+    {
+      "topic": "astronomy",
+      "memories": [
+        "Galileo's Starry Messenger: he pointed a spyglass at Jupiter in 1610 and found four moons that did not orbit the Earth. Everything tilted from that page on.",
+        "Kepler buried in Tycho Brahe's tables for years until the orbits confessed: ellipses, not circles. His third law still feels like music.",
+        "Edmond Halley saw that the comets of 1531, 1607 and 1682 were one visitor, and promised it would return in 1758. It did, sixteen years after his death.",
+        "William Herschel found Uranus from his garden in Bath in 1781, the first planet discovered since antiquity, with a telescope he ground himself.",
+        "Caroline Herschel swept the sky while her brother slept, eight comets to her name and the first woman paid to do science in England.",
+        "Tycho Brahe lost his nose in a duel and wore a brass one, but his naked-eye measurements of Mars were precise enough to carry Kepler to the laws.",
+        "Copernicus held De Revolutionibus in print only on his deathbed in 1543. He moved the Earth and apologized for it in the preface.",
+        "The 1769 transit of Venus: Cook sailed to Tahiti so astronomers could time a black dot crossing the sun and measure the distance to it.",
+        "Charles Messier catalogued a hundred smudges so comet hunters would not be fooled. His list of distractions became the map of nebulae and galaxies.",
+        "Laplace claimed the solar system needed no further hypothesis to run. Napoleon asked him where God fit, and he answered with mathematics."
+      ]
+    },
+    {
+      "topic": "old myths",
+      "memories": [
+        "Icarus again. Daedalus built the wings and warned him about the sun, and the boy flew high anyway. The sea that took him bears his name.",
+        "Prometheus stole fire from Olympus in a fennel stalk and gave it to us. Zeus chained him to a rock in the Caucasus for it, and the eagle came every day.",
+        "Orpheus sang his way into the underworld and Hades wept iron tears. One look back at Eurydice at the threshold, and she was gone twice.",
+        "Persephone ate six pomegranate seeds in the dark, so Demeter mourns half the year. Winter is a mother missing her daughter.",
+        "Theseus followed Ariadne's thread out of the labyrinth after killing the Minotaur, then forgot to change the black sails. Aegeus jumped into his sea.",
+        "Pandora opened the jar and every ill flew out into the world. Only hope stayed under the lid, which I have never decided is mercy or cruelty."
+      ]
+    },
+    {
+      "topic": "music",
+      "memories": [
+        "The premiere of Beethoven's Ninth, Vienna 1824: he was fully deaf and had to be turned around to see the applause he could not hear.",
+        "Bach's Goldberg Variations were written, the story goes, for Count Keyserlingk's sleepless nights. Thirty variations on one aria, and the aria returns at the end unchanged.",
+        "Mozart left the Requiem unfinished at the Lacrimosa. Sussmayr stitched the rest from sketches, and nobody fully agrees where one hand ends and the other begins."
+      ]
+    },
+    {
+      "topic": "poetry",
+      "memories": [
+        "Emily Dickinson wrote nearly eighteen hundred poems and published almost none. Hope is the thing with feathers that perches in the soul.",
+        "Walt Whitman set Leaves of Grass in type himself in 1855 and kept rewriting it his whole life. I contain multitudes, he said, and meant it as a fact."
+      ]
+    },
+    {
+      "topic": "inventions",
+      "memories": [
+        "Ada Lovelace's notes on Babbage's Analytical Engine, 1843: she saw that a machine for numbers could weave symbols and even music, a century before any computer existed."
+      ]
+    }
+  ]
+}

@@ -32,6 +32,12 @@ export function resolveBaseUrl(loc = globalThis.location) {
   return override || "";
 }
 
+export function resolveWorldId(loc = globalThis.location) {
+  // Worlds are per-browser by default; ?world=demo opens a named world
+  // (shared demo data, the video, judging walkthroughs).
+  return new URLSearchParams(loc.search).get("world");
+}
+
 function modeKey(mode) {
   return String(mode).split(":")[0];
 }
@@ -433,7 +439,7 @@ async function bootInBrowser() {
   const appEl = document.getElementById("app");
   const uiEl = document.getElementById("ui");
   const baseUrl = resolveBaseUrl();
-  const api = createApi({ baseUrl });
+  const api = createApi({ baseUrl, worldId: resolveWorldId() });
   const game = createGame({ appEl, uiEl, api });
   globalThis.__keeperBrain = game; // console access for debugging
 

@@ -4,7 +4,7 @@
 // WebGL in jsdom); the wiring under test is identical either way.
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { waitFor, within } from "@testing-library/dom";
-import { createGame, resolveBaseUrl } from "../src/main.js";
+import { createGame, resolveBaseUrl, resolveWorldId } from "../src/main.js";
 import { createBus } from "../src/bus.js";
 import { config } from "../src/config.js";
 import { dreamsKeeper, meetingsKeeper } from "./ui_fixtures.js";
@@ -55,6 +55,11 @@ describe("createGame wiring", () => {
     config.sceneModules = { ...savedSceneModules };
     document.body.innerHTML = "";
     vi.restoreAllMocks();
+  });
+
+  it("resolveWorldId: per-browser world by default, ?world= opens a named one", () => {
+    expect(resolveWorldId({ search: "" })).toBe(null);
+    expect(resolveWorldId({ search: "?world=demo" })).toBe("demo");
   });
 
   it("resolveBaseUrl: same-origin by default, ?api= overrides", () => {
