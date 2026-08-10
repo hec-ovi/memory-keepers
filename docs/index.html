@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Memory Keepers — Architecture</title>
+<meta name="description" content="Interactive architecture map of Memory Keepers: a 3D island of AI keeper agents built on Google ADK, Gemini on Vertex AI, Firestore, Pub/Sub and Cloud Run.">
+<style>
+:root{
+  --bg:#0b0703; --surface:#170e06; --surface-2:#1f1408; --surface-3:#28190a;
+  --line:#3d2a14; --line-soft:#2b1d0e; --text:#f6e7cf; --muted:#c99a66; --faint:#8a7050;
+  --cyan:#3fe0ff; --steel:#8fa9c9; --gold:#ffb658; --green:#6ede87; --violet:#b9a7f8; --danger:#ff7a5c;
+  --shadow:rgba(0,0,0,.55);
+  --sans:"Segoe UI","Noto Sans",system-ui,-apple-system,sans-serif;
+  --display:"Bahnschrift","DIN Alternate","Franklin Gothic Medium","Segoe UI",system-ui,sans-serif;
+  --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --nav-w:262px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:var(--sans); font-size:13px; line-height:1.55;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+::selection{background:rgba(63,224,255,.25)}
+a{color:var(--cyan); text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--cyan); outline-offset:2px; border-radius:0}
+button{font-family:inherit}
+h1,h2,h3,h4{margin:0; font-weight:650; letter-spacing:.01em; font-family:var(--display)}
+
+/* ---------- app shell ---------- */
+#app{
+  position:fixed; inset:0;
+  display:grid; grid-template-columns:var(--nav-w) 1fr;
+  background:var(--bg);
+}
+
+/* ---------- left nav ---------- */
+#nav{
+  display:flex; flex-direction:column; min-height:0;
+  background:linear-gradient(180deg,#150d05,#0e0904);
+  border-right:1px solid var(--line);
+}
+.brand{padding:20px 18px 14px; border-bottom:1px solid var(--line-soft)}
+.eyebrow{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.34em; font-weight:700;
+  color:var(--cyan); text-transform:uppercase;
+}
+.brand h1{font-size:18px; margin-top:6px; line-height:1.15}
+.brand .subtitle{color:var(--muted); font-size:11.5px; margin-top:6px; max-width:214px}
+
+.navlist{flex:1 1 auto; min-height:0; overflow-y:auto; padding:10px 10px 14px}
+.navlist::-webkit-scrollbar{width:9px}
+.navlist::-webkit-scrollbar-thumb{background:var(--surface-3); border-radius:0}
+
+.navsec{margin-bottom:2px}
+.navsec>button{
+  width:100%; display:flex; align-items:center; gap:9px;
+  background:transparent; border:1px solid transparent; border-radius:0;
+  color:var(--text); padding:8px 9px; cursor:pointer; text-align:left; font-size:12.5px;
+}
+.navsec>button:hover{background:var(--surface-2)}
+.navsec.active>button{background:var(--surface-3); border-color:var(--line)}
+.navsec.active>button .nsecLabel{color:var(--text)}
+.nsecLabel{flex:1 1 auto; font-weight:550}
+.dot{width:9px; height:9px; border-radius:0; flex:0 0 auto; box-shadow:0 0 0 3px rgba(255,255,255,.03)}
+.caret{color:var(--faint); font-size:10px; transition:transform .18s ease}
+.navsec.open .caret{transform:rotate(90deg)}
+
+.subitems{list-style:none; margin:2px 0 6px; padding:0 0 0 24px; display:none}
+.navsec.open .subitems{display:block}
+.subitems li{margin:0}
+.subitems button{
+  width:100%; text-align:left; background:transparent; border:0; cursor:pointer;
+  color:var(--muted); font-family:var(--mono); font-size:11px; padding:4px 8px; border-radius:0;
+  border-left:1px solid var(--line-soft); margin-left:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.subitems button:hover{color:var(--text); background:var(--surface-2)}
+
+.navfoot{
+  padding:11px 18px; border-top:1px solid var(--line-soft);
+  color:var(--faint); font-size:11px; font-family:var(--mono);
+}
+
+/* ---------- main ---------- */
+#main{display:grid; grid-template-rows:auto 1fr; min-width:0; min-height:0}
+.topbar{
+  display:flex; align-items:center; gap:16px; justify-content:space-between;
+  padding:14px 20px; border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#140c05,#0e0904);
+}
+.crumb{min-width:0}
+.crumb h2{font-size:16px; display:flex; align-items:center; gap:8px}
+.crumb .crumbSub{color:var(--muted); font-size:11.5px; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.modeToggle{
+  display:inline-flex; background:var(--surface); border:1px solid var(--line);
+  border-radius:0; padding:3px; flex:0 0 auto;
+}
+.segbtn{
+  background:transparent; border:0; color:var(--muted); cursor:pointer;
+  padding:6px 15px; border-radius:0; font-size:12px; font-weight:600; letter-spacing:.01em;
+}
+.segbtn:hover{color:var(--text)}
+.segbtn.active{background:var(--cyan); color:#04191f; box-shadow:0 3px 10px rgba(63,224,255,.28)}
+
+/* ---------- stage ---------- */
+#stage{
+  position:relative; min-width:0; min-height:0; overflow:hidden;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,196,128,.028) 0 1px, transparent 1px 3px),
+    linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0/36px 36px,
+    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0/36px 36px,
+    radial-gradient(1200px 620px at 78% -12%, rgba(63,224,255,.06), transparent 60%),
+    var(--bg);
+}
+
+/* ---------- map ---------- */
+.mapWrap{position:absolute; inset:0}
+#atlas{width:100%; height:100%; display:block; touch-action:none; cursor:grab}
+#atlas.grabbing{cursor:grabbing}
+.node{cursor:pointer}
+.nbox{fill:var(--surface-2); stroke:var(--line); stroke-width:1.4; filter:drop-shadow(0 5px 12px var(--shadow))}
+.node:hover .nbox,.node:focus-visible .nbox{stroke:var(--cyan)}
+.node:focus-visible{outline:none}
+.node:focus-visible .nbox{stroke-width:2}
+.nlabel{fill:var(--text); font-weight:650; font-size:13px; font-family:var(--mono)}
+.nkind{font-size:10px; font-family:var(--mono); letter-spacing:.06em; text-transform:uppercase; opacity:.92}
+.edge{fill:none; stroke-width:1.7}
+.elabel{fill:var(--muted); font-size:10px; font-family:var(--mono)}
+.elabel-bg{fill:var(--bg); opacity:.9; stroke:var(--line-soft); stroke-width:.75}
+.grp{fill:rgba(143,169,201,.05); stroke:var(--steel); stroke-width:1.2; stroke-dasharray:5 5}
+.grpLabel{fill:var(--steel); font-size:11px; font-family:var(--mono); letter-spacing:.05em; text-transform:uppercase}
+
+.mapctl{position:absolute; left:14px; bottom:14px; display:flex; gap:7px; z-index:4}
+.mapctl button{
+  background:var(--surface); border:1px solid var(--line); color:var(--text);
+  padding:6px 12px; border-radius:0; cursor:pointer; font-size:11.5px; font-weight:600;
+  box-shadow:0 4px 12px var(--shadow);
+}
+.mapctl button:hover{border-color:var(--cyan); color:var(--cyan)}
+.legend{
+  position:absolute; left:14px; top:14px; z-index:4;
+  background:rgba(15,9,4,.85); backdrop-filter:blur(3px);
+  border:1px solid var(--line); border-radius:0; padding:9px 11px;
+  display:flex; flex-direction:column; gap:5px; max-width:236px;
+}
+.legend .lgttl{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin-bottom:2px}
+.pill{display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted)}
+.hint{
+  position:absolute; right:14px; bottom:14px; z-index:4;
+  font-family:var(--mono); font-size:10.5px; color:var(--faint);
+  background:rgba(15,9,4,.7); border:1px solid var(--line-soft); border-radius:0; padding:5px 9px;
+}
+
+/* ---------- text view ---------- */
+.textWrap{position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; padding:26px 24px 90px}
+.textWrap::-webkit-scrollbar{width:11px}
+.textWrap::-webkit-scrollbar-thumb{background:var(--surface-3); border-radius:0}
+.doc{max-width:1080px; margin:0 auto}
+.lede{color:var(--muted); font-size:14px; line-height:1.62; max-width:70ch; margin:0 0 22px}
+.lede strong{color:var(--text); font-weight:650}
+.lede b{color:var(--text); font-weight:600}
+
+.doc-section{
+  border:1px solid var(--line); border-radius:0;
+  background:linear-gradient(180deg,var(--surface),#120b05);
+  padding:18px 18px 20px; margin-bottom:18px;
+}
+.ds-head{margin-bottom:14px}
+.ds-head h3{font-size:15px}
+.ds-head .ds-sub{color:var(--muted); font-size:12px; margin-top:4px; max-width:74ch}
+.eyebrow-s{font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--cyan); display:block; margin-bottom:5px}
+
+.cardgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:12px}
+.card{
+  border:1px solid var(--line); border-radius:0; background:var(--surface-2);
+  padding:12px 13px; min-width:0;
+}
+.card.wide{grid-column:1/-1}
+.ct{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.clabel{font-family:var(--mono); font-size:12.5px; font-weight:650; color:var(--text)}
+.kindtag{
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--muted); border:1px solid var(--line); border-radius:0; padding:1px 8px; margin-left:auto;
+}
+.sum{color:var(--muted); font-size:12px; margin-top:7px; line-height:1.55}
+.sum b{color:var(--text); font-weight:600}
+.row{margin-top:9px; display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+.row .lbl{font-family:var(--mono); font-size:10px; color:var(--faint); text-transform:uppercase; letter-spacing:.06em}
+.flag{
+  font-family:var(--mono); font-size:10px; padding:2px 8px; border-radius:0; border:1px solid;
+}
+.flag.gate{color:var(--gold); border-color:rgba(255,182,88,.5); background:rgba(255,182,88,.08)}
+.flag.loop{color:var(--violet); border-color:rgba(185,167,248,.5); background:rgba(185,167,248,.08)}
+.flag.gated{color:var(--faint); border-color:var(--line); background:rgba(138,112,80,.08)}
+.flag.emit{color:var(--green); border-color:rgba(110,222,135,.5); background:rgba(110,222,135,.08)}
+.flag.dark{color:var(--danger); border-color:rgba(255,122,92,.5); background:rgba(255,122,92,.08)}
+
+.chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+.chip{
+  font-family:var(--mono); font-size:11px; color:var(--text);
+  background:var(--surface-3); border:1px solid var(--line); border-radius:0; padding:3px 9px;
+}
+.chip.mut{color:var(--muted)}
+.grouplbl{font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--steel); margin:12px 0 2px; display:block}
+
+.jsonbox{
+  background:#0a0602; border:1px solid var(--line); border-radius:0;
+  padding:13px 14px; overflow-x:auto; margin:12px 0 2px;
+  font-family:var(--mono); font-size:12px; line-height:1.6; color:var(--text);
+}
+.jsonbox code{font-family:inherit}
+.jsonbox .k{color:var(--cyan)}
+.jsonbox .s{color:var(--gold)}
+.jsonbox .n{color:var(--violet)}
+.jsonbox .b{color:var(--danger)}
+
+.overviewGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:13px}
+a.ocard{
+  display:flex; flex-direction:column; gap:6px; text-decoration:none;
+  border:1px solid var(--line); border-radius:0; background:var(--surface-2);
+  padding:14px 15px; color:var(--text);
+}
+a.ocard:hover{border-color:var(--cyan); text-decoration:none; transform:translateY(-1px); background:var(--surface-3)}
+a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s ease}
+.ocard .otop{display:flex; align-items:center; gap:9px}
+.ocard .otitle{font-size:13.5px; font-weight:650}
+.ocard .odesc{color:var(--muted); font-size:11.5px; line-height:1.5}
+.ocard .ogo{font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:.08em; text-transform:uppercase; margin-top:2px}
+
+.callout{
+  border:1px solid var(--line); border-left:3px solid var(--cyan); border-radius:0;
+  background:rgba(63,224,255,.05); padding:11px 13px; color:var(--muted); font-size:12px; margin-top:12px;
+}
+.callout b{color:var(--text)}
+.callout.dark{border-left-color:var(--violet); background:rgba(185,167,248,.05)}
+
+/* ---------- node detail (full-screen) ---------- */
+.stepWrap{position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; padding:26px 24px 90px}
+.stepWrap::-webkit-scrollbar{width:11px}
+.stepWrap::-webkit-scrollbar-thumb{background:var(--surface-3); border-radius:0}
+.stepDetail{max-width:1080px; margin:0 auto}
+.stepDetail code{font-family:var(--mono); font-size:11.5px; background:var(--surface-3); border:1px solid var(--line); border-radius:0; padding:1px 5px; color:var(--text)}
+.stepHead{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px}
+.stepBack{
+  background:var(--surface); border:1px solid var(--line); color:var(--text);
+  padding:8px 14px; border-radius:0; cursor:pointer; font-size:12px; font-weight:600;
+  box-shadow:0 4px 12px var(--shadow); flex:0 0 auto;
+}
+.stepBack:hover{border-color:var(--cyan); color:var(--cyan)}
+.stepHeadText{display:flex; flex-direction:column; gap:3px; min-width:0; flex:1 1 240px}
+.stepEyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+.stepTitle{font-size:20px; line-height:1.2}
+.stepPill{
+  font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  border:1px solid; border-radius:0; padding:3px 11px; flex:0 0 auto; white-space:nowrap;
+  background:rgba(255,255,255,.03);
+}
+.stepProse{color:var(--muted); font-size:13px; line-height:1.68; max-width:78ch; margin:0}
+.stepProse b, .stepList b{color:var(--text); font-weight:600}
+.stepList{margin:6px 0 0; padding-left:20px; color:var(--muted); font-size:12.5px; line-height:1.62}
+.stepList li{margin-bottom:8px}
+
+/* ---------- responsive ---------- */
+@media (max-width:820px){
+  body{overflow:auto}
+  #app{grid-template-columns:1fr; grid-template-rows:auto 1fr; position:fixed; inset:0}
+  #nav{border-right:0; border-bottom:1px solid var(--line); max-height:44vh}
+  .brand{padding:14px 16px 10px}
+  .navlist{max-height:none}
+  .topbar{padding:11px 14px}
+  .textWrap{padding:18px 14px 80px}
+  .stepWrap{padding:18px 14px 80px}
+  .stepHead{gap:10px}
+  .stepTitle{font-size:17px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important; animation:none!important; scroll-behavior:auto!important}
+  a.ocard:hover{transform:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="nav" aria-label="Sections">
+    <div class="brand">
+      <div class="eyebrow">memory-keepers</div>
+      <h1>Architecture</h1>
+      <div class="subtitle">An island of memory keeper agents: each keeper holds one topic of your memories as books on shelves.</div>
+    </div>
+    <nav class="navlist" id="navlist" aria-label="Section navigation"></nav>
+    <div class="navfoot">Built from the box contracts.</div>
+  </aside>
+
+  <main id="main">
+    <header class="topbar">
+      <div class="crumb">
+        <h2 id="crumbTitle">Overview</h2>
+        <div class="crumbSub" id="crumbSub"></div>
+      </div>
+      <div class="modeToggle" role="tablist" aria-label="View mode">
+        <button class="segbtn" id="mMap" role="tab" aria-selected="false">Map</button>
+        <button class="segbtn active" id="mText" role="tab" aria-selected="true">Text</button>
+      </div>
+    </header>
+    <section id="stage" aria-live="polite"></section>
+  </main>
+</div>
+
+<script>
+"use strict";
+(function(){
+  var NODE_W=200, NODE_H=64;
+  var LANE={cyan:'var(--cyan)',steel:'var(--steel)',gold:'var(--gold)',green:'var(--green)',violet:'var(--violet)',faint:'var(--faint)'};
+  var EDGE={
+    flow:{stroke:'var(--muted)',dash:'',m:'m-muted'},
+    pass:{stroke:'var(--green)',dash:'',m:'m-green'},
+    loop:{stroke:'var(--violet)',dash:'',m:'m-violet'},
+    gated:{stroke:'var(--faint)',dash:'6 5',m:'m-faint'},
+    seam:{stroke:'var(--steel)',dash:'6 5',m:'m-steel'},
+    media:{stroke:'var(--gold)',dash:'4 4',m:'m-gold'}
+  };
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function hl(str){
+    return esc(str).replace(/("(?:\\.|[^"\\])*"(\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?)/g, function(m){
+      var cls='n';
+      if(m.charAt(0)==='"'){ cls = /:\s*$/.test(m)?'k':'s'; }
+      else if(/^(true|false|null)$/.test(m)) cls='b';
+      return '<span class="'+cls+'">'+m+'</span>';
+    });
+  }
+
+  /* ---------- text builders ---------- */
+  var el={
+    card:function(o){
+      return '<div class="card'+(o.wide?' wide':'')+'"'+(o.id?(' id="'+o.id+'"'):'')+'>'
+        +'<div class="ct"><span class="dot" style="background:'+(o.color||'var(--cyan)')+'"></span>'
+        +'<span class="clabel">'+o.label+'</span>'+(o.tag?('<span class="kindtag">'+o.tag+'</span>'):'')+'</div>'
+        +(o.sum?('<div class="sum">'+o.sum+'</div>'):'')
+        +(o.extra||'')+'</div>';
+    },
+    chips:function(arr,mut){return '<div class="chips">'+arr.map(function(c){return '<span class="chip'+(mut?' mut':'')+'">'+esc(c)+'</span>';}).join('')+'</div>';},
+    json:function(s){return '<pre class="jsonbox"><code>'+hl(s)+'</code></pre>';}
+  };
+
+  /* =====================================================================
+     CONTENT MODEL
+     ===================================================================== */
+  var COL=function(c){return 48+c*236;};
+
+  // ------------------------------------------------------------- OVERVIEW
+  var ovMap={
+    legend:[{c:'cyan',t:'game surface'},{c:'steel',t:'engine'},{c:'gold',t:'agents + model tiers'},{c:'green',t:'Google Cloud'},{c:'faint',t:'offline dev'}],
+    nodes:[
+      {id:'player',x:COL(0),y:250,kind:'human',lane:'cyan',label:'player',
+        summary:'Walks a 3D island where every cottage is a keeper holding one topic of your memories.',
+        details:['Tell a keeper something and it becomes a book on her shelf; ask her and she answers from the books she opens.','The world id is generated once and kept in localStorage; every request carries it as the <code>X-World</code> header.']},
+      {id:'frontend',x:COL(1),y:250,kind:'three.js SPA',lane:'cyan',label:'frontend',
+        summary:'Static ES-module three.js SPA: no build step, vendored three.js, procedural textures, holographic UI.',
+        details:['Feature modules never import each other; all cross-module talk rides the event bus.','The only runtime network is the engine JSON API.','After a dream finishes it plays the knowledge graph back as the dream movie.']},
+      {id:'engine',x:COL(2),y:250,kind:'FastAPI · Cloud Run',lane:'steel',label:'engine',
+        summary:'One Cloud Run service serves the JSON API and the frontend statics: one URL, no CORS.',
+        details:['Owns meters, caps, background jobs and world scoping; slow work is 202 + poll.','Errors are a closed set of symbols, e.g. <code>LIBRARY_FULL</code>, <code>NEEDS_SLEEP</code>, <code>DREAM_RUNNING</code>.','First touch of a world seeds demo keepers and books.']},
+      {id:'agents',x:COL(3),y:250,kind:'Google ADK',lane:'gold',label:'agents',
+        summary:'Every agent lives here: the monument root, one agent per keeper, and the dream prose agents.',
+        details:['Prompts live in <code>.md</code> files, never inline in code.','Deterministic fallbacks everywhere: a model failure never breaks tell, ask or sleep.','Every model call goes through the gateway, roles <code>chat</code> and <code>dream</code>.']},
+      {id:'gemini',x:COL(4),y:120,kind:'Vertex AI',lane:'green',label:'Gemini',
+        summary:'Cloud tier: Gemini on Vertex AI, env-selected model.',
+        details:['<code>GEMINI_MODEL</code>, default <code>gemini-3.5-flash</code>.','<code>GOOGLE_GENAI_USE_VERTEXAI=TRUE</code> with application default credentials.']},
+      {id:'gemma',x:COL(4),y:250,kind:'local tier',lane:'gold',label:'Gemma',
+        summary:'Local tier: Gemma served by llama.cpp behind an OpenAI-compatible /v1, reached through LiteLLM.',
+        details:['<code>MODEL_TIER=local</code> with <code>LOCAL_MODEL_URL</code> and <code>LOCAL_MODEL_ID</code>.','Runs on the host GPU at zero cloud cost.']},
+      {id:'fake',x:COL(4),y:380,kind:'fake tier',lane:'faint',label:'FakeLlm',
+        summary:'Deterministic in-process model for tests and offline dev: same request in, same response out.',
+        details:['Recognizes the flow marker every prompt carries and emits valid JSON and real function calls.','Reports estimated token usage so the meters still move.']},
+      {id:'firestore',x:COL(3),y:430,kind:'Firestore',lane:'green',label:'Firestore',
+        summary:'The only store: worlds, keepers, books, sessions and dream runs.',
+        details:['Every read and write is scoped to one world; no cross-world query exists.','Locally the official emulator runs the identical code path.']}
+    ],
+    edges:[
+      {from:'player',to:'frontend'},
+      {from:'frontend',to:'engine',label:'X-World'},
+      {from:'engine',to:'agents'},
+      {from:'agents',to:'gemini',type:'pass',label:'cloud'},
+      {from:'agents',to:'gemma',type:'media',label:'local'},
+      {from:'agents',to:'fake',type:'gated',label:'fake'},
+      {from:'agents',to:'firestore',type:'pass',label:'books'}
+    ]
+  };
+  function ovText(){
+    var cards=[
+      ['boxes','Boxes','Seven plug-and-play boxes, one folder and one CONTRACT.md each.',LANE.steel],
+      ['memory','Memory loop','Tell writes a book, ask reads the shelf, sleep compacts, the monument synthesizes.',LANE.gold],
+      ['dreaming','Dreaming','The nightly consolidation that links every shelf and wakes the dark side.',LANE.violet],
+      ['cloud','Google Cloud','Cloud Run, Firestore, Pub/Sub, Scheduler, Vertex AI, Speech; emulators for free local dev.',LANE.green]
+    ].map(function(c){
+      return '<a class="ocard" href="#" data-goto="'+c[0]+'"><span class="otop"><span class="dot" style="background:'+c[3]+'"></span><span class="otitle">'+c[1]+'</span></span><span class="odesc">'+c[2]+'</span><span class="ogo">Open &rarr;</span></a>';
+    }).join('');
+    return '<p class="lede"><strong>Memory Keepers is a 3D island game</strong> where every keeper is an AI agent holding one topic of your memories as books on shelves. '
+      +'Tell a keeper something and she writes it down; ask her and she answers only from the books she actually opens, sources shown. '
+      +'At night a consolidation pass reads every shelf, links what connects and wakes the dark side of the island. '
+      +'Built on the Google stack: <b>ADK</b> agents, <b>Gemini on Vertex AI</b>, <b>Cloud Run</b>, <b>Firestore</b>, <b>Pub/Sub</b>, with a local Gemma tier and a deterministic fake tier for offline dev.</p>'
+      +'<div class="doc-section"><div class="ds-head"><h3>Browse the sections</h3></div><div class="overviewGrid">'+cards+'</div></div>'
+      +'<div class="doc-section"><div class="ds-head"><h3>The path of a message</h3><p class="ds-sub">player &rarr; frontend (three.js SPA) &rarr; engine (FastAPI on Cloud Run) &rarr; agents (Google ADK) &rarr; model tier, with Firestore as the only store.</p></div>'
+      +el.chips(['player','frontend','engine','agents','Gemini / Gemma / FakeLlm','Firestore'],true)
+      +'<div class="callout"><b>World scoping.</b> The frontend generates a world id once, keeps it in localStorage and sends it as <code>X-World</code> on every call; first touch of a world seeds a living demo island.</div></div>';
+  }
+
+  // ------------------------------------------------------------- BOXES
+  var bxMap={
+    legend:[{c:'cyan',t:'game surface'},{c:'steel',t:'engine'},{c:'gold',t:'agents / models'},{c:'green',t:'store & speech'},{c:'violet',t:'dreaming'}],
+    nodes:[
+      {id:'frontend',x:COL(0),y:240,kind:'box · three.js',lane:'cyan',label:'frontend',
+        summary:'three.js SPA: island, keepers, houses, libraries, holo UI, dream movie.',
+        details:['Depends on: engine.','Zero build step; three.js vendored; all textures procedural canvas.','Cross-module talk happens only through the event bus; the bus event registry lives in <code>frontend/CONTRACT.md</code>.']},
+      {id:'engine',x:COL(1),y:240,kind:'box · FastAPI',lane:'steel',label:'engine',
+        summary:'FastAPI app: REST surface, world scoping, meters and caps, serves the frontend.',
+        details:['Depends on: agents, library, voice.','Owns the tiredness meter, sleep jobs and the dream dispatch.','No model call and no Firestore access happens here directly.']},
+      {id:'agents',x:COL(2),y:100,kind:'box · ADK',lane:'gold',label:'agents',
+        summary:'ADK agents: the monument (root), one agent per keeper, dream agents.',
+        details:['Depends on: library, models.','Prompts live in <code>src/mk_agents/prompts/*.md</code>.','Grounding is validated outside the model: cited slugs are filtered to books actually opened.']},
+      {id:'voice',x:COL(2),y:390,kind:'box · speech',lane:'green',label:'voice',
+        summary:'Speech in and out: Cloud Text-to-Speech and Speech-to-Text routers.',
+        details:['<code>POST /voice/tts</code> {text, kind} &rarr; <code>audio/ogg</code>, one fixed voice per kind (light, dark, monument).','<code>POST /voice/stt</code> opus audio &rarr; {text}.','<code>VOICE_UNAVAILABLE</code> (503) degrades to text-only dialogs; no audio is stored.']},
+      {id:'models',x:COL(3),y:100,kind:'box · gateway',lane:'gold',label:'models',
+        summary:'Model gateway: Gemini on Vertex AI, local Gemma tier, deterministic fake tier.',
+        details:['<code>ModelGateway.model_for(role)</code>, roles <code>chat</code> and <code>dream</code>; tiers cloud / local / fake.','The only place a model is configured; callers never see provider classes.','No output length caps, ever.']},
+      {id:'library',x:COL(3),y:240,kind:'box · Firestore',lane:'green',label:'library',
+        summary:'Firestore store: worlds, keepers, books, sessions, dream runs.',
+        details:['Caps defined once here: 16 light keepers, 8 dark keepers, 24 books per bookcase.','Book slug: <code>YYYY-MM-DD-&lt;kebab-title&gt;</code>; level derived as <code>1 + isqrt(book_count)</code>.','Dark keepers and dream books are written only by the dreaming box.']},
+      {id:'dreaming',x:COL(0),y:530,kind:'box · job',lane:'violet',label:'dreaming',
+        summary:'Consolidation job: Pub/Sub triggered, builds the knowledge graph and the dark keepers.',
+        details:['Depends on: agents, library.','The deterministic layer alone produces a complete run; the model only adds prose.','Idempotent on unchanged sources; a failed run is recorded, never hung.']}
+    ],
+    edges:[
+      {from:'frontend',to:'engine'},
+      {from:'engine',to:'agents'},
+      {from:'engine',to:'library',type:'pass'},
+      {from:'engine',to:'voice',type:'seam'},
+      {from:'agents',to:'models',type:'media'},
+      {from:'agents',to:'library',type:'pass'},
+      {from:'dreaming',to:'agents',type:'loop'},
+      {from:'dreaming',to:'library',type:'loop'}
+    ]
+  };
+  function bxText(){
+    return '<p class="lede"><strong>Seven boxes, one folder each, one CONTRACT.md each.</strong> Outsiders use the contract, never the code. The map below is <code>docs/INDEX.md</code> verbatim: each box with its one-line purpose and its dependency edges.</p>'
+      +'<div class="doc-section"><div class="ds-head"><h3>The boxes</h3></div><div class="cardgrid">'
+      +el.card({label:'frontend',tag:'three.js',color:LANE.cyan,sum:'three.js SPA: island, keepers, houses, libraries, holo UI, dream movie.',extra:'<div class="row"><span class="lbl">depends on</span></div>'+el.chips(['engine'],true)})
+      +el.card({label:'engine',tag:'FastAPI',color:LANE.steel,sum:'FastAPI app: REST surface, world scoping, meters and caps, serves the frontend.',extra:'<div class="row"><span class="lbl">depends on</span></div>'+el.chips(['agents','library','voice'],true)})
+      +el.card({label:'agents',tag:'ADK',color:LANE.gold,sum:'ADK agents: the monument (root), one agent per keeper, dream agents.',extra:'<div class="row"><span class="lbl">depends on</span></div>'+el.chips(['library','models'],true)})
+      +el.card({label:'library',tag:'store',color:LANE.green,sum:'Firestore store: worlds, keepers, books, sessions, dream runs.'})
+      +el.card({label:'models',tag:'gateway',color:LANE.gold,sum:'Model gateway: Gemini on Vertex AI, local Gemma tier.'})
+      +el.card({label:'dreaming',tag:'job',color:LANE.violet,sum:'Consolidation job: Pub/Sub triggered, builds the knowledge graph and the dark keepers.',extra:'<div class="row"><span class="lbl">depends on</span></div>'+el.chips(['agents','library'],true)})
+      +el.card({label:'voice',tag:'speech',color:LANE.green,sum:'Speech: Cloud Text-to-Speech and Speech-to-Text routers.'})
+      +'</div>'
+      +'<div class="callout"><b>Deployment.</b> One Cloud Run service (engine + frontend statics). Dreaming rides Pub/Sub: Cloud Scheduler hits <code>/internal/nightly</code>, tired keepers publish events, and a push subscription delivers both into <code>/internal/dream-run</code>. Firestore is the only store; <code>docker-compose.yml</code> runs the same stack locally on the official emulators at zero cost.</div>'
+      +'</div>';
+  }
+
+  // ------------------------------------------------------------- MEMORY LOOP
+  var meMap={
+    legend:[{c:'cyan',t:'you, in the dialog'},{c:'gold',t:'ADK agents'},{c:'green',t:'books (Firestore)'},{c:'steel',t:'token meter'},{c:'violet',t:'sleep'}],
+    nodes:[
+      {id:'tell',x:COL(0),y:140,kind:'you say',lane:'cyan',label:'tell',
+        summary:'You tell her something and the keeper agent writes it as a book on her shelf.',
+        details:['The agent extracts title, date, tags, entities and a one-liner from your words.','409 <code>LIBRARY_FULL</code> or <code>NEEDS_SLEEP</code> when the shelf or the session is full; the turns are still recorded.']},
+      {id:'ask',x:COL(0),y:420,kind:'you ask',lane:'cyan',label:'ask',
+        summary:'You ask and she answers only from books she actually opened, sources shown.',
+        details:['Relative dates ("last week") resolve by rules, no model involved, and bias the shortlist.','Nothing opened means <code>grounded: false</code> plus a follow-up question; a memory is never invented.']},
+      {id:'keeper',x:COL(1),y:280,kind:'ADK LlmAgent',lane:'gold',label:'keeper agent',
+        summary:'Built on demand from her profile; context carries the current date, her shortlisted index and the session summary.',
+        details:['Every model call goes through <code>gateway.model_for("chat")</code>.','Both turns append to her session; imperative constraint sentences are harvested verbatim.','Dark keepers reply in archetype voice and never write.']},
+      {id:'read_book',x:COL(2),y:280,kind:'AgentTool loop',lane:'gold',label:'read_book',
+        summary:'She shortlists her index, then opens full books one at a time through her read_book tool.',
+        details:['Cited slugs are filtered to books actually opened, so grounding is validated outside the model.','The interior scene shows her physically fetching the first consulted book.']},
+      {id:'book',x:COL(3),y:120,kind:'Firestore doc',lane:'green',label:'book',
+        summary:'One memory: title, date, tags, entities, one-liner and the markdown body.',
+        details:['Slug <code>YYYY-MM-DD-&lt;kebab-title&gt;</code>, deduped with -2, -3.','Tier small &rarr; large by body length sets the 3D spine size.','Source is one of <code>told | dream | seed | sleep</code>.']},
+      {id:'meter',x:COL(1),y:480,kind:'token meter',lane:'steel',label:'meter',
+        summary:'Every tell and ask adds the reported tokens; the meter lives on the keeper doc.',
+        details:['rested &lt; 0.70 &le; unrested &lt; 0.85 &le; needs_sleep, of <code>SESSION_TOKEN_BUDGET</code> (default 12000).','At needs_sleep, tell and ask return 409 until she sleeps, and a tired-keeper dream event is published.']},
+      {id:'sleep',x:COL(2),y:480,kind:'compaction',lane:'violet',label:'sleep',
+        summary:'The session compacts: last turns kept verbatim, constraints copied, older detail bound into sleep books; the meter resets.',
+        details:['A 202 + poll background job per keeper.','At the 24-book cap the two oldest told/sleep books merge into one digest first, so nothing is ever lost and a slot stays free.']},
+      {id:'monument',x:COL(0),y:640,kind:'root agent',lane:'gold',label:'monument',
+        summary:'The stone figure holds no corpus: one AgentTool per keeper, call-and-return, so one question fans out across shelves and returns one synthesized answer.',
+        details:['AgentTool, not a sub-agents transfer: control always comes back, so cross-memory synthesis works.','It also creates keepers when a new topic deserves a house.','It keeps no session of its own; the keepers hold the memory.']}
+    ],
+    edges:[
+      {from:'tell',to:'keeper',label:'tell'},
+      {from:'ask',to:'keeper',label:'ask'},
+      {from:'keeper',to:'book',type:'pass',label:'writes'},
+      {from:'keeper',to:'read_book',type:'loop',label:'opens'},
+      {from:'read_book',to:'keeper',type:'loop',label:'grounded'},
+      {from:'read_book',to:'book',type:'pass',label:'full text'},
+      {from:'keeper',to:'meter',label:'tokens'},
+      {from:'meter',to:'sleep',type:'gated',label:'needs_sleep'},
+      {from:'sleep',to:'book',type:'pass',label:'sleep books'},
+      {from:'monument',to:'keeper',type:'media',label:'AgentTool fan-out'}
+    ]
+  };
+  var bookShape='{\n  "slug": "2026-08-09-first-night-at-the-observatory",\n  "title": "First night at the observatory",\n  "date": "2026-08-09",\n  "tags": ["work", "astronomy"],\n  "entities": ["Vera", "Cerro Tololo"],\n  "one_liner": "You started the observatory job with Vera.",\n  "source": "told",\n  "tier": "medium",\n  "body_md": "..."\n}';
+  function meText(){
+    return '<p class="lede"><strong>Memory is books, not a vector blur.</strong> A tell becomes a titled, tagged book on the shelf of the one keeper who owns that topic. An ask is a shortlist over her index plus a <code>read_book</code> tool loop, so every answer is grounded in books she actually opened. Talking costs tokens; a tired keeper must sleep, and sleeping compacts her session into summary blocks and sleep books.</p>'
+      +'<div class="doc-section"><div class="ds-head"><h3>The four flows</h3></div><div class="cardgrid">'
+      +el.card({label:'tell',tag:'write',color:LANE.cyan,sum:'The keeper agent extracts title, tags, entities and a one-liner, then writes the book to Firestore. Unconscious (dark) keepers reply in voice but never write.'})
+      +el.card({label:'ask',tag:'read',color:LANE.cyan,sum:'Shortlist over the index, then the <code>read_book</code> AgentTool loop; the reply carries <code>answer</code>, <code>sources</code>, <code>grounded</code> and a follow-up when nothing was opened.'})
+      +el.card({label:'sleep',tag:'compaction',color:LANE.violet,sum:'Last turns kept verbatim, constraints copied, older turns bound into <b>sleep books</b>; the meter resets and she wakes rested.',extra:'<div class="row"><span class="lbl">trigger</span><span class="flag gate">needs_sleep at 85% of the session budget</span></div>'})
+      +el.card({label:'monument',tag:'root agent',color:LANE.gold,sum:'One AgentTool per keeper, call-and-return: a question fans out across shelves and comes back as one synthesized answer. It also creates keepers.'})
+      +'</div></div>'
+      +'<div class="doc-section"><div class="ds-head"><h3>The book shape</h3><p class="ds-sub">What one memory looks like in Firestore; <code>tier</code> is the 3D spine size on the shelf.</p></div>'
+      +'<span class="grouplbl">books/{slug}</span>'+el.json(bookShape)
+      +'<div class="callout"><b>Grounding is checked outside the model.</b> The cited slugs are filtered against the books the agent opened through <code>read_book</code>; if nothing survives, the answer ships as <code>grounded: false</code> with a follow-up question instead of an invented memory.</div></div>';
+  }
+
+  // ------------------------------------------------------------- DREAMING
+  var drMap={
+    legend:[{c:'cyan',t:'game surface'},{c:'steel',t:'engine routes'},{c:'green',t:'Google Cloud'},{c:'violet',t:'the dark side'}],
+    nodes:[
+      {id:'hud',x:COL(0),y:110,kind:'HUD button',lane:'cyan',label:'Dream now',
+        summary:'POST /dream answers 202 with a pre-queued run_id; 409 DREAM_RUNNING while one is live.',
+        details:['The run is created in the library with status <code>queued</code>, then dispatched to Pub/Sub.','The frontend starts watching the run id it was handed.']},
+      {id:'tired',x:COL(0),y:270,kind:'tired keeper',lane:'steel',label:'tired keeper',
+        summary:'A keeper crossing needs_sleep makes the engine publish a dream event on its own.',
+        details:['Autonomous: no button involved; the island consolidates because someone is worn out.']},
+      {id:'scheduler',x:COL(0),y:430,kind:'Cloud Scheduler',lane:'green',label:'nightly 03:00',
+        summary:'The nightly job (0 3 * * *) posts /internal/nightly, which dispatches a run for every world.',
+        details:['<code>library.list_worlds()</code> drives the sweep; each world gets its own Pub/Sub message.']},
+      {id:'pubsub',x:COL(1),y:270,kind:'topic dream-runs',lane:'green',label:'Pub/Sub',
+        summary:'Every trigger lands here as {world_id, reason}; a push subscription delivers it back to the engine.',
+        details:['One topic, three producers: the HUD, tired keepers, the nightly sweep.','Locally the official Pub/Sub emulator plays the same role.']},
+      {id:'dreamrun',x:COL(2),y:270,kind:'push target',lane:'steel',label:'/internal/dream-run',
+        summary:'Token-gated push endpoint; the dream runs in-request so Cloud Run keeps the CPU allocated.',
+        details:['403 unless the <code>token</code> query param matches <code>INTERNAL_TOKEN</code>.','Dev and tests call <code>run_dream</code> directly: same function, no Pub/Sub needed.','The run ends <code>done</code> or <code>failed</code>, never hangs.']},
+      {id:'linking',x:COL(3),y:270,kind:'deterministic',lane:'violet',label:'linking',
+        summary:'Entity and tag co-occurrence across every keeper\'s books; zero model calls.',
+        details:['An element cited by 2+ books becomes a graph node.','An element spanning 2+ keepers becomes a theme, ranked by citation count.','Archetype per theme by keyword lexicon: desire | fear | ambition | obsession.']},
+      {id:'graph',x:COL(4),y:110,kind:'knowledge graph',lane:'violet',label:'graph',
+        summary:'Nodes: keeper, book, entity, tag. Edges: shelf, mentions, derived_from.',
+        details:['Stored on the dream run doc; the frontend animates it as the dream movie.']},
+      {id:'dark',x:COL(4),y:270,kind:'dark keepers',lane:'violet',label:'dark keepers',
+        summary:'A theme spanning two or more keepers becomes a dark keeper: model-written persona plus a dream book citing keeper/slug evidence.',
+        details:['Never a 9th dark keeper; blocked themes land in <code>skipped_themes</code>.','Idempotent: evidence already linked by an existing dream book writes nothing.','Delete a dark keeper and the next run recreates her while her sources still support the theme.']},
+      {id:'narrative',x:COL(4),y:430,kind:'closing prose',lane:'violet',label:'narrative',
+        summary:'dream_narrative writes the night\'s closing paragraph and the run lands as done.',
+        details:['The deterministic layer alone already produced a complete run; the model only added prose.']},
+      {id:'movie',x:COL(5),y:270,kind:'graph movie',lane:'cyan',label:'dream movie',
+        summary:'The frontend watches queued to running to done, then plays the graph back as the dream movie.',
+        details:['Polls <code>/dreams/{run_id}</code>; on done it switches to the graph scene and animates the night.']}
+    ],
+    edges:[
+      {from:'hud',to:'pubsub',label:'run queued'},
+      {from:'tired',to:'pubsub',label:'event'},
+      {from:'scheduler',to:'pubsub',type:'pass',label:'nightly'},
+      {from:'pubsub',to:'dreamrun',type:'pass',label:'push'},
+      {from:'dreamrun',to:'linking'},
+      {from:'linking',to:'graph',type:'loop',label:'nodes'},
+      {from:'linking',to:'dark',type:'loop',label:'themes'},
+      {from:'dark',to:'graph',type:'loop',label:'derived_from'},
+      {from:'dark',to:'narrative'},
+      {from:'narrative',to:'movie',label:'report'},
+      {from:'graph',to:'movie',type:'media',label:'played back'}
+    ]
+  };
+  function drText(){
+    return '<p class="lede"><strong>Dreaming is the consolidation.</strong> Three triggers, one Pub/Sub topic, one run: deterministic linking across every keeper\'s books builds a knowledge graph, themes that span keepers become dark keepers with dream books, and a short narrative closes the night. The frontend then plays the graph back as a movie.</p>'
+      +'<div class="doc-section"><div class="ds-head"><h3>Three triggers, one topic</h3></div><div class="cardgrid">'
+      +el.card({label:'HUD button',tag:'manual',color:LANE.cyan,sum:'<code>POST /dream</code> pre-queues the run (202 + <code>run_id</code>) and publishes it; 409 <code>DREAM_RUNNING</code> while one is live.'})
+      +el.card({label:'tired keeper',tag:'autonomous',color:LANE.steel,sum:'Crossing <code>needs_sleep</code> publishes a dream event; the island consolidates on its own.'})
+      +el.card({label:'nightly sweep',tag:'scheduled',color:LANE.green,sum:'Cloud Scheduler at 03:00 posts <code>/internal/nightly</code>; every world gets a run.'})
+      +'</div>'
+      +'<div class="row"><span class="lbl">delivery</span><span class="flag emit">topic dream-runs</span><span class="flag gate">push &rarr; /internal/dream-run, token-gated</span></div>'
+      +'</div>'
+      +'<div class="doc-section"><div class="ds-head"><h3>The run</h3><p class="ds-sub">Status queued &rarr; running &rarr; done, watched by the frontend.</p></div>'
+      +'<ul class="stepList">'
+      +'<li><b>Deterministic linking</b> (zero model calls): entity and tag co-occurrence across every light keeper\'s books. Cited by 2+ books &rarr; a graph node; spanning 2+ keepers &rarr; a theme, ranked by citations; archetype by keyword lexicon.</li>'
+      +'<li><b>Dark keepers</b>: per theme, <code>dream_write</code> produces a name, a persona and a dream book citing <code>keeper/slug</code> evidence; <code>derived_from</code> edges land in the graph. Archetypes: <code>desire | fear | ambition | obsession</code>.</li>'
+      +'<li><b>Narrative</b>: <code>dream_narrative</code> closes the run with one paragraph; the frontend plays the graph movie.</li>'
+      +'</ul>'
+      +'<div class="row"><span class="lbl">dark side caps</span><span class="flag dark">max 8 dark keepers</span><span class="flag dark">bookcase never over-full</span><span class="flag loop">idempotent on unchanged sources</span></div>'
+      +'<div class="callout dark"><b>The dark side is earned, not decorated.</b> A dark keeper exists only because two or more light keepers independently wrote about the same thing; delete her and the next night recreates her while the evidence still holds.</div>'
+      +'</div>';
+  }
+
+  // ------------------------------------------------------------- GOOGLE CLOUD
+  var gcMap={
+    legend:[{c:'green',t:'managed service'},{c:'steel',t:'the one container'},{c:'cyan',t:'player'},{c:'gold',t:'local model tier'},{c:'faint',t:'fake tier'}],
+    groups:[{x:24,y:556,w:484,h:256,label:'local dev · zero cost'}],
+    nodes:[
+      {id:'browser',x:COL(0),y:220,kind:'browser',lane:'cyan',label:'player',
+        summary:'The game loads from the service URL: one origin for statics and API, no CORS.',
+        details:['A cold start lands on a seeded demo world, so every visitor sees a living island.']},
+      {id:'cloudrun',x:COL(1),y:220,kind:'Cloud Run',lane:'steel',label:'one service',
+        summary:'One Cloud Run service carries everything: the FastAPI engine plus the frontend statics.',
+        details:['<code>scripts/deploy.sh</code> creates the whole stack: service, topic, subscription, scheduler job.','Scales to zero between demos.']},
+      {id:'vertex',x:COL(2),y:40,kind:'Vertex AI',lane:'green',label:'Gemini',
+        summary:'Gemini for chat and dream prose; the model is env-selected.',
+        details:['<code>GEMINI_MODEL</code>, default <code>gemini-3.5-flash</code>; <code>GOOGLE_GENAI_USE_VERTEXAI=TRUE</code>.','Per-role override: <code>MODEL_TIER_CHAT</code> / <code>MODEL_TIER_DREAM</code>.']},
+      {id:'speech',x:COL(2),y:170,kind:'TTS + STT',lane:'green',label:'Cloud Speech',
+        summary:'Text-to-Speech and Speech-to-Text behind the voice router; hold T in a dialog to push-to-talk.',
+        details:['One fixed voice per keeper kind (light, dark, monument), so a keeper always sounds like herself.','No audio stored; unavailable APIs degrade to text-only dialogs.']},
+      {id:'firestore',x:COL(2),y:300,kind:'Firestore',lane:'green',label:'Firestore',
+        summary:'The only store: worlds, keepers, books, sessions, dream runs.',
+        details:['<code>worlds/{id}/keepers/{id}/books/{slug}</code> plus sessions and dream docs.']},
+      {id:'pubsub',x:COL(2),y:430,kind:'Pub/Sub',lane:'green',label:'Pub/Sub',
+        summary:'Topic dream-runs; a push subscription delivers every dream trigger back into /internal/dream-run.',
+        details:['Producers: the HUD run, tired keepers, the nightly sweep.']},
+      {id:'scheduler',x:COL(1),y:430,kind:'Cloud Scheduler',lane:'green',label:'Scheduler',
+        summary:'The nightly 03:00 job posts /internal/nightly and every world gets its dream swept.',
+        details:['Cron <code>0 3 * * *</code>, token-gated like every internal route.']},
+      {id:'compose',x:COL(0),y:610,kind:'docker-compose',lane:'steel',label:'compose',
+        summary:'The identical stack runs locally at zero cost on the official Google emulators.',
+        details:['Engine :8000 with live reload.','Firestore emulator :8480, Pub/Sub emulator :8485.','Emulator Suite UI at :4000 to browse the database live.']},
+      {id:'gemma',x:COL(1),y:610,kind:'llama.cpp /v1',lane:'gold',label:'local Gemma',
+        summary:'MODEL_TIER=local points LiteLLM at an OpenAI-compatible llama.cpp server serving Gemma on the host.',
+        details:['<code>LOCAL_MODEL_URL</code> and <code>LOCAL_MODEL_ID</code>; a real model in the loop with zero cloud cost.']},
+      {id:'fake',x:COL(0),y:730,kind:'FakeLlm',lane:'faint',label:'fake tier',
+        summary:'The compose default: deterministic, offline, emits valid JSON and real function calls per flow.',
+        details:['Same request in, same response out; the whole test suite runs on it.']}
+    ],
+    edges:[
+      {from:'browser',to:'cloudrun',label:'https'},
+      {from:'cloudrun',to:'vertex',type:'pass',label:'gemini'},
+      {from:'cloudrun',to:'speech',type:'pass',label:'voice'},
+      {from:'cloudrun',to:'firestore',type:'pass',label:'library'},
+      {from:'cloudrun',to:'pubsub',label:'publish'},
+      {from:'pubsub',to:'cloudrun',type:'pass',label:'push'},
+      {from:'scheduler',to:'cloudrun',type:'pass',label:'nightly'},
+      {from:'compose',to:'gemma',type:'media',label:'local tier'},
+      {from:'compose',to:'fake',type:'gated',label:'default'},
+      {from:'compose',to:'cloudrun',type:'seam',label:'same image'}
+    ]
+  };
+  function gcText(){
+    return '<p class="lede"><strong>One container in the cloud, the same stack on the desk.</strong> A single Cloud Run service serves the game and the API; Firestore holds everything; Pub/Sub and Cloud Scheduler drive the dreams; Vertex AI and Cloud Speech give the keepers a mind and a voice. Local dev runs the identical code on the official emulators for free.</p>'
+      +'<div class="doc-section"><div class="ds-head"><h3>Managed services</h3></div><div class="cardgrid">'
+      +el.card({label:'Cloud Run',tag:'compute',color:LANE.steel,sum:'One service: engine + frontend statics, one URL, no CORS. <code>scripts/deploy.sh</code> creates the whole stack.'})
+      +el.card({label:'Firestore',tag:'store',color:LANE.green,sum:'The only store: worlds, keepers, books, sessions, dream runs.'})
+      +el.card({label:'Pub/Sub',tag:'events',color:LANE.green,sum:'Topic <code>dream-runs</code>; a push subscription delivers every trigger into the token-gated <code>/internal/dream-run</code>.'})
+      +el.card({label:'Cloud Scheduler',tag:'cron',color:LANE.green,sum:'Nightly 03:00 (<code>0 3 * * *</code>) posts <code>/internal/nightly</code>; every world dreams.'})
+      +el.card({label:'Vertex AI',tag:'model',color:LANE.green,sum:'Gemini, env-selected (<code>GEMINI_MODEL</code>, default <code>gemini-3.5-flash</code>), roles chat and dream.'})
+      +el.card({label:'Cloud Speech',tag:'voice',color:LANE.green,sum:'TTS + STT behind the voice router; kind-based voices, hold-T push-to-talk in the dialogs; degrades to text-only.'})
+      +'</div></div>'
+      +'<div class="doc-section"><div class="ds-head"><h3>Model tiers</h3><p class="ds-sub">One gateway, three tiers; the tier is an env switch, nothing else changes.</p></div>'
+      +'<div class="cardgrid">'
+      +el.card({label:'cloud',tag:'deployment',color:LANE.green,sum:'Gemini on Vertex AI; credentials via application default credentials.'})
+      +el.card({label:'local',tag:'Gemma',color:LANE.gold,sum:'Gemma on llama.cpp (OpenAI-compatible <code>/v1</code>) through LiteLLM; a real model at zero cloud cost.'})
+      +el.card({label:'fake',tag:'offline',color:LANE.faint,sum:'Deterministic FakeLlm: valid JSON and real function calls per flow; the test suite runs on it.'})
+      +'</div>'
+      +'<div class="callout"><b>Free local stack.</b> <code>docker-compose up</code> runs the engine (:8000) against the official Firestore emulator (:8480) and Pub/Sub emulator (:8485), with the Emulator Suite UI at :4000 to browse the database live. Same code path as production.</div>'
+      +'</div>';
+  }
+
+  // ------------------------------------------------------------- SECTIONS registry
+  var SECTIONS=[
+    {id:'overview',label:'Overview',dot:'var(--cyan)',sub:'The island, the agents, the stack.',map:ovMap,text:ovText,defaultMode:'text'},
+    {id:'boxes',label:'Boxes',dot:'var(--steel)',sub:'Seven boxes, one contract each.',map:bxMap,text:bxText,defaultMode:'map'},
+    {id:'memory',label:'Memory loop',dot:'var(--gold)',sub:'Tell, ask, sleep, monument.',map:meMap,text:meText,defaultMode:'map'},
+    {id:'dreaming',label:'Dreaming',dot:'var(--violet)',sub:'The consolidation and the dark side.',map:drMap,text:drText,defaultMode:'map'},
+    {id:'cloud',label:'Google Cloud',dot:'var(--green)',sub:'Managed services and the free local stack.',map:gcMap,text:gcText,defaultMode:'map'}
+  ];
+  var SEC_BY_ID={};
+  SECTIONS.forEach(function(s){ SEC_BY_ID[s.id]=s; });
+
+  // Node lookup per section (for panel + edges)
+  function nodesOf(sec){ return (sec.map&&sec.map.nodes)||[]; }
+  function nodeById(sec,id){ var ns=nodesOf(sec); for(var i=0;i<ns.length;i++){ if(ns[i].id===id) return ns[i]; } return null; }
+
+  // Sub-items for nav
+  function subItemsOf(sec){
+    if(sec.map&&sec.map.nodes){ return sec.map.nodes.slice(0,8).map(function(n){return {label:n.label,node:n.id};}); }
+    return [];
+  }
+
+  /* =====================================================================
+     DOM refs + state
+     ===================================================================== */
+  var navlist=document.getElementById('navlist');
+  var stage=document.getElementById('stage');
+  var crumbTitle=document.getElementById('crumbTitle');
+  var crumbSub=document.getElementById('crumbSub');
+  var mMap=document.getElementById('mMap');
+  var mText=document.getElementById('mText');
+
+  var state={section:'overview',mode:'text'};
+
+  /* ---------- nav ---------- */
+  function buildNav(){
+    if(!navlist) return;
+    navlist.innerHTML='';
+    SECTIONS.forEach(function(sec){
+      var wrap=document.createElement('div');
+      wrap.className='navsec'; wrap.setAttribute('data-sec',sec.id);
+      var btn=document.createElement('button');
+      btn.type='button';
+      btn.setAttribute('aria-expanded','false');
+      btn.innerHTML='<span class="dot" style="background:'+sec.dot+'"></span>'
+        +'<span class="nsecLabel">'+esc(sec.label)+'</span>'
+        +'<span class="caret">&#9656;</span>';
+      wrap.appendChild(btn);
+
+      var subs=subItemsOf(sec);
+      var ul=document.createElement('ul');
+      ul.className='subitems';
+      subs.forEach(function(si){
+        var li=document.createElement('li');
+        var sb=document.createElement('button');
+        sb.type='button'; sb.textContent=si.label;
+        sb.addEventListener('click',function(e){
+          e.stopPropagation();
+          selectSection(sec.id);
+          var n=nodeById(sec,si.node);
+          if(n) openNodeDetail(n,sec);
+        });
+        li.appendChild(sb); ul.appendChild(li);
+      });
+      wrap.appendChild(ul);
+
+      btn.addEventListener('click',function(){ selectSection(sec.id); });
+      navlist.appendChild(wrap);
+    });
+  }
+
+  function syncNav(){
+    var secs=navlist.querySelectorAll('.navsec');
+    for(var i=0;i<secs.length;i++){
+      var s=secs[i]; var id=s.getAttribute('data-sec');
+      var on=(id===state.section);
+      s.classList.toggle('active',on);
+      s.classList.toggle('open',on);
+      var b=s.querySelector('button'); if(b) b.setAttribute('aria-expanded',on?'true':'false');
+    }
+  }
+
+  /* ---------- mode toggle ---------- */
+  function setMode(mode){
+    state.mode=mode;
+    mMap.classList.toggle('active',mode==='map');
+    mText.classList.toggle('active',mode==='text');
+    mMap.setAttribute('aria-selected',mode==='map'?'true':'false');
+    mText.setAttribute('aria-selected',mode==='text'?'true':'false');
+    renderStage();
+  }
+  mMap.addEventListener('click',function(){ setMode('map'); });
+  mText.addEventListener('click',function(){ setMode('text'); });
+
+  /* ---------- section select ---------- */
+  function selectSection(id){
+    var sec=SEC_BY_ID[id]; if(!sec) return;
+    var first=(state.section!==id);
+    state.section=id;
+    crumbTitle.textContent=sec.label;
+    crumbSub.textContent=sec.sub||'';
+    syncNav();
+    if(first){ state.mode=sec.defaultMode||'map'; }
+    setMode(state.mode);
+  }
+
+  /* =====================================================================
+     STAGE render
+     ===================================================================== */
+  function renderStage(){
+    var sec=SEC_BY_ID[state.section];
+    state.step=null;
+    if(state.mode==='map' && sec.map && sec.map.nodes && sec.map.nodes.length){
+      renderMap(sec);
+    } else {
+      renderText(sec);
+    }
+  }
+
+  function renderText(sec){
+    var html='<div class="textWrap"><div class="doc">'+(sec.text?sec.text():'')+'</div></div>';
+    stage.innerHTML=html;
+    // wire overview ocards
+    var links=stage.querySelectorAll('a.ocard[data-goto]');
+    for(var i=0;i<links.length;i++){
+      (function(a){
+        a.addEventListener('click',function(e){ e.preventDefault(); selectSection(a.getAttribute('data-goto')); });
+      })(links[i]);
+    }
+  }
+
+  /* ---------- map ---------- */
+  function markerDefs(){
+    var colors={'m-muted':'var(--muted)','m-green':'var(--green)','m-violet':'var(--violet)','m-faint':'var(--faint)','m-steel':'var(--steel)','m-gold':'var(--gold)'};
+    var out='<defs>';
+    for(var id in colors){
+      out+='<marker id="'+id+'" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7.5,3 L0,6 Z" style="fill:'+colors[id]+'"></path></marker>';
+    }
+    out+='</defs>';
+    return out;
+  }
+
+  // Universal, geometry-driven edge router used by EVERY section.
+  // It picks A's exit port and B's entry port on the sides that face each
+  // other (horizontal when |dx|>=|dy|, else vertical), then draws a cubic
+  // bezier that leaves A and arrives at B perpendicular to those faces.
+  // `off` separates a bidirectional pair into two arcs.
+  var BIDIR_OFF=0.26;
+  function fmt(v){ return Math.round(v*100)/100; }
+  function edgeGeom(a,b,off){
+    off=off||0;
+    var wa=a.w||NODE_W, ha=a.h||NODE_H, wb=b.w||NODE_W, hb=b.h||NODE_H;
+    var acx=a.x+wa/2, acy=a.y+ha/2, bcx=b.x+wb/2, bcy=b.y+hb/2;
+    var dx=bcx-acx, dy=bcy-acy;
+    var K=0.42, MIN=42;
+    var sx,sy,ex,ey,c1x,c1y,c2x,c2y;
+    if(Math.abs(dx)>=Math.abs(dy)){
+      var right=dx>=0;
+      sx=right?a.x+wa:a.x;   ex=right?b.x:b.x+wb;
+      sy=acy+off*ha;         ey=bcy+off*hb;
+      var cd=Math.max(MIN,Math.abs(ex-sx)*K), sg=right?1:-1;
+      c1x=sx+sg*cd; c1y=sy;  c2x=ex-sg*cd; c2y=ey;
+    } else {
+      var down=dy>=0;
+      sy=down?a.y+ha:a.y;    ey=down?b.y:b.y+hb;
+      sx=acx+off*wa;         ex=bcx+off*wb;
+      var cd2=Math.max(MIN,Math.abs(ey-sy)*K), sg2=down?1:-1;
+      c1x=sx; c1y=sy+sg2*cd2; c2x=ex; c2y=ey-sg2*cd2;
+    }
+    return {sx:sx,sy:sy,ex:ex,ey:ey,c1x:c1x,c1y:c1y,c2x:c2x,c2y:c2y};
+  }
+  function edgePath(g){
+    return 'M'+fmt(g.sx)+','+fmt(g.sy)+' C'+fmt(g.c1x)+','+fmt(g.c1y)+' '+fmt(g.c2x)+','+fmt(g.c2y)+' '+fmt(g.ex)+','+fmt(g.ey);
+  }
+  function bezMid(g){
+    return {x:0.125*g.sx+0.375*g.c1x+0.375*g.c2x+0.125*g.ex,
+            y:0.125*g.sy+0.375*g.c1y+0.375*g.c2y+0.125*g.ey};
+  }
+
+  function renderMap(sec){
+    var data=sec.map;
+    var legend=(data.legend||[]).map(function(l){
+      return '<div class="pill"><span class="dot" style="background:'+LANE[l.c]+'"></span>'+esc(l.t)+'</div>';
+    }).join('');
+
+    var groupsSvg=(data.groups||[]).map(function(g){
+      return '<rect class="grp" x="'+g.x+'" y="'+g.y+'" width="'+g.w+'" height="'+g.h+'"></rect>'
+        +'<text class="grpLabel" x="'+(g.x+14)+'" y="'+(g.y+22)+'">'+esc(g.label)+'</text>';
+    }).join('');
+
+    var edgeSet={};
+    data.edges.forEach(function(e){ edgeSet[e.from+' '+e.to]=true; });
+    var edgesSvg=data.edges.map(function(e){
+      var a=nodeById(sec,e.from), b=nodeById(sec,e.to);
+      if(!a||!b) return '';
+      var cfg=EDGE[e.type||'flow']||EDGE.flow;
+      var off=0;
+      if(edgeSet[e.to+' '+e.from]){ off=(String(e.from)<String(e.to))?BIDIR_OFF:-BIDIR_OFF; }
+      var g=edgeGeom(a,b,off);
+      var d=edgePath(g);
+      var path='<path class="edge" data-from="'+esc(e.from)+'" data-to="'+esc(e.to)+'" d="'+d+'" style="stroke:'+cfg.stroke+(cfg.dash?';stroke-dasharray:'+cfg.dash:'')+'" marker-end="url(#'+cfg.m+')"></path>';
+      var lbl='';
+      if(e.label){
+        var m=bezMid(g);
+        var tw=e.label.length*6.1+10;
+        lbl='<g transform="translate('+fmt(m.x)+','+fmt(m.y)+')"><rect class="elabel-bg" x="'+(-tw/2)+'" y="-9" width="'+tw+'" height="16"></rect>'
+          +'<text class="elabel" x="0" y="2" text-anchor="middle">'+esc(e.label)+'</text></g>';
+      }
+      return path+lbl;
+    }).join('');
+
+    var nodesSvg=data.nodes.map(function(n){
+      var w=n.w||NODE_W, h=n.h||NODE_H;
+      var label=n.label||n.id;
+      return '<g class="node lane-'+n.lane+'" data-id="'+esc(n.id)+'" tabindex="0" role="button" aria-label="'+esc(label)+'" transform="translate('+n.x+','+n.y+')">'
+        +'<rect class="nbox" width="'+w+'" height="'+h+'"></rect>'
+        +'<rect x="0" y="0" width="6" height="'+h+'" style="fill:'+LANE[n.lane]+'"></rect>'
+        +'<text class="nlabel" x="18" y="27">'+esc(label)+'</text>'
+        +'<text class="nkind" x="18" y="46" style="fill:'+LANE[n.lane]+'">'+esc(n.kind||'')+'</text>'
+        +'</g>';
+    }).join('');
+
+    stage.innerHTML=
+      '<div class="mapWrap">'
+      +'<svg id="atlas" role="img" aria-label="Map of '+esc(sec.label)+'">'
+      +markerDefs()
+      +'<g id="viewport">'+groupsSvg+edgesSvg+nodesSvg+'</g>'
+      +'</svg></div>'
+      +'<div class="legend"><div class="lgttl">Legend</div>'+legend+'</div>'
+      +'<div class="mapctl"><button type="button" id="btnFit">Fit</button><button type="button" id="btnReset">Reset</button></div>'
+      +'<div class="hint">drag to move &middot; wheel to zoom &middot; click a node</div>';
+
+    wireMap(sec);
+  }
+
+  var view={tx:40,ty:40,k:1};
+  function wireMap(sec){
+    var svg=document.getElementById('atlas');
+    var vp=document.getElementById('viewport');
+    if(!svg||!vp) return;
+
+    function apply(){ vp.setAttribute('transform','translate('+view.tx+','+view.ty+') scale('+view.k+')'); }
+    function bbox(){
+      var ns=sec.map.nodes, gs=sec.map.groups||[];
+      var minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+      ns.forEach(function(n){ var w=n.w||NODE_W,h=n.h||NODE_H; minx=Math.min(minx,n.x); miny=Math.min(miny,n.y); maxx=Math.max(maxx,n.x+w); maxy=Math.max(maxy,n.y+h); });
+      gs.forEach(function(g){ minx=Math.min(minx,g.x); miny=Math.min(miny,g.y); maxx=Math.max(maxx,g.x+g.w); maxy=Math.max(maxy,g.y+g.h); });
+      return {minx:minx,miny:miny,maxx:maxx,maxy:maxy};
+    }
+    function fit(){
+      var bb=bbox(); var pad=54;
+      var bw=(bb.maxx-bb.minx)+pad*2, bh=(bb.maxy-bb.miny)+pad*2;
+      var sw=stage.clientWidth||900, sh=stage.clientHeight||600;
+      var k=Math.min(sw/bw, sh/bh, 1.15); if(!isFinite(k)||k<=0) k=1;
+      view.k=k;
+      view.tx=(sw-bw*k)/2 - (bb.minx-pad)*k;
+      view.ty=(sh-bh*k)/2 - (bb.miny-pad)*k;
+      apply();
+    }
+    function reset(){ view.k=1; view.tx=40; view.ty=36; apply(); }
+
+    var fitBtn=document.getElementById('btnFit'), resetBtn=document.getElementById('btnReset');
+    if(fitBtn) fitBtn.addEventListener('click',fit);
+    if(resetBtn) resetBtn.addEventListener('click',reset);
+
+    // pan
+    var dragging=false, moved=false, sx=0, sy=0, otx=0, oty=0;
+    svg.addEventListener('pointerdown',function(e){
+      if(e.target.closest('.node')) return;
+      dragging=true; moved=false; sx=e.clientX; sy=e.clientY; otx=view.tx; oty=view.ty;
+      svg.classList.add('grabbing');
+      try{ svg.setPointerCapture(e.pointerId); }catch(_){}
+    });
+    svg.addEventListener('pointermove',function(e){
+      if(!dragging) return;
+      var dx=e.clientX-sx, dy=e.clientY-sy;
+      if(Math.abs(dx)+Math.abs(dy)>3) moved=true;
+      view.tx=otx+dx; view.ty=oty+dy; apply();
+    });
+    function endDrag(e){ dragging=false; svg.classList.remove('grabbing'); if(e){ try{ svg.releasePointerCapture(e.pointerId); }catch(_){} } }
+    svg.addEventListener('pointerup',endDrag);
+    svg.addEventListener('pointercancel',endDrag);
+    svg.addEventListener('pointerleave',function(e){ if(dragging) endDrag(e); });
+
+    // zoom
+    svg.addEventListener('wheel',function(e){
+      e.preventDefault();
+      var rect=svg.getBoundingClientRect();
+      var mx=e.clientX-rect.left, my=e.clientY-rect.top;
+      var factor=e.deltaY<0?1.12:1/1.12;
+      var nk=Math.max(0.28,Math.min(2.6,view.k*factor));
+      view.tx=mx-(mx-view.tx)*(nk/view.k);
+      view.ty=my-(my-view.ty)*(nk/view.k);
+      view.k=nk; apply();
+    },{passive:false});
+
+    // node interactions
+    var nodeEls=svg.querySelectorAll('.node');
+    for(var i=0;i<nodeEls.length;i++){
+      (function(g){
+        var id=g.getAttribute('data-id');
+        g.addEventListener('click',function(){ if(moved) return; var n=nodeById(sec,id); if(n) openNodeDetail(n,sec); });
+        g.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); var n=nodeById(sec,id); if(n) openNodeDetail(n,sec); } });
+      })(nodeEls[i]);
+    }
+
+    requestAnimationFrame(fit);
+  }
+
+  /* ---------- node detail (full-screen) ----------
+     A node click opens a full-screen detail with an explicit "Back to
+     <Section>" control that returns to that section's current overview
+     (Map or Text). Escape and the topbar toggle also return. */
+  function exitDetail(){ state.step=null; renderStage(); }
+  function nodeBody(node){
+    var sum='<div class="doc-section"><div class="ds-head"><span class="eyebrow-s">Summary</span><h3>'+esc(node.label||node.id)+'</h3></div>'
+      +'<p class="stepProse">'+(node.summary||'')+'</p></div>';
+    var det='';
+    if(node.details&&node.details.length){
+      det='<div class="doc-section"><div class="ds-head"><h3>Details</h3></div>'
+        +'<ul class="stepList">'+node.details.map(function(d){return '<li>'+d+'</li>';}).join('')+'</ul></div>';
+    }
+    return sum+det;
+  }
+  function openNodeDetail(node,sec){
+    if(!node||!stage||!sec) return;
+    state.step=node.id;
+    var laneColor=LANE[node.lane]||'var(--cyan)';
+    var head='<div class="stepHead">'
+      +'<button type="button" class="stepBack" aria-label="Back to '+esc(sec.label)+'">&larr; Back to '+esc(sec.label)+'</button>'
+      +'<div class="stepHeadText"><span class="stepEyebrow">'+esc(sec.label)+'</span>'
+      +'<h2 class="stepTitle">'+esc(node.label||node.id)+'</h2></div>'
+      +'<span class="stepPill" style="color:'+laneColor+';border-color:'+laneColor+'">'+esc(node.kind||'')+'</span>'
+      +'</div>';
+    stage.innerHTML='<div class="stepWrap"><div class="stepDetail" role="region" aria-label="Detail '+esc(node.id)+'">'
+      +head+nodeBody(node)+'</div></div>';
+
+    var back=stage.querySelector('.stepBack');
+    if(back){
+      back.addEventListener('click',exitDetail);
+      try{ back.focus({preventScroll:true}); }catch(_){ back.focus(); }
+    }
+  }
+
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape') return;
+    if(stage && stage.querySelector('.stepDetail')){ exitDetail(); }
+  });
+
+  /* ---------- resize: refit map ---------- */
+  var rt=null;
+  window.addEventListener('resize',function(){
+    if(state.mode!=='map') return;
+    if(rt) clearTimeout(rt);
+    rt=setTimeout(function(){ var b=document.getElementById('btnFit'); if(b) b.click(); },160);
+  });
+
+  /* ---------- init ---------- */
+  buildNav();
+  selectSection('overview');
+})();
+</script>
+</body>
+</html>
