@@ -14,8 +14,7 @@ def prompt(name: str, **values) -> str:
 
 def session_block(session, tail: int = 6) -> str:
     lines = []
-    for key, label in (("standing_facts", "Standing facts"), ("constraints", "Constraints"),
-                       ("open_threads", "Open threads"), ("recent_topics", "Recent topics")):
+    for key, label in (("constraints", "Constraints"), ("recent_topics", "Recent topics")):
         items = session.blocks.get(key, [])
         if items:
             lines.append(f"{label}:")

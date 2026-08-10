@@ -17,7 +17,7 @@ Class `AgentsApi(library, gateway)`.
 | `keeper_tell(world, kid, text)` async | user message | `{reply, book?}`; the keeper authors the book's full body from the told memory (markdown, sized by the material; the raw text is the fallback body); dark keepers reply in archetype voice, never write; `LIBRARY_FULL` raises after the turns are still recorded |
 | `keeper_ask(world, kid, question)` async | question | `{answer, sources, grounded, followup}` |
 | `keeper_chatter(world, kid)` | | one bubble line (< 90 chars): deterministic per-keeper pools, time-bucketed rotation, no model, no writes |
-| `monument_chat(world, text)` async | user message | `{reply, created_keeper?}`; the monument holds no session, keepers hold the memory |
+| `monument_chat(world, text)` async | user message | `{reply, created_keeper?}`; the monument holds no session, keepers hold the memory; monument turns are unmetered by design (she has no shelf of her own) |
 | `dream_write(archetype, elements, evidence)` async | theme facts | `{name, persona, body_md, one_liner}` |
 | `dream_narrative(theme_keys)` async | keys | one paragraph |
 

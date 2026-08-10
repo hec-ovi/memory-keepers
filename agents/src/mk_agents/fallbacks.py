@@ -6,6 +6,7 @@ import re
 ENTITY_RE = re.compile(r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b")
 CONSTRAINT_RE = re.compile(
     r"\b(always|never|do not|don't|must|remember to|promise)\b", re.IGNORECASE)
+# Keep identical to mk_models.fake_llm.STOPWORDS (models cannot import from agents).
 STOPWORDS = {"the", "and", "that", "with", "about", "this", "from", "have", "what",
              "when", "where", "there", "were", "will", "your", "into", "just", "like"}
 

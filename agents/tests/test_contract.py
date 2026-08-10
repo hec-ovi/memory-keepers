@@ -81,6 +81,8 @@ def test_chatter_rotates_and_matches_pool(api):
              for i in range(10)}
     assert len(lines) > 5  # rotates
     assert all(len(line) < 90 for pool in TOPIC_POOLS.values() for line in pool)
+    long_topic = "the complete recorded history of every conversation about my grandmother's garden"
+    assert len(line_for("k", long_topic, "light", None)) < 90  # generic lines clamp too
 
 
 async def test_monument_creates_keeper(api, library):

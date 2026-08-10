@@ -122,4 +122,4 @@ def line_for(keeper_id: str, topic: str, side: str, archetype: str | None,
     order = sorted(range(len(pool)), key=lambda i: hashlib.sha256(
         f"{seed}:{i}".encode()).digest())
     bucket = int((now if now is not None else time.time()) // BUCKET_SECONDS)
-    return pool[order[(seed + bucket) % len(pool)]]
+    return pool[order[(seed + bucket) % len(pool)]][:89]  # contract: < 90 chars
