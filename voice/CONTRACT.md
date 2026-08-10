@@ -9,7 +9,7 @@ Purpose: speech in and out for the dialogs. One FastAPI router the engine mounts
 | `POST /voice/tts` | `{text, kind?}` with kind `light` (default), `dark` or `monument` | `audio/ogg` bytes, one fixed voice per kind |
 | `POST /voice/stt` | `audio/webm` or `audio/ogg` body (opus; the Content-Type header picks the decoder) | `{text}` |
 
-Backed by Cloud Text-to-Speech and Speech-to-Text; credentials via application default credentials.
+Backed by Cloud Text-to-Speech and Speech-to-Text; credentials via application default credentials. STT runs the `latest_short` model with automatic punctuation (env: `VOICE_LANGUAGE` default `en-US`, `VOICE_STT_MODEL`, `VOICE_LIGHT/DARK/MONUMENT` voice names).
 
 ## Errors (closed set)
 
