@@ -14,13 +14,19 @@ Interactive architecture map: [hec-ovi.github.io/memory-keepers](https://hec-ovi
 docker compose up
 ```
 
-The game is at http://localhost:8000, running against the official Firestore and Pub/Sub emulators, model tier `fake` (deterministic). `MODEL_TIER=local docker compose up` points the model at a llama.cpp server on the host (Gemma). Nothing installs on the machine; everything lives in the containers.
+The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000), model tier `fake` (deterministic). `MODEL_TIER=local docker compose up` points the model at a llama.cpp server on the host (Gemma). Nothing installs on the machine; everything lives in the containers.
+
+To fill a world with sample memories and test the whole loop (tells, grounded asks, a dream with its knowledge graph):
+
+```
+python3 scripts/demo_world.py http://localhost:8000 demo --verify
+```
 
 ## Tests
 
 ```
-docker compose run --rm test            # python boxes (52 tests)
-docker compose run --rm test-frontend   # frontend (721 tests)
+docker compose run --rm test            # python boxes (54 tests)
+docker compose run --rm test-frontend   # frontend (726 tests)
 ```
 
 Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set); frontend on vitest + jsdom + Testing Library + MSW.
@@ -29,10 +35,11 @@ Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites 
 
 ```
 export INTERNAL_TOKEN=<random secret>
+export ACCESS_CODE=<island key>       # optional: gates the API behind X-Access-Code
 scripts/deploy.sh
 ```
 
-Creates everything: Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler sweep.
+Creates everything: Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler sweep. With `ACCESS_CODE` set, visitors enter the key once (or open a `?key=` link); anonymous traffic never reaches a model. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
 ## Layout
 
