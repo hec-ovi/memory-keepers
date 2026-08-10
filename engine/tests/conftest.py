@@ -14,6 +14,7 @@ def library():
 @pytest.fixture
 def app(library, monkeypatch):
     monkeypatch.setenv("DREAM_DISPATCH", "inline")
+    monkeypatch.setenv("VOICE", "off")
     monkeypatch.delenv("DEV_ROUTES", raising=False)
     return create_app(library=library, gateway=ModelGateway(tier="fake"))
 

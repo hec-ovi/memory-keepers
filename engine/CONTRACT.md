@@ -28,6 +28,8 @@ The frontend sends `X-World: <id>` (generated once, kept in localStorage). First
 | `POST /internal/nightly?token=` | | dispatches a dream for every world (Cloud Scheduler target) |
 | `POST /voice/tts` | `{text, kind?}` | `audio/ogg` (voice box; 503 `VOICE_UNAVAILABLE` when unconfigured) |
 | `POST /voice/stt` | audio body | `{text}` (voice box) |
+
+Voice mounts the real Cloud TTS/STT router by default (credentials via ADC, per-request degrade to 503); env `VOICE=off` mounts the always-503 stub for offline dev and tests.
 | `POST /dev/reset` | `{}` | only with `DEV_ROUTES=1`, absent in deployment |
 
 Errors are `{"error": {"code": SYMBOL, "message": str}}`. Closed set: the library symbols plus `NEEDS_SLEEP`, `SLEEP_RUNNING`, `DREAM_RUNNING`, `VALIDATION`, `VOICE_UNAVAILABLE`.

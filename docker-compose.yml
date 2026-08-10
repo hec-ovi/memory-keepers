@@ -13,6 +13,7 @@ services:
       MODEL_TIER: ${MODEL_TIER:-fake}
       LOCAL_MODEL_URL: ${LOCAL_MODEL_URL:-http://host.docker.internal:8080/v1}
       LOCAL_MODEL_ID: ${LOCAL_MODEL_ID:-gemma-4-26b-a4b-qat-q4}
+      VOICE: ${VOICE:-off}
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [firestore, pubsub]
 

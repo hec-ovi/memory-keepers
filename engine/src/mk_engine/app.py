@@ -232,11 +232,11 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
         return {"dispatched": len(worlds)}
 
     # -- voice and dev -----------------------------------------------------
-    if voice_router is not None:
-        app.include_router(voice_router)
-    else:
-        from mk_voice import unavailable_router
-        app.include_router(unavailable_router())
+    if voice_router is None:
+        from mk_voice import create_voice_router, unavailable_router
+        voice_router = (unavailable_router() if os.environ.get("VOICE") == "off"
+                        else create_voice_router())
+    app.include_router(voice_router)
 
     @app.post("/dev/seed")
     async def dev_seed(x_world: str | None = Header(default=None)):
