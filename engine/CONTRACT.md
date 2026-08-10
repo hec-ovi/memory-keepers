@@ -14,13 +14,13 @@ The frontend sends `X-World: <id>` (generated once, kept in localStorage). First
 | `GET /state` | | `{keepers: [Keeper], dream: {latest_run_id, running}}`, one call boots the UI |
 | `POST /keepers` | `{topic, name?, persona?}` | Keeper (201); 409 `KEEPER_EXISTS` / `KEEPERS_FULL` |
 | `GET /keepers` / `GET /keepers/{id}` | | Keeper list / one |
-| `DELETE /keepers/{id}` | | `{deleted: true}` (dark keepers too) |
+| `DELETE /keepers/{id}` | | `{deleted: true}` (dark keepers too); 409 `SLEEP_RUNNING` while she sleeps |
 | `POST /keepers/{id}/tell` | `{text}` | `{reply, book?, session}`; 409 `LIBRARY_FULL` / `NEEDS_SLEEP` / `SLEEP_RUNNING` |
 | `POST /keepers/{id}/ask` | `{question}` | `{answer, sources, grounded, followup, session}`; same 409s |
 | `GET /keepers/{id}/books` / `GET .../books/{slug}` | | summaries newest first / full book |
 | `DELETE /keepers/{id}/books/{slug}` | | `{deleted: true}` |
 | `GET /keepers/{id}/chatter` | | `{line}` (short bubble text) |
-| `POST /keepers/{id}/sleep` | `{}` | 202 `{job_id}`; poll `GET .../sleep/{job_id}` |
+| `POST /keepers/{id}/sleep` | `{}` | 202 `{job_id, status}`; 409 `SLEEP_RUNNING`; poll `GET .../sleep/{job_id}` (404 `SLEEP_NOT_FOUND`) |
 | `POST /monument` | `{text}` | `{reply, created_keeper?}` (the root agent) |
 | `POST /dream` | `{}` | 202 `{status: queued, run_id}`; 409 `DREAM_RUNNING`; watch `/dreams/{run_id}` |
 | `GET /dreams/latest` / `GET /dreams/{run_id}` | | dream report with graph and narrative |
@@ -32,16 +32,17 @@ Internal routes answer 403 unless env `INTERNAL_TOKEN` is set and matches the `t
 | `POST /voice/stt` | audio body | `{text}` (voice box) |
 
 Voice mounts the real Cloud TTS/STT router by default (credentials via ADC, per-request degrade to 503); env `VOICE=off` mounts the always-503 stub for offline dev and tests.
+| `POST /dev/seed` | `{}` | `{seeded, keepers, books}`; touches the world so demo content seeds (the HUD "Demo data" button); always mounted |
 | `POST /dev/reset` | `{}` | only with `DEV_ROUTES=1`, absent in deployment |
 
-Errors are `{"error": {"code": SYMBOL, "message": str}}`. Closed set: the library symbols plus `NEEDS_SLEEP`, `SLEEP_RUNNING`, `DREAM_RUNNING`, `VALIDATION`, `VOICE_UNAVAILABLE`, `ACCESS_REQUIRED`.
+Errors are `{"error": {"code": SYMBOL, "message": str}}`. Closed set: the library symbols plus `SLEEP_NOT_FOUND`, `NEEDS_SLEEP`, `SLEEP_RUNNING`, `DREAM_RUNNING`, `VALIDATION`, `VOICE_UNAVAILABLE`, `ACCESS_REQUIRED`.
 
 With env `ACCESS_CODE` set, every API route (not /health, statics, or /internal) answers 401 `ACCESS_REQUIRED` unless the request carries `X-Access-Code: <code>`; anonymous traffic never reaches a model or speech service.
 
 ## Bookkeeping owned here
 
 - **Tiredness meter.** Adds agent-reported tokens per tell/ask into the library meter. Status: `rested < 0.70 <= unrested < 0.85 <= needs_sleep` of the session budget (env `SESSION_TOKEN_BUDGET`, default 12000). At `needs_sleep`, tell/ask return 409 until she sleeps, and a tired-keeper dream event is published.
-- **Sleep.** Background job per keeper: session compacts into fixed summary blocks (constraints copied verbatim, last turns kept), dropped detail lands as `sleep` books, meter resets. At the 24-book cap the two oldest `told`/`sleep` books merge into one digest book first, so nothing is ever lost and a slot stays free.
+- **Sleep.** Background job per keeper: constraints carry over verbatim, the last user texts land in the `recent_topics` block, the last 3 turns stay verbatim; dropped detail lands as `sleep` books, meter resets to the compacted session's size. At the 24-book cap the two oldest `told`/`sleep` books merge into one digest book first, so nothing is ever lost and a slot stays free.
 - **Levels.** Derived from book count, returned on every Keeper payload.
 - **Jobs.** Slow work is 202 + poll; no streaming, no server push.
 

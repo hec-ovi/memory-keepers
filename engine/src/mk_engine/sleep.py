@@ -12,6 +12,7 @@ from mk_library.store import now_iso
 
 log = logging.getLogger(__name__)
 VERBATIM_TAIL_TURNS = 3
+_JOBS: set[asyncio.Task] = set()  # keep sleep jobs referenced until they settle
 
 
 def perform_sleep(library: Library, world: str, kid: str) -> list[dict]:
@@ -61,5 +62,7 @@ def start_sleep_job(library: Library, world: str, kid: str) -> str:
                 "job_id": job_id, "status": "failed", "finished_at": now_iso(),
                 "books_written": [], "error": str(e)})
 
-    asyncio.get_running_loop().create_task(run())
+    task = asyncio.get_running_loop().create_task(run())
+    _JOBS.add(task)
+    task.add_done_callback(_JOBS.discard)
     return job_id

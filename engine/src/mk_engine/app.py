@@ -268,7 +268,9 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
             library._world(world).delete()
             return {"reset": True}
 
-    frontend_dir = Path(os.environ.get("FRONTEND_DIR", "frontend"))
+    # engine/src/mk_engine/app.py -> repo root, so the mount works from any CWD
+    default_frontend = Path(__file__).resolve().parents[3] / "frontend"
+    frontend_dir = Path(os.environ.get("FRONTEND_DIR") or default_frontend)
     if frontend_dir.is_dir():
         app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 

@@ -146,6 +146,11 @@ async def test_voice_degrades_without_config(client):
     assert r.status_code == 503 and r.json()["error"]["code"] == "VOICE_UNAVAILABLE"
 
 
+async def test_dev_seed_reports_demo_content(client):
+    data = (await client.post("/dev/seed")).json()
+    assert data["seeded"] and data["keepers"] == 3 and data["books"] > 0
+
+
 async def test_dev_routes_gated(client, library, monkeypatch):
     assert (await client.post("/dev/reset")).status_code in (404, 405)
     monkeypatch.setenv("DEV_ROUTES", "1")
