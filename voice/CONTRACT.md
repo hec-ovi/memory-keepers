@@ -6,8 +6,8 @@ Purpose: speech in and out for the dialogs. One FastAPI router the engine mounts
 
 | route | in | out |
 |---|---|---|
-| `POST /voice/tts` | `{text, keeper_id?}` | `audio/ogg` bytes, a voice per keeper kind (light, dark, monument) |
-| `POST /voice/stt` | `audio/webm` or `audio/ogg` body | `{text}` |
+| `POST /voice/tts` | `{text, kind?}` with kind `light` (default), `dark` or `monument` | `audio/ogg` bytes, one fixed voice per kind |
+| `POST /voice/stt` | `audio/webm` or `audio/ogg` body (opus; the Content-Type header picks the decoder) | `{text}` |
 
 Backed by Cloud Text-to-Speech and Speech-to-Text; credentials via application default credentials.
 

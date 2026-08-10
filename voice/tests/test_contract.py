@@ -14,8 +14,12 @@ class FakeTts:
 
 
 class FakeStt:
+    def __init__(self):
+        self.config = None
+
     def recognize(self, config, audio):
         assert audio.content
+        self.config = config
         alt = SimpleNamespace(transcript="what did I dream")
         return SimpleNamespace(results=[SimpleNamespace(alternatives=[alt])])
 
@@ -44,9 +48,23 @@ async def test_tts_validates_text():
 
 @pytest.mark.asyncio
 async def test_stt_transcribes():
-    async with _client(create_voice_router(stt_client=FakeStt())) as client:
+    from google.cloud import speech
+    stt = FakeStt()
+    async with _client(create_voice_router(stt_client=stt)) as client:
         r = await client.post("/voice/stt", content=b"webm-bytes")
     assert r.status_code == 200 and r.json()["text"] == "what did I dream"
+    assert stt.config.encoding == speech.RecognitionConfig.AudioEncoding.WEBM_OPUS
+
+
+@pytest.mark.asyncio
+async def test_stt_ogg_body_picks_the_ogg_decoder():
+    from google.cloud import speech
+    stt = FakeStt()
+    async with _client(create_voice_router(stt_client=stt)) as client:
+        r = await client.post("/voice/stt", content=b"ogg-bytes",
+                              headers={"content-type": "audio/ogg"})
+    assert r.status_code == 200
+    assert stt.config.encoding == speech.RecognitionConfig.AudioEncoding.OGG_OPUS
 
 
 @pytest.mark.asyncio

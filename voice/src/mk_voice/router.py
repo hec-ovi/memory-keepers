@@ -62,11 +62,14 @@ def create_voice_router(tts_client=None, stt_client=None) -> APIRouter:
         if not audio:
             return JSONResponse(status_code=422, content={
                 "error": {"code": "VALIDATION", "message": "audio body is required"}})
+        config = dict(encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
+                      language_code=os.environ.get("VOICE_LANGUAGE", "en-US"))
+        if "ogg" in request.headers.get("content-type", ""):
+            config.update(encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS,
+                          sample_rate_hertz=48000)
         try:
             result = _stt().recognize(
-                config=speech.RecognitionConfig(
-                    encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
-                    language_code=os.environ.get("VOICE_LANGUAGE", "en-US")),
+                config=speech.RecognitionConfig(**config),
                 audio=speech.RecognitionAudio(content=audio),
             )
         except Exception:
