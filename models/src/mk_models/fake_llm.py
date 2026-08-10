@@ -13,8 +13,9 @@ from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 
-STOPWORDS = {"the", "and", "that", "with", "about", "this", "from", "have",
-             "what", "when", "where", "there", "were", "will", "your", "into"}
+# Keep identical to mk_agents.fallbacks.STOPWORDS (models cannot import from agents).
+STOPWORDS = {"the", "and", "that", "with", "about", "this", "from", "have", "what",
+             "when", "where", "there", "were", "will", "your", "into", "just", "like"}
 SLUG_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}-[a-z0-9-]+\b")
 ENTITY_RE = re.compile(r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b")
 

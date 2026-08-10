@@ -20,6 +20,8 @@ class ModelGateway:
     def model_for(self, role: str):
         assert role in ROLES
         tier = os.environ.get(f"MODEL_TIER_{role.upper()}") or self._tier
+        if tier not in TIERS:
+            raise ModelsError(f"unknown MODEL_TIER_{role.upper()} {tier!r}")
         if tier == "cloud":
             from google.adk.models.google_llm import Gemini
             return Gemini(model=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"))

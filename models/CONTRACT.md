@@ -21,7 +21,7 @@ Tier selection: constructor arg, else `MODEL_TIER`; per-role override `MODEL_TIE
 
 ## Errors (closed set)
 
-`ModelsError` (`PROVIDER_UNAVAILABLE`): unknown tier or missing local extra; raised at construction, never mid-game.
+`ModelsError` (`PROVIDER_UNAVAILABLE`): unknown tier or missing local extra. The base tier is checked at construction; a bad per-role override or missing extra raises on the first `model_for` call, never silently falls through to another tier.
 
 ## Invariants
 

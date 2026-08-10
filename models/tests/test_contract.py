@@ -30,6 +30,9 @@ def test_tiers(monkeypatch):
         ModelGateway(tier="nope")
     monkeypatch.setenv("MODEL_TIER_DREAM", "fake")
     assert type(ModelGateway(tier="cloud").model_for("dream")).__name__ == "FakeLlm"
+    monkeypatch.setenv("MODEL_TIER_CHAT", "clod")  # a typo must raise, never fall through
+    with pytest.raises(ModelsError):
+        ModelGateway(tier="cloud").model_for("chat")
 
 
 @pytest.mark.asyncio
