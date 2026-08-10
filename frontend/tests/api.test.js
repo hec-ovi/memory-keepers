@@ -339,6 +339,61 @@ describe("wrapper methods", () => {
   });
 });
 
+describe("voice routes", () => {
+  it("stt posts the blob with its own content type and resolves the transcription", async () => {
+    let seen = null;
+    server.use(
+      http.post(`${BASE}/voice/stt`, async ({ request }) => {
+        seen = {
+          type: request.headers.get("content-type"),
+          world: request.headers.get("x-world"),
+          bytes: (await request.arrayBuffer()).byteLength,
+        };
+        return HttpResponse.json({ text: "hello island" });
+      }),
+    );
+    const blob = new Blob(["opus"], { type: "audio/ogg;codecs=opus" });
+    await expect(api().stt(blob)).resolves.toEqual({ text: "hello island" });
+    expect(seen.type).toBe("audio/ogg;codecs=opus");
+    expect(seen.world).toBeTruthy(); // voice carries X-World like every route
+    expect(seen.bytes).toBeGreaterThan(0);
+  });
+
+  it("tts posts {text, kind} and resolves an audio Blob", async () => {
+    let body = null;
+    server.use(
+      http.post(`${BASE}/voice/tts`, async ({ request }) => {
+        body = await request.json();
+        return new HttpResponse(new Uint8Array([1, 2, 3]).buffer, {
+          headers: { "content-type": "audio/ogg" },
+        });
+      }),
+    );
+    const out = await api().tts("hello", "dark");
+    expect(body).toEqual({ text: "hello", kind: "dark" });
+    expect(out).toBeInstanceOf(Blob);
+    expect(out.size).toBe(3);
+    expect(out.type).toContain("audio/ogg");
+  });
+
+  it("maps 503 on both routes to ApiError VOICE_UNAVAILABLE", async () => {
+    const unavailable = () =>
+      HttpResponse.json(
+        { error: { code: "VOICE_UNAVAILABLE", message: "speech is not configured" } },
+        { status: 503 },
+      );
+    server.use(http.post(`${BASE}/voice/stt`, unavailable), http.post(`${BASE}/voice/tts`, unavailable));
+    const a = api();
+    await expect(a.stt(new Blob(["x"], { type: "audio/webm" }))).rejects.toMatchObject({
+      status: 503,
+      code: "VOICE_UNAVAILABLE",
+    });
+    const err = await a.tts("hi").catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({ status: 503, code: "VOICE_UNAVAILABLE" });
+  });
+});
+
 describe("invoke transport", () => {
   it("calls invoke(path, {method, body}) and peels its envelopes", async () => {
     const invoke = vi.fn(async (path, { method }) => ({

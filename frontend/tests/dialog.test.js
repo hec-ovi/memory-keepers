@@ -84,7 +84,7 @@ describe("createDialog", () => {
     // the input and the mic live INSIDE the pill; Enter sends
     const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
     expect(input.closest("form")).toBe(form);
-    const mic = screen.getByRole("button", { name: /toggle microphone/i });
+    const mic = screen.getByRole("button", { name: /hold to talk/i });
     expect(mic.closest("form")).toBe(form);
     expect(mic.classList.contains("mk-dialog-mic")).toBe(true);
     // one continuous shape: the circular mic caps the pill's right end
@@ -262,26 +262,6 @@ describe("createDialog", () => {
     await user.keyboard("{Enter}");
     await screen.findByText("no answer today");
     expect(input.value).toBe("hello?");
-  });
-
-  it("mic button toggles a fake listening state and emits voice:mic", async () => {
-    const user = userEvent.setup();
-    const mic = vi.fn();
-    bus.on("voice:mic", mic);
-    bus.emit("keeper:selected", { keeperId: "dreams" });
-
-    const micBtn = screen.getByRole("button", { name: /toggle microphone/i });
-    expect(micBtn.getAttribute("aria-pressed")).toBe("false");
-
-    await user.click(micBtn);
-    expect(mic).toHaveBeenCalledWith({ keeperId: "dreams", on: true });
-    expect(micBtn.getAttribute("aria-pressed")).toBe("true");
-    expect(vizMode()).toBe("listening"); // fake listening while the mic is on
-
-    await user.click(micBtn);
-    expect(mic).toHaveBeenCalledWith({ keeperId: "dreams", on: false });
-    expect(micBtn.getAttribute("aria-pressed")).toBe("false");
-    expect(vizMode()).toBe("idle");
   });
 
   it("speaker button toggles and emits voice:tts", async () => {

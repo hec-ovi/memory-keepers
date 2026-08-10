@@ -34,6 +34,17 @@
 // her books are born from dreaming). A tell reply without a book emits no
 // "book:created".
 //
+// Voice: push-to-talk and spoken replies. Holding the physical T key (outside
+// any typing surface) or holding the mic button records through getUserMedia +
+// MediaRecorder (opus; webm when supported, else ogg; one stream per dialog
+// session, released on close). Releasing sends the clip to api.stt and the
+// transcription goes through the exact same send path as a typed message.
+// The visualizer doubles as the speaker toggle: when ON each completed reply
+// is fetched from api.tts (monument panel -> "monument", unconscious keeper
+// -> "dark", else "light") and played from a Blob object URL (revoked after
+// playback). VOICE_UNAVAILABLE or a denied microphone toasts once and rests
+// the mic for the session; a TTS failure never breaks the dialog.
+//
 //   const dialog = createDialog({ root, state, bus, api, toasts });
 //   dialog.open("dreams"); dialog.close(); dialog.dispose();
 //
@@ -47,8 +58,8 @@
 //   emits   "memory:used"    { keeperId, slugs }          grounded ask reply lands
 //   emits   "keeper:sleep"     { keeperId }                 after api.sleep succeeds
 //   emits   "keeper:rested"    { keeperId }                 sleep job polled to done
-//   emits   "voice:mic"      { keeperId, on }             mic toggle (real STT later)
-//   emits   "voice:tts"      { keeperId, on }             speaker toggle (real TTS later)
+//   emits   "voice:mic"      { keeperId, on }             recording started/stopped
+//   emits   "voice:tts"      { keeperId, on }             speaker toggle (spoken replies)
 //   emits   "voice:state"    { keeperId, mode }           visualizer mode changes
 //                            ("idle" | "listening" | "speaking")
 //   emits   "ui:open" / "ui:close"  { panel: "dialog" } for the audio blips
@@ -201,6 +212,17 @@ export function bookSpineColor(tags = []) {
 
 export const MONUMENT_ID = gameConfig.monumentId ?? "the-monument";
 
+// Push-to-talk capture formats, in preference order (voice/CONTRACT.md).
+const MIME_WEBM = "audio/webm;codecs=opus";
+const MIME_OGG = "audio/ogg;codecs=opus";
+
+// A key aimed at a typing surface must never trigger push-to-talk.
+function isTypingTarget(t) {
+  if (!t) return false;
+  if (t.tagName === "INPUT" || t.tagName === "TEXTAREA") return true;
+  return t.isContentEditable === true || !!t.closest?.("[contenteditable]");
+}
+
 export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = SLEEP_POLL_MS } = {}) {
   const doc = root.ownerDocument;
   const win = doc.defaultView ?? globalThis;
@@ -214,12 +236,21 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let viz = null;
   let currentId = null;
   let onKey = null;
+  let onKeyUp = null;
   const offs = [];
 
   // voice/typing state for the open panel
   let inFlight = false;
-  let micOn = false;
   let ttsOn = false;
+  let recording = false; // a press (T or the mic button) is active
+  let recordSource = null; // "key" | "pointer"
+  let recorder = null; // live MediaRecorder once the mic opened
+  let micStream = null; // one stream per dialog session, released on close
+  let voiceDisabled = false; // VOICE_UNAVAILABLE or mic denial: mic rests for the session
+  let ttsToasted = false; // spoken-reply failures toast once per session
+  let voiceKind = "light"; // tts voice: "monument" | "dark" | "light"
+  let audioEl = null; // the playing spoken reply
+  let audioUrl = null; // its object URL, revoked after playback
   let typingActive = false;
   let holdActive = false;
   let typeTimer = null;
@@ -264,6 +295,11 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     else bus?.emit("toast", { message, kind: "error" });
   }
 
+  function toastInfo(message) {
+    if (notify) notify.show(message);
+    else bus?.emit("toast", { message });
+  }
+
   function keeperFor(keeperId) {
     if (keeperId === MONUMENT_ID) {
       return {
@@ -290,7 +326,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
   function computedVizMode() {
     if (typingActive || holdActive) return "speaking";
-    if (inFlight || micOn) return "listening";
+    if (inFlight || recording) return "listening";
     return "idle";
   }
 
@@ -318,6 +354,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   function say(text, { md = false } = {}) {
     cancelTyping();
     lastReply = { text };
+    speakReply(text);
     typingActive = true;
     syncViz();
     sayEl.textContent = "";
@@ -370,6 +407,161 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     inFlight = on;
     syncViz();
     if (statusEl) statusEl.style.display = on ? "" : "none";
+  }
+
+  // --- push-to-talk (hold T or hold the mic button) ---------------------------
+
+  // VOICE_UNAVAILABLE or a denied microphone: voice rests for this dialog
+  // session; typing keeps working.
+  function disableVoice() {
+    if (voiceDisabled) return;
+    voiceDisabled = true;
+    if (composer?.micBtn) composer.micBtn.disabled = true;
+    toastInfo("voice is not available here; typing still works");
+  }
+
+  async function ensureStream() {
+    if (micStream) return micStream;
+    const stream = await win.navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!holo) {
+      // the panel closed while the mic was opening
+      stream.getTracks().forEach((t) => t.stop());
+      return null;
+    }
+    micStream = stream;
+    return stream;
+  }
+
+  // Press records, release stops; the clip lands in transcribe().
+  async function startRecording(source) {
+    if (recording || voiceDisabled || chatLocked) return;
+    if (!win.MediaRecorder || !win.navigator?.mediaDevices?.getUserMedia) {
+      disableVoice();
+      return;
+    }
+    recording = true;
+    recordSource = source;
+    composer?.micBtn?.setAttribute("aria-pressed", "true");
+    bus?.emit("voice:mic", { keeperId: currentId, on: true });
+    syncViz();
+    let stream;
+    try {
+      stream = await ensureStream();
+    } catch {
+      stopRecording(false);
+      if (holo) disableVoice();
+      return;
+    }
+    if (!stream || !recording) return; // closed, or released while the mic opened
+    const mime = win.MediaRecorder.isTypeSupported?.(MIME_WEBM) ? MIME_WEBM : MIME_OGG;
+    const chunks = [];
+    const rec = new win.MediaRecorder(stream, { mimeType: mime });
+    rec.addEventListener("dataavailable", (e) => {
+      if (e.data?.size) chunks.push(e.data);
+    });
+    rec.addEventListener("stop", () => {
+      if (!rec.discarded) transcribe(new Blob(chunks, { type: mime }));
+    });
+    rec.start();
+    recorder = rec;
+  }
+
+  function stopRecording(send = true) {
+    if (!recording) return;
+    recording = false;
+    recordSource = null;
+    composer?.micBtn?.setAttribute("aria-pressed", "false");
+    bus?.emit("voice:mic", { keeperId: currentId, on: false });
+    syncViz();
+    const rec = recorder;
+    recorder = null;
+    if (rec && rec.state !== "inactive") {
+      rec.discarded = !send;
+      rec.stop();
+    }
+  }
+
+  function releaseStream() {
+    micStream?.getTracks().forEach((t) => t.stop());
+    micStream = null;
+  }
+
+  // The released clip -> api.stt -> the composer -> the exact same send path
+  // as a typed message.
+  async function transcribe(blob) {
+    if (!composer) return;
+    const { form, input } = composer;
+    if (!blob?.size) {
+      toastInfo("no words came through; try again");
+      return;
+    }
+    ensureThinking(form, true);
+    let text;
+    try {
+      const res = await api.stt(blob);
+      text = (res?.text ?? "").trim();
+    } catch (err) {
+      ensureThinking(form, false);
+      if (err?.code === "VOICE_UNAVAILABLE") disableVoice();
+      else toastError(err?.message || "the words were lost on the way");
+      return;
+    }
+    ensureThinking(form, false);
+    if (composer?.form !== form || chatLocked) return; // panel changed meanwhile
+    if (!text) {
+      toastInfo("no words came through; try again");
+      return;
+    }
+    input.value = text;
+    composer.sync();
+    if (form.requestSubmit) form.requestSubmit();
+    else form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  }
+
+  // --- spoken replies ---------------------------------------------------------
+
+  function stopPlayback() {
+    if (audioEl) {
+      audioEl.pause();
+      audioEl = null;
+    }
+    if (audioUrl) {
+      (win.URL ?? URL).revokeObjectURL(audioUrl);
+      audioUrl = null;
+    }
+  }
+
+  // With the speaker toggle on, a completed reply is fetched from api.tts and
+  // played; failures fall back to the written reply (toast once per session)
+  // and never break the dialog.
+  async function speakReply(text) {
+    if (!ttsOn || !text) return;
+    const forId = currentId;
+    try {
+      const blob = await api.tts(text, voiceKind);
+      if (!ttsOn || currentId !== forId) return; // toggled off or panel changed
+      stopPlayback();
+      const urlApi = win.URL ?? URL;
+      const url = urlApi.createObjectURL(blob);
+      const audio = new win.Audio(url);
+      audioEl = audio;
+      audioUrl = url;
+      const cleanup = () => {
+        urlApi.revokeObjectURL(url);
+        if (audioEl === audio) {
+          audioEl = null;
+          audioUrl = null;
+        }
+      };
+      audio.addEventListener("ended", cleanup);
+      audio.addEventListener("error", cleanup);
+      audio.play()?.catch?.(cleanup);
+    } catch {
+      if (!ttsToasted) {
+        ttsToasted = true;
+        toastInfo("her voice could not reach you; her words stay written");
+      }
+    }
   }
 
   // --- rest / sleep ----------------------------------------------------------
@@ -470,8 +662,13 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
   function close() {
     if (!holo) return;
+    stopRecording(false);
+    releaseStream();
+    stopPlayback();
     if (onKey) doc.removeEventListener("keydown", onKey, true);
+    if (onKeyUp) doc.removeEventListener("keyup", onKeyUp, true);
     onKey = null;
+    onKeyUp = null;
     cancelTyping();
     viz?.dispose();
     viz = null;
@@ -481,8 +678,10 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     lastVizMode = null;
     lastReply = null;
     inFlight = false;
-    micOn = false;
     ttsOn = false;
+    voiceDisabled = false;
+    ttsToasted = false;
+    voiceKind = "light";
     chatLocked = false;
     session = null;
     libraryFull = false;
@@ -591,16 +790,20 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     input.type = "text";
     input.className = "mk-dialog-field";
 
+    // Push-to-talk twin of hold-T: pointerdown records, pointerup/leave stops.
     const micBtn = el("button", "holo-btn mk-dialog-mic", "🎙");
     micBtn.type = "button";
-    micBtn.setAttribute("aria-label", "toggle microphone");
+    micBtn.setAttribute("aria-label", "hold to talk");
     micBtn.setAttribute("aria-pressed", "false");
-    micBtn.addEventListener("click", () => {
-      micOn = !micOn;
-      micBtn.setAttribute("aria-pressed", String(micOn));
-      bus?.emit("voice:mic", { keeperId: keeper.id, on: micOn });
-      syncViz();
+    micBtn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      startRecording("pointer");
     });
+    const releaseMic = () => {
+      if (recordSource === "pointer") stopRecording();
+    };
+    micBtn.addEventListener("pointerup", releaseMic);
+    micBtn.addEventListener("pointerleave", releaseMic);
 
     form.append(input, micBtn);
     input.addEventListener("keydown", (e) => {
@@ -701,7 +904,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       }
     });
 
-    composer = { form, input, sync, setTab };
+    composer = { form, input, micBtn, sync, setTab };
     setTab("tell");
     sync();
     return form;
@@ -720,6 +923,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     session = keeper.session ? { ...keeper.session } : null;
     level = Number.isFinite(keeper.level) ? keeper.level : 1;
     libraryFull = false;
+    voiceKind = isMonument ? "monument" : keeper.kind === "unconscious" ? "dark" : "light";
 
     const content = el("div", "mk-dialog-inner");
 
@@ -764,6 +968,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     viz.el.setAttribute("aria-pressed", "false");
     const toggleTts = () => {
       ttsOn = !ttsOn;
+      if (!ttsOn) stopPlayback();
       viz.el.setAttribute("aria-pressed", String(ttsOn));
       viz.el.classList.toggle("is-on", ttsOn);
       bus?.emit("voice:tts", { keeperId: keeper.id, on: ttsOn });
@@ -887,13 +1092,31 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     renderSession();
 
     onKey = (e) => {
-      if (e.key !== "Escape") return;
-      // Modal overlays (confirm/howto/create) and the reader own Esc first.
-      if (doc.querySelector(".overlay-backdrop") || doc.querySelector(".mk-reader")) return;
-      e.stopPropagation();
-      close();
+      if (e.key === "Escape") {
+        // Modal overlays (confirm/howto/create) and the reader own Esc first.
+        if (doc.querySelector(".overlay-backdrop") || doc.querySelector(".mk-reader")) return;
+        e.stopPropagation();
+        close();
+        return;
+      }
+      // Hold T: push-to-talk, only while this panel is open and only when the
+      // key is not aimed at a typing surface or riding a modifier combo.
+      if (
+        (e.key === "t" || e.key === "T") &&
+        !e.repeat &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        !isTypingTarget(e.target)
+      ) {
+        startRecording("key");
+      }
+    };
+    onKeyUp = (e) => {
+      if ((e.key === "t" || e.key === "T") && recordSource === "key") stopRecording();
     };
     doc.addEventListener("keydown", onKey, true);
+    doc.addEventListener("keyup", onKeyUp, true);
 
     root.appendChild(holo.el);
     lastVizMode = "idle";

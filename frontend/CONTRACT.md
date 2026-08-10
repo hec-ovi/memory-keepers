@@ -108,8 +108,8 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 | `ui:open` | `{ panel: "dialog", keeperId }` or `{ panel: "keepers" }` | ui/dialog, ui/keepers_list | render/audio, render/scene_overworld (dialog only: cancels a pending deselect during a close-reopen switch) |
 | `ui:close` | `{ panel: "dialog" \| "keepers" }` | ui/dialog, ui/keepers_list | render/audio, render/scene_overworld (dialog only: deselect on the next frame, ring off + follow ends; deferred so switching keepers does not kill the fresh selection) |
 | `voice:state` | `{ keeperId, mode: "idle"\|"listening"\|"speaking" }` | ui/dialog | render/audio |
-| `voice:mic` | `{ keeperId, on }` | ui/dialog | render/audio |
-| `voice:tts` | `{ keeperId, on }` | ui/dialog | none yet (real TTS later) |
+| `voice:mic` | `{ keeperId, on }` | ui/dialog (push-to-talk recording started/stopped: hold T or hold the mic button) | render/audio |
+| `voice:tts` | `{ keeperId, on }` | ui/dialog (speaker toggle; ON = the dialog itself speaks each completed reply via api.tts) | none in src (tests) |
 | `audio:mute` | `{ muted }` | ui/hud | render/audio |
 
 ## Invariants
@@ -133,5 +133,5 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 
 ## How to test
 
-`cd frontend && npm test` (vitest + jsdom, 35 files / 693 tests as of this
+`cd frontend && npm test` (vitest + jsdom, 37 files / 721 tests as of this
 writing). Boot/mode/bus wiring: `tests/main.test.js`, `tests/bus.test.js`.

@@ -149,6 +149,31 @@ export function createApi({
     return err.status === 0 || err.status >= 500;
   }
 
+  // Voice speaks raw bytes (opus in, ogg out), so it bypasses request()/peel():
+  // fetch transport only, same X-World world, same ApiError mapping, no retry.
+  async function rawVoice(path, contentType, body) {
+    let res;
+    try {
+      res = await fetchFn(base + path, {
+        method: "POST",
+        headers: { "X-World": world, "content-type": contentType },
+        body,
+      });
+    } catch (err) {
+      throw new ApiError({ status: 0, code: "NETWORK", message: err?.message || "Network error" });
+    }
+    if (!res.ok) {
+      let payload = null;
+      try {
+        payload = JSON.parse(await res.text());
+      } catch {
+        /* non-JSON error body: status-based fallback in toApiError */
+      }
+      throw toApiError(res.status, payload);
+    }
+    return res;
+  }
+
   async function request(path, { method = "GET", body } = {}) {
     const maxAttempts = method === "GET" ? 1 + GET_RETRIES : 1;
     let lastErr;
@@ -214,6 +239,24 @@ export function createApi({
     monument: (text) => request("/monument", { method: "POST", body: { text } })
       .then((out) => out && out.created_keeper
         ? { ...out, created_keeper: normKeeper(out.created_keeper) } : out),
+
+    // voice: push-to-talk transcription and spoken replies (voice/CONTRACT.md)
+    stt: async (blob) => {
+      const res = await rawVoice("/voice/stt", blob.type || "audio/webm", blob);
+      try {
+        return await res.json();
+      } catch {
+        throw new ApiError({
+          status: res.status,
+          code: "BAD_RESPONSE",
+          message: "Engine returned non-JSON response",
+        });
+      }
+    },
+    tts: (text, kind = "light") =>
+      rawVoice("/voice/tts", "application/json", JSON.stringify({ text, kind })).then((res) =>
+        res.blob(),
+      ),
 
     // dev helpers
     seed: () => request("/dev/seed", { method: "POST", body: {} }),

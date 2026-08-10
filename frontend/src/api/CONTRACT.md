@@ -42,11 +42,20 @@ consolidate()                                  // POST /dream {} -> {status, run
 getLatestConsolidation()                       // GET /dreams/latest
 getConsolidation(runId)                        // GET /dreams/{runId}
 monument(text)                                 // POST /monument {text}
+stt(blob)                                      // POST /voice/stt (raw opus body) -> {text}
+tts(text, kind = "light")                      // POST /voice/tts {text, kind} -> audio Blob
 seed()                                         // POST /dev/seed {}
 reset()                                        // POST /dev/reset {}
 ```
 
 Path params go through `encodeURIComponent`.
+
+Voice speaks raw bytes (`voice/CONTRACT.md`), so `stt`/`tts` bypass the JSON
+envelope peeling: fetch transport only (never `invoke`), same `X-World`
+header, no retry. `stt` sends the blob with the blob's own `type` as
+content-type (`audio/webm` fallback); `tts` resolves the response as a Blob
+(`kind`: `"light" | "dark" | "monument"`). Failures reject with the same
+`ApiError` mapping; a 503 carries the engine's `VOICE_UNAVAILABLE` code.
 
 ```js
 class ApiError extends Error { name = "ApiError"; status; code; message }
@@ -54,8 +63,9 @@ class ApiError extends Error { name = "ApiError"; status; code; message }
 
 `status` 0 means network/transport-level failure. `code` comes from the
 engine error body (`docs/api.md` symbols like `KEEPER_EXISTS`, `KEEPERS_FULL`,
-`NEEDS_SLEEP`, `SLEEP_RUNNING`), or `NETWORK`, `BAD_RESPONSE` (non-JSON
-body), `SERVER_ERROR` (5xx without a code), `UNKNOWN`.
+`NEEDS_SLEEP`, `SLEEP_RUNNING`, `VOICE_UNAVAILABLE`), or `NETWORK`,
+`BAD_RESPONSE` (non-JSON body), `SERVER_ERROR` (5xx without a code),
+`UNKNOWN`.
 
 Round-5 payload fields pass through untouched: `ask` resolves the full
 `{answer, sources, grounded, followup}` body, Keeper objects keep `level` and
@@ -86,15 +96,16 @@ after api calls resolve.
 ## Invariants
 
 - No `fetch` outside this module (architecture rule 3).
-- Bodies are JSON; `content-type: application/json` is set only when a body
-  is present.
+- Bodies are JSON (`content-type: application/json` set only when a body is
+  present), except the voice routes, whose bodies and/or responses are raw
+  audio bytes.
 - 4xx errors are never retried and keep the engine's `code`/`message`.
 - Swapping REST for invoke changes only the `createApi` options, never the
-  method surface.
+  method surface (voice stays on fetch either way).
 
 ## How to test
 
-`cd frontend && npx vitest run tests/api.test.js` (24 tests; MSW at the
+`cd frontend && npx vitest run tests/api.test.js` (27 tests; MSW at the
 network layer, injected no-op sleep). Covers peeling of all three envelope
 shapes, error mapping, GET retry/backoff, non-retry of POST/DELETE, the
-sleep endpoints, and round-5 field passthrough.
+sleep endpoints, round-5 field passthrough, and the voice routes.

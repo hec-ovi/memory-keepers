@@ -90,8 +90,28 @@ toast and unlock.
 - emits `memory:used` {keeperId, slugs} (grounded ask reply lands),
   `keeper:sleep` {keeperId} (after api.sleep succeeds), `keeper:rested` {keeperId}
   (sleep job polled to done)
-- emits `voice:mic` {keeperId, on} (mic toggle; fake listening state until real
-  STT lands), `voice:tts` {keeperId, on} (speaker toggle; real TTS later),
+Voice, push-to-talk: holding the physical T key (only while the panel is
+open; ignored on typing surfaces: inputs, textareas, contenteditable; key
+repeat and ctrl/alt/meta combos ignored) or holding the mic button
+(pointerdown starts, pointerup/pointerleave stops) records through
+`getUserMedia` + `MediaRecorder` (opus: `audio/webm;codecs=opus` when
+supported, else `audio/ogg;codecs=opus`; ONE stream per dialog session,
+tracks released on close). Release sends the clip to `api.stt`; the
+transcription lands in the composer and goes through the exact same send
+path as a typed message. While recording the viz is LISTENING; while
+transcribing the pill wears `holo-thinking`. An empty transcription toasts
+gently ("no words came through; try again") and sends nothing.
+VOICE_UNAVAILABLE or a denied microphone toasts once ("voice is not
+available here; typing still works") and disables the mic button for that
+dialog session.
+Voice, spoken replies: the visualizer doubles as the speaker toggle; when ON
+each completed reply is fetched from `api.tts(text, kind)` (kind: monument
+panel -> "monument", unconscious keeper -> "dark", else "light") and played
+from a Blob object URL, revoked after playback (toggling off stops
+playback). A TTS failure falls back to the written reply (one gentle toast
+per session at most) and never breaks the dialog.
+- emits `voice:mic` {keeperId, on} (push-to-talk recording started/stopped),
+  `voice:tts` {keeperId, on} (speaker toggle for spoken replies),
   `voice:state` {keeperId, mode: "idle"|"listening"|"speaking"} on every viz
   mode change
 - emits `ui:open` {panel:"dialog", keeperId} / `ui:close` {panel:"dialog"}
@@ -246,7 +266,7 @@ click. Plus the older `keeper:selected` / `book:created` / `book:open` /
   `keeper:created` / `book:created` / `book:destroyed`.
 - Keep aria labels stable: "talk to {name}", "close talk panel", "book
   reader", "close reader", "game hud", "minimap", "welcome hints",
-  "keepers list", "close keepers list", "toggle microphone",
+  "keepers list", "close keepers list", "hold to talk",
   "toggle voice replies", "toggle sound", "rest meter", "consulted books",
   "scroll books up", "scroll books down"; button texts "Send to sleep",
   "Save this as a memory", "View keepers", "Cross the ridge".
