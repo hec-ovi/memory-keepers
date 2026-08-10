@@ -372,6 +372,63 @@ function showConnectScreen(uiEl, { baseUrl, error, onRetry }) {
   return screen;
 }
 
+// Key screen: the engine asked for the island key (ACCESS_CODE). Judges and
+// friends type it once; it is kept in localStorage and sent from then on.
+function showKeyScreen(uiEl, { api, onRetry }) {
+  const doc = uiEl.ownerDocument;
+  const screen = doc.createElement("div");
+  screen.className = "center-screen";
+
+  const panel = doc.createElement("div");
+  panel.className = "panel connect-panel";
+
+  const face = doc.createElement("div");
+  face.className = "face";
+  face.textContent = "( ' _ ' )";
+
+  const title = doc.createElement("h2");
+  title.className = "panel-title";
+  title.textContent = "This island asks for its key";
+
+  const message = doc.createElement("p");
+  message.textContent = "Enter the access key to wake the keepers.";
+
+  const input = doc.createElement("input");
+  input.className = "input";
+  input.type = "password";
+  input.setAttribute("aria-label", "island key");
+
+  const enter = doc.createElement("button");
+  enter.type = "button";
+  enter.className = "btn btn-primary";
+  enter.textContent = "Enter";
+  enter.addEventListener("click", async () => {
+    enter.disabled = true;
+    enter.textContent = "Unlocking...";
+    api.setAccessCode(input.value.trim());
+    try {
+      await onRetry();
+      screen.remove();
+    } catch {
+      enter.disabled = false;
+      enter.textContent = "Enter";
+      message.textContent = "That key does not fit. Try again.";
+    }
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") enter.click();
+  });
+
+  panel.appendChild(face);
+  panel.appendChild(title);
+  panel.appendChild(message);
+  panel.appendChild(input);
+  panel.appendChild(enter);
+  screen.appendChild(panel);
+  uiEl.appendChild(screen);
+  return screen;
+}
+
 async function bootInBrowser() {
   const appEl = document.getElementById("app");
   const uiEl = document.getElementById("ui");
@@ -384,7 +441,11 @@ async function bootInBrowser() {
     await game.boot();
   } catch (error) {
     console.warn("[memory-keepers] engine unreachable:", error);
-    showConnectScreen(uiEl, { baseUrl, error, onRetry: () => game.boot() });
+    if (error?.code === "ACCESS_REQUIRED") {
+      showKeyScreen(uiEl, { api, onRetry: () => game.boot() });
+    } else {
+      showConnectScreen(uiEl, { baseUrl, error, onRetry: () => game.boot() });
+    }
   }
 }
 

@@ -394,6 +394,39 @@ describe("voice routes", () => {
   });
 });
 
+describe("the island key", () => {
+  afterEach(() => globalThis.localStorage?.removeItem("mk-access"));
+
+  it("a stored key rides every request; setAccessCode replaces and persists it", async () => {
+    globalThis.localStorage.setItem("mk-access", "old-key");
+    const keys = [];
+    server.use(
+      http.get(`${BASE}/health`, ({ request }) => {
+        keys.push(request.headers.get("x-access-code"));
+        return HttpResponse.json({ status: "ok" });
+      }),
+    );
+    const a = api();
+    await a.health();
+    a.setAccessCode("island-key");
+    await a.health();
+    expect(keys).toEqual(["old-key", "island-key"]);
+    expect(globalThis.localStorage.getItem("mk-access")).toBe("island-key");
+  });
+
+  it("a 401 keeps the engine's ACCESS_REQUIRED code", async () => {
+    server.use(
+      http.get(`${BASE}/state`, () =>
+        HttpResponse.json(
+          { error: { code: "ACCESS_REQUIRED", message: "this island asks for its key" } },
+          { status: 401 },
+        ),
+      ),
+    );
+    await expect(api().getState()).rejects.toMatchObject({ status: 401, code: "ACCESS_REQUIRED" });
+  });
+});
+
 describe("invoke transport", () => {
   it("calls invoke(path, {method, body}) and peels its envelopes", async () => {
     const invoke = vi.fn(async (path, { method }) => ({

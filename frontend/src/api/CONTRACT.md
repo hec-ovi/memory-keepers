@@ -44,6 +44,7 @@ getConsolidation(runId)                        // GET /dreams/{runId}
 monument(text)                                 // POST /monument {text}
 stt(blob)                                      // POST /voice/stt (raw opus body) -> {text}
 tts(text, kind = "light")                      // POST /voice/tts {text, kind} -> audio Blob
+setAccessCode(code)                            // remember the island key (localStorage "mk-access"); sent as X-Access-Code on every call; falsy clears it
 seed()                                         // POST /dev/seed {}
 reset()                                        // POST /dev/reset {}
 ```

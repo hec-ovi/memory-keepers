@@ -93,6 +93,11 @@ export function worldIdFrom(storage) {
   return id;
 }
 
+// The island key (engine ACCESS_CODE): kept once entered, sent on every call.
+export function accessCodeFrom(storage) {
+  return storage?.getItem?.("mk-access") || null;
+}
+
 // Keeper payloads carry side ("light" | "dark"); the game also speaks kind.
 function normKeeper(k) {
   if (!isObject(k) || !k.side) return k;
@@ -113,6 +118,11 @@ export function createApi({
 } = {}) {
   const base = baseUrl.replace(/\/+$/, "");
   const world = worldId || worldIdFrom(globalThis.localStorage ?? null);
+  let access = accessCodeFrom(globalThis.localStorage ?? null);
+
+  function authHeaders() {
+    return { "X-World": world, ...(access ? { "X-Access-Code": access } : {}) };
+  }
 
   async function transport(path, { method, body }) {
     if (invoke) {
@@ -123,7 +133,7 @@ export function createApi({
     const res = await fetchFn(base + path, {
       method,
       headers: {
-        "X-World": world,
+        ...authHeaders(),
         ...(body !== undefined ? { "content-type": "application/json" } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -156,7 +166,7 @@ export function createApi({
     try {
       res = await fetchFn(base + path, {
         method: "POST",
-        headers: { "X-World": world, "content-type": contentType },
+        headers: { ...authHeaders(), "content-type": contentType },
         body,
       });
     } catch (err) {
@@ -257,6 +267,17 @@ export function createApi({
       rawVoice("/voice/tts", "application/json", JSON.stringify({ text, kind })).then((res) =>
         res.blob(),
       ),
+
+    // the island key: remember it and send it from now on
+    setAccessCode: (code) => {
+      access = code || null;
+      try {
+        if (access) globalThis.localStorage?.setItem("mk-access", access);
+        else globalThis.localStorage?.removeItem("mk-access");
+      } catch {
+        /* storage may be unavailable (private mode); the session still works */
+      }
+    },
 
     // dev helpers
     seed: () => request("/dev/seed", { method: "POST", body: {} }),
