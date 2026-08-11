@@ -298,7 +298,7 @@ describe("createDialog", () => {
     bus.on("keeper:join", joined);
     bus.emit("keeper:selected", { keeperId: "dreams" });
 
-    const join = screen.getByRole("button", { name: "Join her" });
+    const join = screen.getByRole("button", { name: "Join instance" });
     await user.click(join);
 
     expect(joined).toHaveBeenCalledWith({ keeperId: "dreams" });
@@ -309,7 +309,7 @@ describe("createDialog", () => {
     state.mode = "interior:dreams";
     bus.emit("keeper:selected", { keeperId: "dreams" });
     expect(dialog.isOpen()).toBe(true);
-    expect(screen.queryByRole("button", { name: "Join her" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Join instance" })).toBeNull();
   });
 
   it("join button is absent when no keeper is selected", () => {

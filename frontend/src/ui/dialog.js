@@ -940,7 +940,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     // player is already with her, so no button either.
     const insideHers = state?.mode === `interior:${keeper.id}`;
     if (!isMonument && !insideHers) {
-      const joinBtn = el("button", "holo-btn holo-btn--primary mk-dialog-join", "Join her");
+      const joinBtn = el("button", "holo-btn holo-btn--primary mk-dialog-join", "Join instance");
       joinBtn.type = "button";
       joinBtn.addEventListener("click", () => {
         const id = keeper.id;

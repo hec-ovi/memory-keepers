@@ -30,7 +30,7 @@ level badge (`keeper.level`, default 1) and a thin rest meter
 (role=progressbar "rest meter") fed from `keeper.session` {tokens_used,
 budget, status}; the fill goes cyan -> amber -> red as she tires (restTone).
 LAYOUT: the panel is a flex column, top to bottom: topic chip (only when the
-name does not already say the topic) + Join button ("Join her"; absent inside
+name does not already say the topic) + Join button ("Join instance"; absent inside
 her own interior, the player is already with her),
 the scrollback (bottom-anchored so it grows UPWARD), the voice visualizer
 hero (`createVoiceViz`, speaker toggle beside it), the reply area, the sleep
