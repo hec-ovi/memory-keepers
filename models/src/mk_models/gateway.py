@@ -1,11 +1,12 @@
 """The only place a model is configured. Tiers: cloud (Gemini on Vertex),
-local (OpenAI-compatible llama.cpp), fake (deterministic, dev and tests)."""
+local (OpenAI-compatible llama.cpp), agy (a CLI brain over the mk-agy broker),
+fake (deterministic, dev and tests)."""
 import os
 
 from .errors import ModelsError
 
 ROLES = ("chat", "dream")
-TIERS = ("cloud", "local", "fake")
+TIERS = ("cloud", "local", "agy", "fake")
 
 
 class ModelGateway:
@@ -25,6 +26,12 @@ class ModelGateway:
         if tier == "cloud":
             from google.adk.models.google_llm import Gemini
             return Gemini(model=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"))
+        if tier == "agy":
+            try:
+                from .agy_llm import AgyLlm
+            except ImportError as e:
+                raise ModelsError("agy tier needs the mk-models[agy] extra") from e
+            return AgyLlm(model="agy-1")
         if tier == "local":
             try:
                 from google.adk.models.lite_llm import LiteLlm

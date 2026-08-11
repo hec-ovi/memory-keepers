@@ -26,6 +26,7 @@ def test_tiers(monkeypatch):
     assert type(ModelGateway(tier="cloud").model_for("chat")).__name__ == "Gemini"
     monkeypatch.setenv("LOCAL_MODEL_URL", "http://127.0.0.1:9/v1")
     assert type(ModelGateway(tier="local").model_for("chat")).__name__ == "LiteLlm"
+    assert type(ModelGateway(tier="agy").model_for("chat")).__name__ == "AgyLlm"
     with pytest.raises(ModelsError):
         ModelGateway(tier="nope")
     monkeypatch.setenv("MODEL_TIER_DREAM", "fake")
@@ -92,3 +93,40 @@ async def test_fake_dream_flows():
 
     resp = await _run(model, _req("<!-- flow:dream_narrative -->", "theme: mars-mission"))
     assert "1 thread" in json.loads(resp.content.parts[0].text)["narrative"]
+
+
+async def test_agy_tier_round_trips_through_the_broker(monkeypatch):
+    """The agy tier posts one flattened prompt, long-polls, and parses either
+    a plain reply or a tool_call JSON from whatever CLI served the job."""
+    import httpx
+    from mk_models import agy_llm
+
+    served: dict = {}
+
+    def handler(request):
+        if request.method == "POST" and request.url.path == "/jobs":
+            served["prompt"] = json.loads(request.content)["prompt"]
+            return httpx.Response(201, json={"job_id": "j-1"})
+        assert request.url.path == "/jobs/j-1"
+        return httpx.Response(200, json={"status": "done", "reply": served["reply"]})
+
+    monkeypatch.setattr(agy_llm, "new_client", lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="http://b"))
+    model = ModelGateway(tier="agy").model_for("chat")
+
+    def read_book(slug: str) -> dict:
+        """Open one book by its slug."""
+
+    served["reply"] = "It is on the shelf now."
+    res = await _run(model, _req("<!-- flow:keeper_tell -->\nKeep memories.", "I saw a fox",
+                                 tools={"read_book": read_book}))
+    assert res.content.parts[0].text == "It is on the shelf now."
+    assert res.usage_metadata.total_token_count > 0
+    prompt = served["prompt"]
+    assert "Keep memories." in prompt and "[user] I saw a fox" in prompt
+    assert "read_book" in prompt and "tool_call" in prompt  # the tool protocol rides along
+
+    served["reply"] = '{"tool_call": {"name": "read_book", "args": {"slug": "2026-08-01-fox"}}}'
+    res = await _run(model, _req("ask", "what fox?", tools={"read_book": read_book}))
+    call = res.content.parts[0].function_call
+    assert call.name == "read_book" and dict(call.args) == {"slug": "2026-08-01-fox"}

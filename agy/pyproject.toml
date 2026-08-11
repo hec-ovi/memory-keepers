@@ -1,0 +1,17 @@
+[project]
+name = "mk-agy"
+version = "0.1.0"
+description = "The agy tier machinery: model-job broker + MCP toolkit for a CLI brain"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141",
+    "httpx>=0.28",
+    "mcp>=1.9",
+]
+
+[build-system]
+requires = ["uv_build>=0.11"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mk_agy"

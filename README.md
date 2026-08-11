@@ -34,7 +34,15 @@ Privacy first: the same code runs against Gemini on Vertex AI or entirely on you
 docker compose up
 ```
 
-The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000), model tier `fake` (deterministic). `MODEL_TIER=local docker compose up` points the model at a llama.cpp server on the host (Gemma). Nothing installs on the machine; everything lives in the containers.
+The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000). Three brains, one switch, nothing else changes:
+
+| MODEL_TIER | brain | needs |
+|---|---|---|
+| `fake` (default) | deterministic in-process model | nothing |
+| `local` | Gemma on a llama.cpp server on the host | a machine that fits it |
+| `agy` | any MCP-capable CLI you already have | `docker compose --profile agy up`, then point the CLI at `agy/src/mk_agy/mcp_server.py` and tell it to serve the island |
+
+Nothing installs on the machine; everything lives in the containers.
 
 To fill a world with sample memories and test the whole loop (tells, grounded asks, a dream with its knowledge graph):
 
@@ -45,7 +53,7 @@ python3 scripts/demo_world.py http://localhost:8000 demo --verify
 ## Tests
 
 ```
-docker compose run --rm test            # python boxes (63 tests)
+docker compose run --rm test            # python boxes (68 tests)
 docker compose run --rm test-frontend   # frontend (713 tests)
 ```
 
@@ -66,7 +74,9 @@ Creates everything on an existing Google Cloud project: enables the APIs, then C
 gcloud projects create <project-id>
 gcloud billing projects link <project-id> --billing-account=<account-id>
 PROJECT=<project-id> scripts/deploy.sh
-``` With `ACCESS_CODE` set, visitors enter the key once (or open a `?key=` link); anonymous traffic never reaches a model. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
+```
+
+With `ACCESS_CODE` set, visitors enter the key once (or open a `?key=` link); anonymous traffic never reaches a model. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
 ## Layout
 
@@ -78,7 +88,8 @@ Box map and dependency edges: `docs/INDEX.md`. Each box is one folder with a CON
 | `engine/` | FastAPI surface, world scoping, meters, jobs |
 | `agents/` | ADK: monument root agent, keeper agents, dream prose |
 | `library/` | Firestore store: worlds, keepers, books, sessions, dream runs |
-| `models/` | model gateway: cloud / local / fake tiers |
+| `models/` | model gateway: cloud / local / agy / fake tiers |
 | `dreaming/` | consolidation: linking pass and dark side writer |
 | `voice/` | Cloud TTS / STT router |
 | `lookups/` | keeper tools: transcripts, lyrics, movie facts |
+| `agy/` | the agy tier: job broker + MCP toolkit |

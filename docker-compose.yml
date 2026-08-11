@@ -14,6 +14,7 @@ services:
       LOCAL_MODEL_ID: ${LOCAL_MODEL_ID:-gemma-4-26b-a4b-qat-q4}
       VOICE: ${VOICE:-off}
       OMDB_KEY: ${OMDB_KEY:-}
+      AGY_BROKER_URL: http://agy:8765
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [firestore]
 
@@ -23,10 +24,19 @@ services:
     build: emulators
     ports: ["8480:8480", "4000:4000"]
 
+  # The agy mode's broker: MODEL_TIER=agy docker compose --profile agy up,
+  # then attach any MCP-capable CLI to agy/src/mk_agy/mcp_server.py.
+  agy:
+    build: { context: ., target: dev }
+    command: /opt/venv/bin/uvicorn mk_agy.broker:app --host 0.0.0.0 --port 8765
+    ports: ["8765:8765"]
+    volumes: [".:/app"]
+    profiles: ["agy"]
+
   # docker compose run --rm test
   test:
     build: { context: ., target: dev }
-    command: /opt/venv/bin/pytest library models agents engine dreaming voice lookups -q
+    command: /opt/venv/bin/pytest library models agents engine dreaming voice lookups agy -q
     volumes: [".:/app"]
     profiles: ["test"]
 
