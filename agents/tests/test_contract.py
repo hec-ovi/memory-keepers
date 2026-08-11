@@ -36,6 +36,15 @@ async def test_tell_full_bookcase_raises_but_records(api, library):
     assert len(library.session_read("w", "music").turns) == 2
 
 
+async def test_tell_with_a_movie_runs_the_lookup_into_the_book(api, library, lookups):
+    keeper = library.create_keeper("w", "movies")
+    out = await api.keeper_tell(
+        "w", keeper.id, 'I watched the movie "Inception" yesterday and loved it.')
+    assert ("movie", "Inception") in lookups.calls
+    body = library.get_book("w", keeper.id, out["book"]["slug"]).body_md
+    assert "Christopher Nolan" in body  # the lookup result reached the shelf
+
+
 async def test_ask_grounded_with_sources(api):
     out = await api.keeper_ask("w", "dreams", "what did I dream about the launch?")
     assert out["grounded"] and not out["followup"]

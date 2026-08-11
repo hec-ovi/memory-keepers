@@ -18,6 +18,8 @@ STOPWORDS = {"the", "and", "that", "with", "about", "this", "from", "have", "wha
              "when", "where", "there", "were", "will", "your", "into", "just", "like"}
 SLUG_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}-[a-z0-9-]+\b")
 ENTITY_RE = re.compile(r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b")
+YOUTUBE_RE = re.compile(r"https?://\S*(?:youtube\.com|youtu\.be)/\S+")
+QUOTED_RE = re.compile(r'"([^"]{2,80})"')
 
 
 def _first_sentence(text: str, cap: int) -> str:
@@ -91,8 +93,42 @@ class FakeLlm(BaseLlm):
             types.Part(function_call=types.FunctionCall(name=name, args=args))])
 
     # -- flows ----------------------------------------------------------------
+    def _lookup_call(self, req, text: str) -> types.Content | None:
+        """Deterministic lookup-tool dispatch for keeper flows: a YouTube link,
+        a song, or a movie in the told text triggers the matching wired tool."""
+        tools = req.tools_dict or {}
+        lower = text.lower()
+        url = YOUTUBE_RE.search(text)
+        if url and "fetch_youtube_transcript" in tools:
+            return self._call("fetch_youtube_transcript", {"url": url.group(0)})
+        quoted = QUOTED_RE.search(text)
+        title = quoted.group(1) if quoted else _first_sentence(text, 40)
+        if ("song" in lower or "lyrics" in lower) and "find_song_lyrics" in tools:
+            return self._call("find_song_lyrics", {"title": title})
+        if ("movie" in lower or "film" in lower) and "find_movie_facts" in tools:
+            return self._call("find_movie_facts", {"title": title})
+        return None
+
+    @staticmethod
+    def _lookup_note(responses) -> str:
+        for r in responses:
+            payload = r.response if isinstance(r.response, dict) else {}
+            if not payload.get("ok"):
+                continue
+            detail = payload.get("text") or payload.get("lyrics") or ", ".join(
+                str(payload[k]) for k in ("title", "year", "director", "plot")
+                if payload.get(k))
+            if detail:
+                return f"\n\nFrom the lookup, kept in the margin: {detail[:400]}"
+        return ""
+
     def _keeper_tell(self, req, system) -> types.Content:
         text = self._last_user_text(req)
+        responses = self._function_responses(req)
+        if not responses:
+            call = self._lookup_call(req, text)
+            if call is not None:
+                return call
         title = _first_sentence(text, 60) or "A new memory"
         tags = sorted(_words(text))[:3]
         entities = list(dict.fromkeys(ENTITY_RE.findall(text)))[:4]
@@ -106,6 +142,7 @@ class FakeLlm(BaseLlm):
             f"Margin note: bound the evening it was told, filed under "
             f"{', '.join(tags) if tags else 'no tags yet'}.",
         ])
+        body += self._lookup_note(responses)
         return self._text({
             "reply": f"It is on the shelf now: {title}.",
             "title": title, "tags": tags, "entities": entities,

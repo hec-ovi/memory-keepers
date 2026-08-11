@@ -1,6 +1,6 @@
 # engine
 
-Purpose: the HTTP surface and the world bookkeeping. FastAPI app on Cloud Run; serves the frontend statics and the JSON API; owns meters, caps, jobs and world scoping. No model call and no Firestore access happens here directly, only through agents and library.
+Purpose: the HTTP surface and the world bookkeeping. FastAPI app on Cloud Run; serves the frontend statics and the JSON API; owns meters, caps, jobs and world scoping. No model call and no Firestore access happens here directly, only through agents and library. The engine constructs the lookups box and hands it to agents; env `OMDB_KEY` (optional) enriches movie lookups.
 
 ## World scoping
 

@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["library", "models", "agents", "engine", "dreaming", "voice"]
+members = ["library", "models", "agents", "engine", "dreaming", "voice", "lookups"]
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-asyncio>=1", "httpx>=0.28"]

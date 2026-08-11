@@ -28,9 +28,29 @@ def _today() -> str:
 
 
 class AgentsApi:
-    def __init__(self, library: Library, gateway: ModelGateway):
+    def __init__(self, library: Library, gateway: ModelGateway, lookups=None):
         self.library = library
         self.gateway = gateway
+        self.lookups = lookups  # LookupsApi-shaped; optional, tools appear when present
+
+    def _lookup_tools(self) -> list:
+        if not self.lookups:
+            return []
+        lookups = self.lookups
+
+        def fetch_youtube_transcript(url: str) -> dict:
+            """Fetch the transcript of a YouTube video by its link or id."""
+            return lookups.youtube_transcript(url)
+
+        def find_song_lyrics(title: str, artist: str = "") -> dict:
+            """Look up a song's lyrics by title and, when known, artist."""
+            return lookups.song_lyrics(title, artist)
+
+        def find_movie_facts(title: str, year: str = "") -> dict:
+            """Look up a movie's year, director, cast and plot by title."""
+            return lookups.movie_facts(title, year)
+
+        return [fetch_youtube_transcript, find_song_lyrics, find_movie_facts]
 
     # -- keeper chat --------------------------------------------------------
     async def keeper_tell(self, world: str, kid: str, text: str) -> dict:
@@ -41,7 +61,8 @@ class AgentsApi:
         reply_data, tokens = {}, 0
         try:
             raw, tokens = await run_agent(
-                build_agent("keeper_tell", self.gateway.model_for("chat"), instruction, []),
+                build_agent("keeper_tell", self.gateway.model_for("chat"), instruction,
+                            self._lookup_tools()),
                 text)
             reply_data = parse_json(raw) or {}
         except Exception:
@@ -97,7 +118,7 @@ class AgentsApi:
         try:
             raw, tokens = await run_agent(
                 build_agent("keeper_ask", self.gateway.model_for("chat"),
-                            instruction, [read_book]), question)
+                            instruction, [read_book, *self._lookup_tools()]), question)
             data = parse_json(raw)
         except Exception:
             log.exception("ask model failed, using fallbacks")

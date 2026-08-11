@@ -11,12 +11,31 @@ def library():
     return Library(FakeFirestore(), seed=seed.apply)
 
 
+class OfflineLookups:
+    """No-network stand-in: every lookup reports unavailable."""
+
+    def youtube_transcript(self, url):
+        return {"ok": False, "reason": "unavailable"}
+
+    def song_lyrics(self, title, artist=""):
+        return {"ok": False, "reason": "unavailable"}
+
+    def movie_facts(self, title, year=""):
+        return {"ok": False, "reason": "unavailable"}
+
+
+@pytest.fixture
+def offline_lookups():
+    return OfflineLookups()
+
+
 @pytest.fixture
 def app(library, monkeypatch):
     monkeypatch.setenv("DREAM_DISPATCH", "inline")
     monkeypatch.setenv("VOICE", "off")
     monkeypatch.delenv("DEV_ROUTES", raising=False)
-    return create_app(library=library, gateway=ModelGateway(tier="fake"))
+    return create_app(library=library, gateway=ModelGateway(tier="fake"),
+                      lookups=OfflineLookups())
 
 
 @pytest.fixture

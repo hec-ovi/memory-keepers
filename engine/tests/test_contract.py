@@ -151,12 +151,13 @@ async def test_dev_seed_reports_demo_content(client):
     assert data["seeded"] and data["keepers"] == 3 and data["books"] > 0
 
 
-async def test_dev_routes_gated(client, library, monkeypatch):
+async def test_dev_routes_gated(client, library, monkeypatch, offline_lookups):
     assert (await client.post("/dev/reset")).status_code in (404, 405)
     monkeypatch.setenv("DEV_ROUTES", "1")
     import httpx
     from mk_models import ModelGateway
-    dev_app = create_app(library=library, gateway=ModelGateway(tier="fake"))
+    dev_app = create_app(library=library, gateway=ModelGateway(tier="fake"),
+                         lookups=offline_lookups)
     transport = httpx.ASGITransport(app=dev_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t",
                                  headers={"X-World": "w-dev"}) as dev_client:
@@ -164,7 +165,7 @@ async def test_dev_routes_gated(client, library, monkeypatch):
         assert (await dev_client.post("/dev/reset")).json()["reset"] is True
 
 
-async def test_access_code_gates_the_api_before_any_model_call(library, monkeypatch):
+async def test_access_code_gates_the_api_before_any_model_call(library, monkeypatch, offline_lookups):
     import httpx
     from mk_engine import create_app
     from mk_models import ModelGateway
@@ -172,7 +173,8 @@ async def test_access_code_gates_the_api_before_any_model_call(library, monkeypa
     monkeypatch.setenv("ACCESS_CODE", "island-key")
     monkeypatch.setenv("DREAM_DISPATCH", "inline")
     monkeypatch.setenv("VOICE", "off")
-    app = create_app(library=library, gateway=ModelGateway(tier="fake"))
+    app = create_app(library=library, gateway=ModelGateway(tier="fake"),
+                     lookups=offline_lookups)
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),
                                  base_url="http://t",
                                  headers={"X-World": "w-test"}) as c:

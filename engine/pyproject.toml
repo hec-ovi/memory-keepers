@@ -7,7 +7,7 @@ dependencies = [
     "fastapi>=0.141",
     "uvicorn>=0.34",
     "google-cloud-pubsub>=2.27",
-    "mk-library", "mk-agents", "mk-dreaming", "mk-voice",
+    "mk-library", "mk-agents", "mk-dreaming", "mk-voice", "mk-lookups",
 ]
 
 [tool.uv.sources]
@@ -15,6 +15,7 @@ mk-library = { workspace = true }
 mk-agents = { workspace = true }
 mk-dreaming = { workspace = true }
 mk-voice = { workspace = true }
+mk-lookups = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.11"]

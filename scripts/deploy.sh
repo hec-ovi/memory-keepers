@@ -26,7 +26,7 @@ gcloud run deploy "$SERVICE" --source . --region "$REGION" --allow-unauthenticat
   --min-instances "$MIN_INSTANCES" ${CPU_ALWAYS:+--no-cpu-throttling} \
   --memory 1Gi --timeout 300 \
   --max-instances 2 \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT,GOOGLE_CLOUD_LOCATION=$VERTEX_LOCATION,GOOGLE_GENAI_USE_VERTEXAI=TRUE,MODEL_TIER=cloud,DREAM_DISPATCH=pubsub,DREAM_TOPIC=$TOPIC,INTERNAL_TOKEN=$TOKEN${ACCESS_CODE:+,ACCESS_CODE=$ACCESS_CODE}"
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT,GOOGLE_CLOUD_LOCATION=$VERTEX_LOCATION,GOOGLE_GENAI_USE_VERTEXAI=TRUE,MODEL_TIER=cloud,DREAM_DISPATCH=pubsub,DREAM_TOPIC=$TOPIC,INTERNAL_TOKEN=$TOKEN${ACCESS_CODE:+,ACCESS_CODE=$ACCESS_CODE}${OMDB_KEY:+,OMDB_KEY=$OMDB_KEY}"
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')"
 

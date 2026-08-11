@@ -25,6 +25,7 @@ Privacy first: the same code runs against Gemini on Vertex AI or entirely on you
 - Pub/Sub + Cloud Scheduler: the nightly dream sweep
 - Cloud Text-to-Speech and Speech-to-Text: keeper voices and the talk key
 - Gemma on llama.cpp: the local model tier
+- Keeper tools: YouTube transcripts, song lyrics (LRCLIB), movie facts (OMDb or Wikidata)
 - three.js frontend (no build step), FastAPI engine, Docker
 
 ## Run locally (zero cloud cost)
@@ -44,7 +45,7 @@ python3 scripts/demo_world.py http://localhost:8000 demo --verify
 ## Tests
 
 ```
-docker compose run --rm test            # python boxes (54 tests)
+docker compose run --rm test            # python boxes (63 tests)
 docker compose run --rm test-frontend   # frontend (713 tests)
 ```
 
@@ -55,6 +56,7 @@ Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites 
 ```
 export INTERNAL_TOKEN=<random secret>
 export ACCESS_CODE=<island key>       # optional: gates the API behind X-Access-Code
+export OMDB_KEY=<omdb key>            # optional: movie facts with IMDb ratings
 scripts/deploy.sh
 ```
 
@@ -73,3 +75,4 @@ Box map and dependency edges: `docs/INDEX.md`. Each box is one folder with a CON
 | `models/` | model gateway: cloud / local / fake tiers |
 | `dreaming/` | consolidation: linking pass and dark side writer |
 | `voice/` | Cloud TTS / STT router |
+| `lookups/` | keeper tools: transcripts, lyrics, movie facts |

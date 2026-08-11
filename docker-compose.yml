@@ -13,6 +13,7 @@ services:
       LOCAL_MODEL_URL: ${LOCAL_MODEL_URL:-http://host.docker.internal:8080/v1}
       LOCAL_MODEL_ID: ${LOCAL_MODEL_ID:-gemma-4-26b-a4b-qat-q4}
       VOICE: ${VOICE:-off}
+      OMDB_KEY: ${OMDB_KEY:-}
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [firestore]
 
@@ -25,7 +26,7 @@ services:
   # docker compose run --rm test
   test:
     build: { context: ., target: dev }
-    command: /opt/venv/bin/pytest library models agents engine dreaming voice -q
+    command: /opt/venv/bin/pytest library models agents engine dreaming voice lookups -q
     volumes: [".:/app"]
     profiles: ["test"]
 

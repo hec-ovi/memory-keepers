@@ -15,7 +15,7 @@ Class `ModelGateway(tier=None)` (tier defaults to the `MODEL_TIER` env, default 
 
 - `cloud` (deployment default): Gemini on Vertex AI. Env: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GOOGLE_GENAI_USE_VERTEXAI=TRUE`, `GEMINI_MODEL` (default `gemini-3.5-flash`).
 - `local`: an OpenAI-compatible llama.cpp server serving Gemma. Env: `LOCAL_MODEL_URL`, `LOCAL_MODEL_ID`, optional `LOCAL_MODEL_KEY`. Needs the `mk-models[local]` extra (litellm).
-- `fake`: `FakeLlm`, a deterministic in-process model for tests and offline dev. It recognizes the flow marker every prompt carries (`<!-- flow:name -->`: `keeper_tell`, `keeper_ask`, `monument`, `dream_write`, `dream_narrative`), emits valid JSON and real function calls, and reports estimated token usage.
+- `fake`: `FakeLlm`, a deterministic in-process model for tests and offline dev. It recognizes the flow marker every prompt carries (`<!-- flow:name -->`: `keeper_tell`, `keeper_ask`, `monument`, `dream_write`, `dream_narrative`), emits valid JSON and real function calls, and reports estimated token usage. In keeper flows it also dispatches wired lookup tools deterministically (a YouTube link, the word song, the word movie) and folds an ok result into the book body, so the whole lookup loop proves out offline.
 
 Tier selection: constructor arg, else `MODEL_TIER`; per-role override `MODEL_TIER_CHAT` / `MODEL_TIER_DREAM`.
 

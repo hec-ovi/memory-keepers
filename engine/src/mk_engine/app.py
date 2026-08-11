@@ -7,6 +7,7 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from mk_agents import AgentsApi
+from mk_lookups import LookupsApi
 from mk_library import Library, LibraryError, seed
 from mk_library.limits import NEEDS_SLEEP_THRESHOLD, SESSION_TOKEN_BUDGET_DEFAULT
 from mk_models import ModelGateway
@@ -31,10 +32,11 @@ class ApiError(Exception):
 
 
 def create_app(library: Library | None = None, gateway: ModelGateway | None = None,
-               voice_router=None, dispatcher: DreamDispatcher | None = None) -> FastAPI:
+               voice_router=None, dispatcher: DreamDispatcher | None = None,
+               lookups: LookupsApi | None = None) -> FastAPI:
     library = library or Library(seed=seed.apply)
     gateway = gateway or ModelGateway()
-    agents_api = AgentsApi(library, gateway)
+    agents_api = AgentsApi(library, gateway, lookups or LookupsApi())
     dispatcher = dispatcher or DreamDispatcher(library, agents_api)
     budget = int(os.environ.get("SESSION_TOKEN_BUDGET", SESSION_TOKEN_BUDGET_DEFAULT))
     dev_routes = os.environ.get("DEV_ROUTES") == "1"
