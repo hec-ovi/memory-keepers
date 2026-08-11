@@ -31,10 +31,10 @@ const CSS = `
 .mk-cine-bar-bottom{bottom:0;transform:translateY(102%);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 22px;pointer-events:auto;}
 .mk-cine-bar.is-in{transform:translateY(0);}
 .mk-cine-caption{font-size:.85rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(240,233,246,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mk-cine-skip{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;border:1px solid rgba(240,233,246,.35);background:rgba(240,233,246,.08);color:rgba(240,233,246,.9);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;transition:background 120ms ease;}
-.mk-cine-skip:hover{background:rgba(240,233,246,.18);}
-.mk-cine-skip:focus-visible{outline:2px solid var(--lavender,#b9a7f8);outline-offset:2px;}
-.mk-cine-skip .kbd{font-size:.7rem;opacity:.7;}
+.mk-cine-skip{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:4px;border:1px solid var(--holo-amber-dim,rgba(255,166,64,.55));background:rgba(255,166,64,.08);color:var(--holo-amber,#ffb658);font-family:var(--holo-font,inherit);font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:background 130ms ease,box-shadow 130ms ease;}
+.mk-cine-skip:hover{background:rgba(255,166,64,.2);box-shadow:0 0 14px rgba(255,166,64,.5);}
+.mk-cine-skip:focus-visible{outline:2px solid var(--holo-amber,#ffb658);outline-offset:2px;}
+.mk-cine-skip .kbd{font-size:.7rem;opacity:.85;border:1px solid var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:3px;padding:1px 5px;}
 /* pointer-events carries !important on both states: the plate mounts as a
    direct child of #ui, and styles.css's "#ui > *{pointer-events:auto}" opt-in
    (ID specificity) would otherwise beat this class rule and leave an
