@@ -1,5 +1,7 @@
 # memory-keepers
 
+![Memory Keepers: an island of keepers that remember and dream](docs/banner.jpg)
+
 A 3D game where keepers (small blob librarians) manage your memories. Each keeper owns a topic (dreams, meetings, music, anything you create), lives in a cottage on a floating island, and keeps a library of books. Tell her something and she writes a book; ask her and she reads her shelves back to you, always grounded in real books. Hold T in any dialog to talk instead of typing, and she answers in her own voice. At night the island dreams: everything that connects across shelves becomes a knowledge graph, and dark keepers are born from what keeps returning.
 
 Built for the All Things Agentic Hackathon (The Collaborative Partner track).
