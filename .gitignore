@@ -21,3 +21,6 @@ node_modules/
 
 # local video renders
 video.mp4
+
+# research store
+.research/
