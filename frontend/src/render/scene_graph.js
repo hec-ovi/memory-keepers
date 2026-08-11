@@ -210,10 +210,6 @@ function makeLabelSprite(doc, text, colorHex) {
 }
 
 // --- the scene ----------------------------------------------------------------
-//
-// Audio note: the wave-landing pulse is played by src/render/audio.js, which
-// listens for the "graph:wave" bus event emitted below and honors the HUD
-// mute button; this scene keeps no audio of its own.
 
 export function createGraphScene(ctx = {}) {
   const {

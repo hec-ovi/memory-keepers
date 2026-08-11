@@ -29,7 +29,9 @@ Keeper name = amber holo header, joined by a session cluster: an amber `LV n`
 level badge (`keeper.level`, default 1) and a thin rest meter
 (role=progressbar "rest meter") fed from `keeper.session` {tokens_used,
 budget, status}; the fill goes cyan -> amber -> red as she tires (restTone).
-LAYOUT: the panel is a flex column, top to bottom: topic chip + Join button,
+LAYOUT: the panel is a flex column, top to bottom: topic chip (only when the
+name does not already say the topic) + Join button ("Join her"; absent inside
+her own interior, the player is already with her),
 the scrollback (bottom-anchored so it grows UPWARD), the voice visualizer
 hero (`createVoiceViz`, speaker toggle beside it), the reply area, the sleep
 prompt, the Tell/Ask tabs, and the COMPOSER PINNED TO THE BOTTOM. One
@@ -157,9 +159,9 @@ into that list), Create keeper, Dreaming (label "Dreaming", tooltip "Send your
 keepers to sleep so they can consolidate"; POST /dream, disabled while a
 run is active; a 409 always toasts the warm "they are already dreaming",
 never the engine's consolidation-worded message), How to play, Demo data
-(zero keepers only), mute.
+(zero keepers only).
 - emits `create_keeper:open`, `consolidation:started` {runId}, `howto:open`,
-  `keepers_list:open`, `audio:mute` {muted}, `state:loaded` (after Demo data)
+  `keepers_list:open`, `state:loaded` (after Demo data)
 - listens `state:loaded`, `consolidation:finished`, `report:loaded`,
   `keeper:created`, `book:created`, `book:destroyed`
 
@@ -243,13 +245,6 @@ everywhere else). Uses `ensureHoloStyles` from the kit, no createHoloPanel.
 `mdToDom(md, doc = globalThis.document) -> DocumentFragment`;
 `renderMd(container, md)`
 
-## Audio hooks (render/audio.js listens)
-
-`ui:open` / `howto:open` / `create_keeper:open` -> materialize chirp;
-`ui:close` / `reader:closed` -> collapse chirp; `voice:state` -> listening
-ping / speaking double tone (idle silent); `voice:mic` -> rising/falling
-click. Plus the older `keeper:selected` / `book:created` / `book:open` /
-`graph:wave` / `district:changed` / `audio:mute` map.
 
 ## Invariants
 

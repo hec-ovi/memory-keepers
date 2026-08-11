@@ -1,5 +1,5 @@
 // Top HUD bar: keeper/book counts, the View keepers button, and the action
-// buttons (Create keeper, Dreaming, How to play, Demo data, mute). Factory
+// buttons (Create keeper, Dreaming, How to play, Demo data). Factory
 // per the module contract, no module-level side effects:
 //
 //   const hud = createHud({ root, state, bus, api, toasts });
@@ -12,7 +12,6 @@
 //                                                  holo list of everyone on the
 //                                                  island; the crossing shortcut
 //                                                  lives inside that list)
-//   emits   "audio:mute" { muted }                 mute button
 //   emits   "state:loaded" { state, consolidation } after Demo data reloads state
 //   listens "state:loaded"            initial counts + consolidation.running
 //   listens "consolidation:finished" / "report:loaded"  re-enables Dreaming
@@ -29,7 +28,6 @@ const TOOLTIPS = {
   dreaming: "Send your keepers to sleep so they can consolidate",
   seed: "Load a small demo world to explore",
   howto: "Controls and what everything means",
-  mute: "Toggle the game sounds",
 };
 
 const STYLE_ID = "mk-hud-style";
@@ -42,7 +40,6 @@ const CSS = `
 /* View keepers opens the roster: cyan accent against the amber chrome */
 .mk-hud-keepers{border-color:rgba(63,224,255,.45);color:var(--lavender,#3fe0ff);background:rgba(63,224,255,.08);}
 .mk-hud-keepers:hover{background:rgba(63,224,255,.18);box-shadow:0 0 14px rgba(63,224,255,.45);}
-.mk-hud-mute{min-width:44px;}
 `;
 
 function ensureStyles(doc) {
@@ -63,7 +60,6 @@ export function createHud({ root, state, bus, api, toasts, ui } = {}) {
   let running = false;
   let consolidating = false;
   let seeding = false;
-  let muted = false;
   const offs = [];
 
   const el = (tag, className, text) => {
@@ -163,18 +159,7 @@ export function createHud({ root, state, bus, api, toasts, ui } = {}) {
   howtoBtn.setAttribute("data-tooltip", TOOLTIPS.howto);
   howtoBtn.addEventListener("click", () => bus?.emit("howto:open"));
 
-  const muteBtn = el("button", "mk-hud-mute btn btn-ghost");
-  muteBtn.type = "button";
-  muteBtn.setAttribute("aria-label", "toggle sound");
-  muteBtn.setAttribute("aria-pressed", "false");
-  muteBtn.setAttribute("data-tooltip", TOOLTIPS.mute);
-  muteBtn.addEventListener("click", () => {
-    muted = !muted;
-    bus?.emit("audio:mute", { muted });
-    refresh();
-  });
-
-  bar.append(keeperStat, bookStat, keepersBtn, spacer, createBtn, dreamBtn, howtoBtn, muteBtn);
+  bar.append(keeperStat, bookStat, keepersBtn, spacer, createBtn, dreamBtn, howtoBtn);
   root.appendChild(bar);
 
   function refresh() {
@@ -184,8 +169,6 @@ export function createHud({ root, state, bus, api, toasts, ui } = {}) {
     setStat(bookStat, `${bookCount} books`);
 
     dreamBtn.disabled = running || consolidating;
-    muteBtn.textContent = muted ? "🔇" : "🔊";
-    muteBtn.setAttribute("aria-pressed", String(muted));
 
     seedBtn.disabled = seeding;
     const showSeed = keepers.length === 0;
@@ -220,7 +203,6 @@ export function createHud({ root, state, bus, api, toasts, ui } = {}) {
   return {
     element: bar,
     refresh,
-    isMuted: () => muted,
     dispose() {
       for (const off of offs) off();
       bar.remove();

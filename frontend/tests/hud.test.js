@@ -170,9 +170,6 @@ describe("createHud", () => {
       const btn = screen.getByRole("button", { name });
       expect(btn.getAttribute("data-tooltip")).toBeTruthy();
     }
-    expect(
-      screen.getByRole("button", { name: /toggle sound/i }).getAttribute("data-tooltip"),
-    ).toBeTruthy();
   });
 
   it("counters pop when their value changes, not on unrelated refreshes", () => {
@@ -184,22 +181,6 @@ describe("createHud", () => {
     bus.emit("book:created", { keeperId: "dreams", book: {} });
     expect(bookStat.classList.contains("stat-pop")).toBe(true);
     expect(keeperStat.classList.contains("stat-pop")).toBe(false); // unchanged count
-  });
-
-  it("mute toggle emits audio:mute with the new state", async () => {
-    const user = userEvent.setup();
-    const muted = vi.fn();
-    bus.on("audio:mute", muted);
-    const btn = screen.getByRole("button", { name: /toggle sound/i });
-    expect(btn.getAttribute("aria-pressed")).toBe("false");
-
-    await user.click(btn);
-    expect(muted).toHaveBeenLastCalledWith({ muted: true });
-    expect(btn.getAttribute("aria-pressed")).toBe("true");
-
-    await user.click(btn);
-    expect(muted).toHaveBeenLastCalledWith({ muted: false });
-    expect(btn.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("Create keeper and How to play emit their bus events", async () => {

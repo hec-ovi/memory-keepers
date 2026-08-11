@@ -795,9 +795,9 @@ const SILENT_GLOW_COLOR = 0xffc98a; // the held book's soft glow
 
 const STYLE_ID = "mk-interior-style";
 const CSS = `
-.mk-book-label{position:absolute;z-index:25;pointer-events:none;transform:translate(-50%,-120%);background:rgba(26,17,36,.92);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:6px 11px;max-width:280px;box-shadow:0 8px 22px rgba(0,0,0,.45);}
-.mk-book-label strong{display:block;font-size:.86rem;color:#ffdff0;line-height:1.25;}
-.mk-book-label span{font-size:.72rem;color:#ffd3a6;}
+.mk-book-label{position:absolute;z-index:25;pointer-events:none;transform:translate(-50%,-120%);background:rgba(20,10,3,.96);border:1px solid var(--line);border-radius:4px;padding:5px 10px;max-width:280px;box-shadow:var(--shadow-soft);letter-spacing:.02em;}
+.mk-book-label strong{display:block;font-size:var(--fs-xs);font-weight:600;color:var(--text);line-height:1.3;}
+.mk-book-label span{font-size:.72rem;color:var(--text-dim);}
 `;
 
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);

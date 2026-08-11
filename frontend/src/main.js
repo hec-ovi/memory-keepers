@@ -23,7 +23,6 @@ import { createMinimap } from "./ui/minimap.js";
 import { createCinematic } from "./ui/cinematic.js";
 import { createOnboarding } from "./ui/onboarding.js";
 import { startConsolidationWatch } from "./ui/graph_hud.js";
-import { createAudio } from "./render/audio.js";
 
 export function resolveBaseUrl(loc = globalThis.location) {
   // Same-origin by default; ?api=http://127.0.0.1:8000 overrides (dev setup
@@ -107,13 +106,13 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
     howto: createHowto({ root: uiEl }),
   };
   // Feature UI, mounted once at boot. Each subscribes to the bus itself:
-  // hud drives create/dreaming/mute and opens the keepers list
+  // hud drives create/dreaming and opens the keepers list
   // ("keepers_list:open"), dialog opens on "keeper:selected", reader on
   // "book:open" (inside the interior the 3D books themselves are the
   // interface; there is no list panel), create_keeper on "create_keeper:open",
   // minimap redraws on "minimap:update", cinematic letterboxes on
   // "cinematic:started" (the Join sequence), onboarding shows once after the
-  // first "state:loaded", audio turns bus events into blips.
+  // first "state:loaded".
   ui.hud = createHud({ root: uiEl, state, bus, api, toasts: ui.toasts });
   ui.dialog = createDialog({ root: uiEl, state, bus, api, toasts: ui.toasts });
   ui.reader = createReader({ root: uiEl, state, bus, api, toasts: ui.toasts, confirm: ui.confirm });
@@ -122,7 +121,6 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
   ui.minimap = createMinimap({ root: uiEl, state, bus, config });
   ui.cinematic = createCinematic({ root: uiEl, state, bus });
   ui.onboarding = createOnboarding({ root: uiEl, bus, storage: win.localStorage ?? null });
-  ui.audio = createAudio({ bus, target: win });
 
   // Cursor language for the canvas: CSS makes #app show a grab cursor;
   // while a pointer is held down we flip to grabbing (pan) or move (middle

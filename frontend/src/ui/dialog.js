@@ -927,7 +927,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
     const content = el("div", "mk-dialog-inner");
 
-    if (keeper.topic) {
+    // Topic chip only when the keeper's name does not already say it.
+    if (keeper.topic && !keeperName.toLowerCase().includes(String(keeper.topic).toLowerCase())) {
       const chips = el("div", "mk-dialog-chips");
       chips.appendChild(el("span", "holo-chip chip", keeper.topic));
       content.appendChild(chips);
@@ -935,20 +936,18 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
     // Primary action: join her. Closes the panel; the overworld walks her
     // home with the camera following and fires "house:enter" on arrival.
-    // The main keeper has no house to join.
-    if (!isMonument) {
-    const joinBtn = el(
-      "button",
-      "holo-btn holo-btn--primary mk-dialog-join",
-      `Join ${keeper.name || keeper.id}`,
-    );
-    joinBtn.type = "button";
-    joinBtn.addEventListener("click", () => {
-      const id = keeper.id;
-      close();
-      bus?.emit("keeper:join", { keeperId: id });
-    });
-    content.appendChild(joinBtn);
+    // The main keeper has no house to join, and inside her own house the
+    // player is already with her, so no button either.
+    const insideHers = state?.mode === `interior:${keeper.id}`;
+    if (!isMonument && !insideHers) {
+      const joinBtn = el("button", "holo-btn holo-btn--primary mk-dialog-join", "Join her");
+      joinBtn.type = "button";
+      joinBtn.addEventListener("click", () => {
+        const id = keeper.id;
+        close();
+        bus?.emit("keeper:join", { keeperId: id });
+      });
+      content.appendChild(joinBtn);
     }
 
     // Scrollback: recent exchanges, small, above the visualizer; the column

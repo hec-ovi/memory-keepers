@@ -48,10 +48,10 @@ afterEach(() => {
 });
 
 describe("createDialog", () => {
-  it("opens on keeper:selected as a holo comm panel with name, topic, accent and idle viz", () => {
+  it("opens on keeper:selected as a holo comm panel with name, accent and idle viz; the topic chip stays off when the name already says it", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     expect(screen.getByRole("heading", { name: "Keeper of Dreams" })).toBeTruthy();
-    expect(screen.getByText("dreams")).toBeTruthy();
+    expect(screen.queryByText("dreams")).toBeNull();
     const panel = root.querySelector(".mk-dialog");
     expect(panel.classList.contains("holo-panel")).toBe(true);
     expect(panel.style.getPropertyValue("--mk-dialog-accent")).toBe("#7c4a6b");
@@ -292,18 +292,24 @@ describe("createDialog", () => {
     expect(dialog.isOpen()).toBe(false);
   });
 
-  it("join button: renders with the keeper's name, click closes and emits keeper:join", async () => {
+  it("join button: click closes and emits keeper:join; hidden inside her own house", async () => {
     const user = userEvent.setup();
     const joined = vi.fn();
     bus.on("keeper:join", joined);
     bus.emit("keeper:selected", { keeperId: "dreams" });
 
-    const join = screen.getByRole("button", { name: "Join Keeper of Dreams" });
+    const join = screen.getByRole("button", { name: "Join her" });
     await user.click(join);
 
     expect(joined).toHaveBeenCalledWith({ keeperId: "dreams" });
     expect(dialog.isOpen()).toBe(false);
     expect(screen.queryByRole("heading", { name: "Keeper of Dreams" })).toBeNull();
+
+    // already in her interior: the player is with her, no Join button
+    state.mode = "interior:dreams";
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    expect(dialog.isOpen()).toBe(true);
+    expect(screen.queryByRole("button", { name: "Join her" })).toBeNull();
   });
 
   it("join button is absent when no keeper is selected", () => {
