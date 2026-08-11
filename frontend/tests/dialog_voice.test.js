@@ -1,4 +1,4 @@
-// Voice in the comm panel: push-to-talk (hold T / hold the mic button)
+// Voice in the comm panel: push-to-talk (hold T) and the mic toggle
 // through api.stt, and spoken replies through api.tts when the speaker
 // toggle is on. jsdom has no media stack, so the mic and recorder are
 // minimal fakes and HTMLMediaElement.play is stubbed.
@@ -46,7 +46,7 @@ class FakeMediaRecorder {
 let root, bus, state, toasts, dialog, getUserMedia, tracks, playSpy;
 
 const vizMode = () => root.querySelector(".holo-voice")?.dataset.mode;
-const micButton = () => screen.getByRole("button", { name: /hold to talk/i });
+const micButton = () => screen.getByRole("button", { name: /toggle talking/i });
 const speakerToggle = () => screen.getByRole("button", { name: /toggle voice replies/i });
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -127,7 +127,7 @@ describe("push-to-talk", () => {
     expect(FakeMediaRecorder.instances).toHaveLength(0);
   });
 
-  it("the mic button is push-to-talk: pointerdown records, pointerup stops and sends", async () => {
+  it("the mic button toggles: click records (page inert), click again stops and sends", async () => {
     const user = userEvent.setup();
     server.use(
       http.post(`${BASE}/voice/stt`, () => HttpResponse.json({ text: "hello from the mic" })),
@@ -136,13 +136,15 @@ describe("push-to-talk", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     const micBtn = micButton();
 
-    await user.pointer({ keys: "[MouseLeft>]", target: micBtn });
+    await user.click(micBtn);
     expect(micBtn.getAttribute("aria-pressed")).toBe("true");
     expect(vizMode()).toBe("listening");
+    expect(document.body.classList.contains("ui-recording")).toBe(true);
     await waitFor(() => expect(FakeMediaRecorder.instances).toHaveLength(1));
 
-    await user.pointer({ keys: "[/MouseLeft]", target: micBtn });
+    await user.click(micBtn);
     expect(micBtn.getAttribute("aria-pressed")).toBe("false");
+    expect(document.body.classList.contains("ui-recording")).toBe(false);
     await screen.findByText("heard you.");
   });
 

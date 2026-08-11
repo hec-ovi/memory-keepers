@@ -208,12 +208,9 @@ export function createKeepersList({ root, state, bus } = {}) {
 
     onKey = (e) => {
       if (e.key !== "Escape") return;
-      // Modal overlays, the reader and the talk panel own Esc first.
-      if (
-        doc.querySelector(".overlay-backdrop") ||
-        doc.querySelector(".mk-reader") ||
-        doc.querySelector(".mk-dialog")
-      ) {
+      // Modal overlays and the reader own Esc first; the talk panel never
+      // takes Esc (its X is its only close), so it does not block the list.
+      if (doc.querySelector(".overlay-backdrop") || doc.querySelector(".mk-reader")) {
         return;
       }
       e.stopPropagation();

@@ -59,20 +59,16 @@ describe("createDialog", () => {
     expect(vizMode()).toBe("idle");
   });
 
-  it("keeper:deselected closes the open panel (clicking elsewhere in the overworld)", () => {
+  it("keeper:deselected leaves the panel open: clicking elsewhere never closes it", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     expect(dialog.isOpen()).toBe(true);
 
     const closed = vi.fn();
     bus.on("ui:close", closed);
     bus.emit("keeper:deselected", { keeperId: "dreams" });
-    expect(dialog.isOpen()).toBe(false);
-    expect(root.querySelector(".mk-dialog")).toBeNull();
-    expect(closed).toHaveBeenCalledWith({ panel: "dialog" });
-
-    // with the panel already closed the event is a no-op
-    bus.emit("keeper:deselected", { keeperId: "dreams" });
-    expect(closed).toHaveBeenCalledTimes(1);
+    expect(dialog.isOpen()).toBe(true);
+    expect(root.querySelector(".mk-dialog")).not.toBeNull();
+    expect(closed).not.toHaveBeenCalled();
   });
 
   it("composer: pill pinned to the panel bottom with the mic merged into its right end", () => {
@@ -84,7 +80,7 @@ describe("createDialog", () => {
     // the input and the mic live INSIDE the pill; Enter sends
     const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
     expect(input.closest("form")).toBe(form);
-    const mic = screen.getByRole("button", { name: /hold to talk/i });
+    const mic = screen.getByRole("button", { name: /toggle talking/i });
     expect(mic.closest("form")).toBe(form);
     expect(mic.classList.contains("mk-dialog-mic")).toBe(true);
     // one continuous shape: the circular mic caps the pill's right end
@@ -279,17 +275,16 @@ describe("createDialog", () => {
     expect(tts).toHaveBeenCalledWith({ keeperId: "dreams", on: false });
   });
 
-  it("closes on Escape and via the close button", async () => {
+  it("only the X closes the panel; Escape leaves it open", async () => {
     const user = userEvent.setup();
     bus.emit("keeper:selected", { keeperId: "dreams" });
     expect(dialog.isOpen()).toBe(true);
     await user.keyboard("{Escape}");
-    expect(dialog.isOpen()).toBe(false);
-    expect(screen.queryByRole("heading", { name: "Keeper of Dreams" })).toBeNull();
+    expect(dialog.isOpen()).toBe(true);
 
-    bus.emit("keeper:selected", { keeperId: "dreams" });
     await user.click(screen.getByRole("button", { name: /close talk panel/i }));
     expect(dialog.isOpen()).toBe(false);
+    expect(screen.queryByRole("heading", { name: "Keeper of Dreams" })).toBeNull();
   });
 
   it("join button: click closes and emits keeper:join; hidden inside her own house", async () => {

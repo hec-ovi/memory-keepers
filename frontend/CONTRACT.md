@@ -78,7 +78,7 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 | `keepers_list:open` | none | ui/hud (View keepers) | ui/keepers_list |
 | `keeper:created` | Keeper object | ui/create_keeper, ui/dialog (monument reply carrying `created_keeper`) | main.js (refreshState), ui/hud |
 | `keeper:selected` | `{ keeperId }` (consumers also accept a bare id) | render/scene_overworld (pick: the keeper herself OR any part of her cottage; the door alone keeps its enter pick), render/scene_interior (hint book, clicking the keeper herself), ui/keepers_list (row click) | main.js (records `state.selectedKeeperId`, so a scene that builds after the emit still sees the selection), ui/dialog (open), render/scene_overworld (select-to-follow: camera tweens to the standard framing and follows her; any user camera input or a deselect exits) |
-| `keeper:deselected` | `{ keeperId }` | render/scene_overworld (a true click on nothing pickable while someone is selected, and a monument click while a different keeper is selected; the scene then clears the ring + follow itself) | ui/dialog (close the open talk panel) |
+| `keeper:deselected` | `{ keeperId }` | render/scene_overworld (a true click on nothing pickable while someone is selected, and a monument click while a different keeper is selected; the scene then clears the ring + follow itself) | none in src (the talk panel stays open; only its X closes it) |
 | `keeper:join` | `{ keeperId }` | ui/dialog | render/scene_overworld |
 | `house:enter` | `{ keeperId }` | render/scene_overworld | main.js (setMode interior) |
 | `interior:exit` | none | render/scene_interior (Esc from the settled main view), ui/interior_views ("Back to the island") | main.js (setMode overworld) |
@@ -110,7 +110,7 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 | `ui:open` | `{ panel: "dialog", keeperId }` or `{ panel: "keepers" }` | ui/dialog, ui/keepers_list | render/scene_overworld (dialog only: cancels a pending deselect during a close-reopen switch) |
 | `ui:close` | `{ panel: "dialog" \| "keepers" }` | ui/dialog, ui/keepers_list | render/scene_overworld (dialog only: deselect on the next frame, ring off + follow ends; deferred so switching keepers does not kill the fresh selection) |
 | `voice:state` | `{ keeperId, mode: "idle"\|"listening"\|"speaking" }` | ui/dialog | none in src (tests) |
-| `voice:mic` | `{ keeperId, on }` | ui/dialog (push-to-talk recording started/stopped: hold T or hold the mic button) | none in src (tests) |
+| `voice:mic` | `{ keeperId, on }` | ui/dialog (recording started/stopped: hold T, or the mic toggle) | none in src (tests) |
 | `voice:tts` | `{ keeperId, on }` | ui/dialog (speaker toggle; ON = the dialog itself speaks each completed reply via api.tts) | none in src (tests) |
 
 ## Invariants
@@ -126,9 +126,10 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
   and the interior apply `mesh.setTired` from `keeper.session.status` on build
   and on every `state:loaded`; the comm panel is the same ui/dialog
   component everywhere (`keeper:selected` opens it from either scene).
-- Esc ordering: overlay modals first (capture phase), then reader, then
-  dialog, then the keepers list, then interior-view fallback, then main.js
-  exits the current mode.
+- Esc ordering: overlay modals first (capture phase), then the reader, then
+  the keepers list, then interior-view fallback, then main.js exits the
+  current mode. The talk panel is not in the chain: it closes only from its
+  header X, and while the mic records the dialog swallows Esc entirely.
 - Adding a bus event = update this table plus the emitting and consuming
   modules' CONTRACT.md in the same change.
 

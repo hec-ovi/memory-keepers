@@ -180,19 +180,17 @@ describe("createKeepersList", () => {
     expect(list.isOpen()).toBe(false);
   });
 
-  it("leaves Esc to the talk panel when one is open", async () => {
+  it("Esc closes the list even while a talk panel is open (the panel ignores Esc)", async () => {
     const user = userEvent.setup();
     bus.emit("keepers_list:open");
-    // a stand-in for the open comm panel
+    // a stand-in for the open comm panel, which never takes Esc
     const dialogEl = document.createElement("section");
     dialogEl.className = "mk-dialog";
     document.body.appendChild(dialogEl);
 
     await user.keyboard("{Escape}");
-    expect(list.isOpen()).toBe(true); // the dialog owns Esc first
-    dialogEl.remove();
-    await user.keyboard("{Escape}");
     expect(list.isOpen()).toBe(false);
+    dialogEl.remove();
   });
 
   it("double open is a no-op and dispose cleans up", () => {

@@ -35,10 +35,13 @@
 // "book:created".
 //
 // Voice: push-to-talk and spoken replies. Holding the physical T key (outside
-// any typing surface) or holding the mic button records through getUserMedia +
+// any typing surface) records; the round mic button is the same thing as a
+// toggle, click to start, click to stop. Recording runs through getUserMedia +
 // MediaRecorder (opus; webm when supported, else ogg; one stream per dialog
-// session, released on close). Releasing sends the clip to api.stt and the
-// transcription goes through the exact same send path as a typed message.
+// session, released on close), and while it runs everything outside the panel
+// is inert (body.ui-recording): no click or Esc can interrupt a live take.
+// Stopping sends the clip to api.stt and the transcription goes through the
+// exact same send path as a typed message.
 // The visualizer doubles as the speaker toggle: when ON each completed reply
 // is fetched from api.tts (monument panel -> "monument", unconscious keeper
 // -> "dark", else "light") and played from a Blob object URL (revoked after
@@ -64,8 +67,8 @@
 //                            ("idle" | "listening" | "speaking")
 //   emits   "ui:open" / "ui:close"  { panel: "dialog" } for the audio blips
 //
-// Esc or the close button closes the panel (modal overlays and the reader get
-// first dibs on Esc).
+// Only the header's X closes the panel: outside clicks and Esc never do, so a
+// conversation cannot be lost mid-thought.
 
 import { renderMd } from "./md.js";
 import { config as gameConfig } from "../config.js";
@@ -106,6 +109,10 @@ const CSS = `
 .mk-dialog-field:disabled{opacity:.5;}
 .mk-dialog-mic{width:38px;height:38px;min-width:38px;border-radius:50%;padding:0;font-size:.95rem;margin:-1px;}
 .mk-dialog-mic[aria-pressed="true"]{background:var(--holo-cyan,#3fe0ff);border-color:transparent;color:#03272e;box-shadow:0 0 14px rgba(63,224,255,.6);}
+
+/* while the mic records, everything outside the panel is inert */
+.ui-recording #app{pointer-events:none!important}
+.ui-recording #ui > *:not(.mk-dialog){pointer-events:none!important}
 
 /* the unconscious whisper hint above the composer */
 .mk-dialog-whisper{margin:0 0 8px;font-size:.78rem;font-style:italic;opacity:.85;color:var(--holo-cyan,#3fe0ff);}
@@ -441,6 +448,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     }
     recording = true;
     recordSource = source;
+    doc.body?.classList.add("ui-recording");
     composer?.micBtn?.setAttribute("aria-pressed", "true");
     bus?.emit("voice:mic", { keeperId: currentId, on: true });
     syncViz();
@@ -470,6 +478,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     if (!recording) return;
     recording = false;
     recordSource = null;
+    doc.body?.classList.remove("ui-recording");
     composer?.micBtn?.setAttribute("aria-pressed", "false");
     bus?.emit("voice:mic", { keeperId: currentId, on: false });
     syncViz();
@@ -790,20 +799,15 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     input.type = "text";
     input.className = "mk-dialog-field";
 
-    // Push-to-talk twin of hold-T: pointerdown records, pointerup/leave stops.
+    // The hold-T twin as a toggle: click starts the same recording, click stops.
     const micBtn = el("button", "holo-btn mk-dialog-mic", "🎙");
     micBtn.type = "button";
-    micBtn.setAttribute("aria-label", "hold to talk");
+    micBtn.setAttribute("aria-label", "toggle talking");
     micBtn.setAttribute("aria-pressed", "false");
-    micBtn.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      startRecording("pointer");
+    micBtn.addEventListener("click", () => {
+      if (recording) stopRecording();
+      else startRecording("pointer");
     });
-    const releaseMic = () => {
-      if (recordSource === "pointer") stopRecording();
-    };
-    micBtn.addEventListener("pointerup", releaseMic);
-    micBtn.addEventListener("pointerleave", releaseMic);
 
     form.append(input, micBtn);
     input.addEventListener("keydown", (e) => {
@@ -1091,11 +1095,10 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     renderSession();
 
     onKey = (e) => {
-      if (e.key === "Escape") {
-        // Modal overlays (confirm/howto/create) and the reader own Esc first.
-        if (doc.querySelector(".overlay-backdrop") || doc.querySelector(".mk-reader")) return;
+      if (e.key === "Escape" && recording) {
+        // a live take blocks everything, Esc included
         e.stopPropagation();
-        close();
+        e.preventDefault();
         return;
       }
       // Hold T: push-to-talk, only while this panel is open and only when the
@@ -1124,13 +1127,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
   offs.push(bus?.on?.("keeper:selected", (p) => open(typeof p === "string" ? p : p?.keeperId)) ?? (() => {}));
 
-  // Clicking elsewhere in the overworld deselects her: the scene emits
-  // "keeper:deselected" and the talk panel folds away with the ring.
-  offs.push(
-    bus?.on?.("keeper:deselected", () => {
-      if (holo) close();
-    }) ?? (() => {}),
-  );
+  // Clicking elsewhere in the overworld may clear her ring in the scene, but
+  // the talk panel stays: only its X closes it (see the header comment).
 
   // The header cluster (LV badge, rest meter, sleep prompt) tracks server
   // truth: every state re-sync refreshes the open panel's local session copy

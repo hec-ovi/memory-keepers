@@ -84,8 +84,9 @@ renders the same prompt with the warm note "her library is full. she needs
 to dream to make room" (cleared once her sleep completes); sleep failures
 toast and unlock.
 - listens `keeper:selected` ({keeperId} or bare id) -> open
-- listens `keeper:deselected` (the overworld's click-on-nothing while she was
-  selected) -> the open panel closes (no-op when already closed)
+- `keeper:deselected` (the overworld's click-on-nothing) is deliberately NOT
+  consumed: the panel closes only from its header X, never from outside
+  clicks or Esc, so a conversation cannot be lost mid-thought
 - listens `state:loaded` -> the OPEN panel refreshes its session/level
   header cluster (badge, meter, sleep prompt) from the re-synced
   state.keepers record, so out-of-band session changes never leave a stale
@@ -98,15 +99,17 @@ toast and unlock.
 - emits `memory:used` {keeperId, slugs} (grounded ask reply lands),
   `keeper:sleep` {keeperId} (after api.sleep succeeds), `keeper:rested` {keeperId}
   (sleep job polled to done)
-Voice, push-to-talk: holding the physical T key (only while the panel is
-open; ignored on typing surfaces: inputs, textareas, contenteditable; key
-repeat and ctrl/alt/meta combos ignored) or holding the mic button
-(pointerdown starts, pointerup/pointerleave stops) records through
-`getUserMedia` + `MediaRecorder` (opus: `audio/webm;codecs=opus` when
-supported, else `audio/ogg;codecs=opus`; ONE stream per dialog session,
-tracks released on close). Release sends the clip to `api.stt`; the
-transcription lands in the composer and goes through the exact same send
-path as a typed message. While recording the viz is LISTENING; while
+Voice: holding the physical T key (only while the panel is open; ignored on
+typing surfaces: inputs, textareas, contenteditable; key repeat and
+ctrl/alt/meta combos ignored) records push-to-talk; the mic button runs the
+same recording as a toggle, click to start, click to stop. While recording,
+body carries `ui-recording` and everything outside the panel is inert
+(pointer events dead, Esc swallowed): nothing can interrupt a live take.
+Recording goes through `getUserMedia` + `MediaRecorder` (opus:
+`audio/webm;codecs=opus` when supported, else `audio/ogg;codecs=opus`; ONE
+stream per dialog session, tracks released on close). Stopping sends the
+clip to `api.stt`; the transcription lands in the composer and goes through
+the exact same send path as a typed message. While recording the viz is LISTENING; while
 transcribing the pill wears `holo-thinking`. An empty transcription toasts
 gently ("no words came through; try again") and sends nothing.
 VOICE_UNAVAILABLE or a denied microphone toasts once ("voice is not
@@ -180,7 +183,7 @@ close, then `mode:set` "overworld" first when `state.mode` is an interior,
 then `keeper:selected` {keeperId} (the comm panel opens; the overworld focuses
 her). Footer keeps the crossing shortcut: a "Cross the ridge" button that
 closes and emits `district:travel` {}. Empty state: "nobody lives here
-yet...". Esc closes unless a modal overlay, the reader or the talk panel is
+yet...". Esc closes unless a modal overlay or the reader is
 open (checks `.overlay-backdrop` / `.mk-reader` / `.mk-dialog` first).
 - listens `keepers_list:open` (the HUD emits it), `state:loaded` (re-render)
 - emits `mode:set` "overworld" (from interiors), `keeper:selected` {keeperId},
