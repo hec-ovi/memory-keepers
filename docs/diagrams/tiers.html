@@ -2,80 +2,67 @@
 <html lang="en">
 <meta charset="utf-8">
 <title>Memory Keepers: cloud or local</title>
+<link rel="stylesheet" href="style.css">
 <style>
-  * { box-sizing: border-box; margin: 0 }
-  body { width: 2000px; height: 1250px; background: #fff;
-         font-family: Ubuntu, "DejaVu Sans", sans-serif; color: #1a1d21; overflow: hidden }
-  .canvas { position: relative; width: 2000px; height: 1250px }
-  .over  { position: absolute; left: 80px; top: 56px; font-weight: 700; font-size: 20px;
-           letter-spacing: 4px; color: #188038 }
-  .title { position: absolute; left: 80px; top: 88px; font-weight: 700; font-size: 54px }
-  .sub   { position: absolute; left: 82px; top: 162px; font-size: 24px; color: #5f6368 }
-  .box   { position: absolute; border: 3px solid #3c4043; background: #fff; padding: 22px 28px }
-  .box h3 { font-size: 28px; margin-bottom: 8px }
-  .box p  { font-size: 21px; color: #3c4043 }
-  .col   { position: absolute; border: 3px solid; padding: 96px 0 0 }
-  .col h2 { position: absolute; left: 30px; top: 22px; font-size: 32px }
-  .col span { position: absolute; left: 30px; top: 64px; font-size: 21px; color: #5f6368 }
-  .cloud { border-color: #1a73e8; background: #f5f9ff }  .cloud h2 { color: #1a73e8 }
-  .local { border-color: #188038; background: #f6fcf8 }  .local h2 { color: #188038 }
-  .row   { margin: 0 30px; padding: 17px 0 15px; border-top: 2px solid #dadce0 }
-  .row b   { font-size: 23px }
-  .row div { font-size: 20px; color: #5f6368; margin-top: 3px }
-  .cloud .row { border-color: #d2e3fc }
-  .local .row { border-color: #ceead6 }
-  .foot { position: absolute; left: 0; width: 2000px; text-align: center;
-          font-size: 22px; color: #5f6368 }
-  svg.wires { position: absolute; inset: 0; pointer-events: none }
-  .wires path { stroke: #5f6368; stroke-width: 3.5; fill: none }
-  .lab { position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
-         font-weight: 700; font-size: 19px; color: #5f6368; background: #fff;
-         border: 1px solid #dadce0; padding: 3px 12px }
+  .row { margin: 0 30px; padding: 20px 0 17px; border-top: 2px solid #e8eaed }
+  .row:first-of-type { border-top: none }
+  .row b { font-size: 25px }
+  .row div { font-size: 22px; color: #5f6368; margin-top: 4px }
+  .cols .zh { font-size: 31px }
 </style>
 <body>
-<div class="canvas">
-  <div class="over">MEMORY KEEPERS</div>
-  <div class="title">Runs on Google Cloud, or fully local on Gemma</div>
-  <div class="sub">one codebase; the model gateway swaps the whole tier with one variable</div>
-
-  <div class="box" style="left:700px; top:270px; width:600px; height:150px; text-align:center">
-    <h3>One codebase</h3>
-    <p>model gateway &middot; MODEL_TIER = cloud | local | fake</p>
+<div class="canvas cols">
+  <div class="head">
+    <div class="kick" style="color:#188038">MEMORY KEEPERS</div>
+    <h1>Runs on Google Cloud, or fully local on Gemma</h1>
+    <div class="sub">one codebase; the model gateway swaps the whole tier with one variable</div>
   </div>
 
-  <div class="col cloud" style="left:140px; top:560px; width:800px; height:560px">
-    <h2>Cloud tier</h2><span>the hosted island, for everyone</span>
-    <div class="row"><b>Gemini 3.5 on Vertex AI</b><div>frontier replies, global endpoint</div></div>
-    <div class="row"><b>Firestore</b><div>worlds, keepers, books, graph</div></div>
-    <div class="row"><b>Cloud Run</b><div>engine + frontend, scales to zero</div></div>
-    <div class="row"><b>Cloud Text-to-Speech / Speech-to-Text</b><div>keepers speak and listen</div></div>
-    <div class="row"><b>Pub/Sub + Cloud Scheduler</b><div>nightly dreaming</div></div>
+  <div class="box slate" style="left:780px; top:340px; width:690px; height:190px; text-align:center">
+    <h3 style="justify-content:center">One codebase</h3>
+    <ul><li>model gateway &middot; MODEL_TIER = cloud | local | fake</li></ul>
   </div>
 
-  <div class="col local" style="left:1060px; top:560px; width:800px; height:560px">
-    <h2>Local tier &middot; privacy</h2><span>your hardware, your data, nothing leaves</span>
-    <div class="row"><b>Gemma open weights</b><div>llama.cpp server, any machine that fits it</div></div>
-    <div class="row"><b>Firestore emulator</b><div>official image, same store API</div></div>
-    <div class="row"><b>docker compose up</b><div>the whole stack in one command</div></div>
-    <div class="row"><b>voice off</b><div>no audio ever leaves the machine</div></div>
-    <div class="row"><b>dreams run inline</b><div>same nightly consolidation pass</div></div>
+  <div class="zone blue" style="left:160px; top:680px; width:900px; height:640px; background:#fbfdff">
+    <div class="zh">Cloud tier &middot; the hosted island</div>
+    <div style="position:absolute; top:88px; width:100%">
+      <div class="row"><b>Gemini 3.5 on Vertex AI</b><div>frontier replies, global endpoint</div></div>
+      <div class="row"><b>Firestore</b><div>worlds, keepers, books, graph</div></div>
+      <div class="row"><b>Cloud Run</b><div>engine + frontend, scales to zero</div></div>
+      <div class="row"><b>Cloud Text-to-Speech / Speech-to-Text</b><div>keepers speak and listen</div></div>
+      <div class="row"><b>Pub/Sub + Cloud Scheduler</b><div>nightly dreaming</div></div>
+    </div>
   </div>
 
-  <svg class="wires" width="2000" height="1250">
+  <div class="zone green" style="left:1190px; top:680px; width:900px; height:640px; background:#fbfefc">
+    <div class="zh">Local tier &middot; privacy</div>
+    <div style="position:absolute; top:88px; width:100%">
+      <div class="row"><b>Gemma open weights</b><div>llama.cpp server, any machine that fits it</div></div>
+      <div class="row"><b>Firestore emulator</b><div>official image, same store API</div></div>
+      <div class="row"><b>docker compose up</b><div>the whole stack in one command</div></div>
+      <div class="row"><b>voice off</b><div>no audio ever leaves the machine</div></div>
+      <div class="row"><b>dreams run inline</b><div>same nightly consolidation pass</div></div>
+    </div>
+  </div>
+
+  <svg class="wires" width="2246" height="1587">
     <defs>
-      <marker id="a" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20"
-              refX="14" refY="9" orient="auto">
-        <path d="M0,0 L16,9 L0,18 z" fill="#5f6368" stroke="none"/>
+      <marker id="a" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="16"
+              refX="13" refY="8" orient="auto">
+        <path d="M0,0 L15,8 L0,16 z" fill="#5f6368" stroke="none"/>
       </marker>
     </defs>
-    <path d="M880,420 L545,556" marker-end="url(#a)"/>
-    <path d="M1120,420 L1455,556" marker-end="url(#a)"/>
+    <path d="M1000,530 V605 H850 V674" marker-end="url(#a)"/>
+    <path d="M1250,530 V605 H1800 V674" marker-end="url(#a)"/>
   </svg>
-  <div class="lab" style="left:660px; top:470px">frontier model</div>
-  <div class="lab" style="left:1345px; top:470px">open weights, private</div>
+  <div class="lab" style="left:925px; top:605px">frontier model</div>
+  <div class="lab" style="left:1525px; top:605px">open weights, private</div>
 
-  <div class="foot" style="top:1172px">third tier: fake &middot; deterministic model, so the whole
-    test suite and the demo run offline</div>
+  <div class="foot">
+    <div>Memory Keepers &middot; github.com/hec-ovi/memory-keepers &middot; third tier: fake,
+      deterministic, the whole test suite runs offline</div>
+    <div>deployment tiers</div>
+  </div>
 </div>
 </body>
 </html>

@@ -2,38 +2,16 @@
 <html lang="en">
 <meta charset="utf-8">
 <title>Memory Keepers: system architecture</title>
-<style>
-  * { box-sizing: border-box; margin: 0 }
-  body { width: 2000px; height: 1250px; background: #fff;
-         font-family: Ubuntu, "DejaVu Sans", sans-serif; color: #1a1d21; overflow: hidden }
-  .canvas { position: relative; width: 2000px; height: 1250px }
-  .over  { position: absolute; left: 80px; top: 56px; font-weight: 700; font-size: 20px;
-           letter-spacing: 4px; color: #1a73e8 }
-  .title { position: absolute; left: 80px; top: 88px; font-weight: 700; font-size: 54px }
-  .sub   { position: absolute; left: 82px; top: 162px; font-size: 24px; color: #5f6368 }
-  .box   { position: absolute; border: 3px solid #3c4043; background: #fff; padding: 20px 26px }
-  .box h3 { font-size: 28px; margin-bottom: 12px }
-  .box li { font-size: 21px; line-height: 1.5; color: #3c4043; list-style: none }
-  .box b  { color: #1a1d21 }
-  .blue   { border-color: #1a73e8; background: #e8f0fe }
-  .green  { border: 3px dashed #188038; background: #e6f4ea }
-  .cont   { position: absolute; border: 3px solid #1a73e8; background: #f8f9fa }
-  .cont h2 { position: absolute; left: 26px; top: 18px; font-size: 30px; color: #1a73e8 }
-  .cont span { position: absolute; left: 220px; top: 27px; font-size: 21px; color: #5f6368 }
-  svg.wires { position: absolute; inset: 0; pointer-events: none }
-  .wires path { stroke: #5f6368; stroke-width: 3.5; fill: none }
-  .wires path.d { stroke-dasharray: 10 9 }
-  .lab { position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
-         font-weight: 700; font-size: 19px; color: #5f6368; background: #fff;
-         border: 1px solid #dadce0; padding: 3px 12px }
-</style>
+<link rel="stylesheet" href="style.css">
 <body>
 <div class="canvas">
-  <div class="over">MEMORY KEEPERS</div>
-  <div class="title">System architecture</div>
-  <div class="sub">one Cloud Run service, Firestore as the only store, dreaming as real infrastructure</div>
+  <div class="head">
+    <div class="kick" style="color:#1a73e8">MEMORY KEEPERS</div>
+    <h1>System architecture</h1>
+    <div class="sub">one Cloud Run service, Firestore as the only store, dreaming as real infrastructure</div>
+  </div>
 
-  <div class="box" style="left:80px; top:330px; width:380px; height:230px">
+  <div class="box slate" style="left:90px; top:430px; width:420px; height:260px">
     <h3>Browser</h3>
     <ul>
       <li>three.js island SPA</li>
@@ -43,10 +21,10 @@
     </ul>
   </div>
 
-  <div class="cont" style="left:560px; top:260px; width:840px; height:590px">
-    <h2>Cloud Run</h2><span>one service</span>
+  <div class="zone blue" style="left:630px; top:330px; width:940px; height:700px">
+    <div class="zh">Cloud Run &middot; one service</div>
   </div>
-  <div class="box" style="left:600px; top:350px; width:350px; height:210px">
+  <div class="box slate" style="left:675px; top:440px; width:390px; height:240px">
     <h3>engine</h3>
     <ul>
       <li>FastAPI REST surface</li>
@@ -55,7 +33,7 @@
       <li>serves the frontend</li>
     </ul>
   </div>
-  <div class="box" style="left:600px; top:610px; width:350px; height:190px">
+  <div class="box slate" style="left:675px; top:740px; width:390px; height:230px">
     <h3>voice</h3>
     <ul>
       <li>Cloud Text-to-Speech</li>
@@ -63,26 +41,26 @@
       <li>keeper voices, mic button</li>
     </ul>
   </div>
-  <div class="box" style="left:1000px; top:350px; width:360px; height:450px">
+  <div class="box slate" style="left:1120px; top:440px; width:400px; height:530px">
     <h3>agents &middot; ADK</h3>
     <ul>
       <li><b>monument root</b></li>
       <li>routes and synthesizes,<br>holds no corpus</li>
-      <li style="margin-top:14px"><b>keeper agents</b></li>
+      <li style="margin-top:16px"><b>keeper agents</b></li>
       <li>one AgentTool per keeper,<br>isolated CAG</li>
-      <li style="margin-top:14px"><b>dream agents</b></li>
+      <li style="margin-top:16px"><b>dream agents</b></li>
       <li>nightly fan-out + synthesis</li>
     </ul>
   </div>
 
-  <div class="box blue" style="left:1520px; top:330px; width:400px; height:200px">
+  <div class="box blue tint" style="left:1700px; top:400px; width:450px; height:230px">
     <h3>Vertex AI</h3>
     <ul>
       <li>Gemini 3.5, global endpoint</li>
       <li>replies, synthesis, dream prose</li>
     </ul>
   </div>
-  <div class="box green" style="left:1520px; top:620px; width:400px; height:200px">
+  <div class="box green tint" style="left:1700px; top:760px; width:450px; height:230px">
     <h3>Local tier &middot; privacy</h3>
     <ul>
       <li>Gemma open weights, llama.cpp</li>
@@ -90,7 +68,7 @@
     </ul>
   </div>
 
-  <div class="box blue" style="left:200px; top:990px; width:480px; height:210px">
+  <div class="box blue tint" style="left:220px; top:1180px; width:540px; height:250px">
     <h3>Firestore</h3>
     <ul>
       <li>worlds, keepers, books,</li>
@@ -98,7 +76,7 @@
       <li>the only store</li>
     </ul>
   </div>
-  <div class="box blue" style="left:800px; top:990px; width:400px; height:210px">
+  <div class="box blue tint" style="left:900px; top:1180px; width:450px; height:250px">
     <h3>Pub/Sub</h3>
     <ul>
       <li>dream-runs topic</li>
@@ -106,7 +84,7 @@
       <li>/internal/dream-run</li>
     </ul>
   </div>
-  <div class="box blue" style="left:1320px; top:990px; width:420px; height:210px">
+  <div class="box blue tint" style="left:1480px; top:1180px; width:470px; height:250px">
     <h3>Cloud Scheduler</h3>
     <ul>
       <li>nightly sweep hits</li>
@@ -115,29 +93,34 @@
     </ul>
   </div>
 
-  <svg class="wires" width="2000" height="1250">
+  <svg class="wires" width="2246" height="1587">
     <defs>
-      <marker id="a" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20"
-              refX="14" refY="9" orient="auto">
-        <path d="M0,0 L16,9 L0,18 z" fill="#5f6368" stroke="none"/>
+      <marker id="a" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="16"
+              refX="13" refY="8" orient="auto">
+        <path d="M0,0 L15,8 L0,16 z" fill="#5f6368" stroke="none"/>
       </marker>
     </defs>
-    <path d="M460,445 H556" marker-end="url(#a)"/>
-    <path d="M950,455 H996" marker-end="url(#a)"/>
-    <path d="M1360,430 H1516" marker-end="url(#a)"/>
-    <path class="d" d="M1360,600 L1516,698" marker-end="url(#a)"/>
-    <path d="M700,850 L463,987" marker-end="url(#a)"/>
-    <path d="M900,850 V986" marker-end="url(#a)"/>
-    <path d="M1040,990 V854" marker-end="url(#a)"/>
-    <path d="M1530,990 L1363,853" marker-end="url(#a)"/>
+    <path d="M510,560 H624" marker-end="url(#a)"/>
+    <path d="M1065,560 H1114" marker-end="url(#a)"/>
+    <path d="M1520,515 H1694" marker-end="url(#a)"/>
+    <path class="d" d="M1520,875 H1694" marker-end="url(#a)"/>
+    <path d="M700,1030 V1105 H490 V1174" marker-end="url(#a)"/>
+    <path d="M1000,1030 V1174" marker-end="url(#a)"/>
+    <path d="M1250,1180 V1036" marker-end="url(#a)"/>
+    <path d="M1715,1180 V1105 H1450 V1036" marker-end="url(#a)"/>
   </svg>
-  <div class="lab" style="left:505px; top:405px">REST + statics</div>
-  <div class="lab" style="left:1440px; top:395px">cloud tier</div>
-  <div class="lab" style="left:1420px; top:665px">local tier</div>
-  <div class="lab" style="left:555px; top:900px">library + graph writes</div>
-  <div class="lab" style="left:900px; top:880px">dream events</div>
-  <div class="lab" style="left:1060px; top:948px">push: dream run</div>
-  <div class="lab" style="left:1480px; top:900px">nightly</div>
+  <div class="lab" style="left:585px; top:512px">REST + statics</div>
+  <div class="lab" style="left:1607px; top:477px">cloud tier</div>
+  <div class="lab" style="left:1607px; top:837px">local tier</div>
+  <div class="lab" style="left:598px; top:1105px">library + graph writes</div>
+  <div class="lab" style="left:1000px; top:1105px">dream events</div>
+  <div class="lab" style="left:1250px; top:1105px">push: dream run</div>
+  <div class="lab" style="left:1600px; top:1105px">nightly</div>
+
+  <div class="foot">
+    <div>Memory Keepers &middot; github.com/hec-ovi/memory-keepers</div>
+    <div>system architecture</div>
+  </div>
 </div>
 </body>
 </html>

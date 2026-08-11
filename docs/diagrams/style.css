@@ -1,0 +1,49 @@
+/* Shared diagram style. Canvas = A4 landscape at 2x (2246x1587); print scales to exact A4. */
+* { box-sizing: border-box; margin: 0 }
+html, body { width: 2246px; height: 1587px; background: #fff;
+  font-family: Ubuntu, "DejaVu Sans", sans-serif; color: #1a1d21; overflow: hidden }
+.canvas { position: relative; width: 2246px; height: 1587px; background: #fff;
+  background-image: radial-gradient(#eceef1 2.2px, transparent 2.2px);
+  background-size: 38px 38px }
+.head { position: absolute; left: 100px; top: 72px }
+.head .kick { font-weight: 700; font-size: 23px; letter-spacing: 5px; margin-bottom: 10px }
+.head h1 { font-size: 64px; letter-spacing: -1px }
+.head .sub { font-size: 27px; color: #5f6368; margin-top: 12px }
+.foot { position: absolute; left: 100px; right: 100px; bottom: 52px;
+  border-top: 3px solid #e8eaed; padding-top: 16px;
+  display: flex; justify-content: space-between;
+  font-size: 21px; color: #80868b }
+.box { position: absolute; background: #fff; border: 2px solid #dadce0;
+  border-top-width: 7px; padding: 24px 30px;
+  box-shadow: 0 5px 18px rgba(60, 64, 67, .10) }
+.box h3 { font-size: 31px; margin-bottom: 14px; display: flex; align-items: center }
+.box h3::before { content: ""; width: 19px; height: 19px; margin-right: 15px;
+  background: var(--a, #3c4043); flex: none }
+.box { border-top-color: var(--a, #3c4043) }
+.box li { font-size: 23px; line-height: 1.55; color: #3c4043; list-style: none }
+.box li b { color: #1a1d21 }
+.box .why { margin-top: 10px; font-size: 20px; color: #80868b }
+.slate  { --a: #3c4043 }
+.blue   { --a: #1a73e8 }  .blue.tint  { background: #f3f8fe }
+.green  { --a: #188038 }  .green.tint { background: #f5fbf7 }
+.amber  { --a: #f29900 }
+.purple { --a: #7627bb }  .purple.tint{ background: #faf6fe }
+.zone { position: absolute; border: 2.5px solid var(--a); background: #fbfcfe;
+  box-shadow: none }
+.zone .zh { position: absolute; left: 0; top: 0; height: 64px; padding: 0 28px;
+  display: flex; align-items: center; gap: 18px;
+  background: var(--a); color: #fff; font-weight: 700; font-size: 29px }
+.zone .zs { position: absolute; left: 28px; top: 78px; font-size: 22px; color: #5f6368 }
+svg.wires { position: absolute; inset: 0; pointer-events: none }
+.wires path { stroke: #5f6368; stroke-width: 4; fill: none }
+.wires path.d { stroke-dasharray: 11 10 }
+.lab { position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
+  font-weight: 700; font-size: 21px; color: #3c4043; background: #fff;
+  border: 1.5px solid #dadce0; padding: 5px 14px;
+  box-shadow: 0 3px 8px rgba(60, 64, 67, .08) }
+@page { size: A4 landscape; margin: 0 }
+@media print {
+  html, body { width: 1123px; height: 793px }
+  .canvas { transform: scale(.5); transform-origin: top left }
+  .box, .lab { box-shadow: none }
+}

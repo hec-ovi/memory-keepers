@@ -2,41 +2,19 @@
 <html lang="en">
 <meta charset="utf-8">
 <title>Memory Keepers: how the island remembers</title>
-<style>
-  * { box-sizing: border-box; margin: 0 }
-  body { width: 2000px; height: 1250px; background: #fff;
-         font-family: Ubuntu, "DejaVu Sans", sans-serif; color: #1a1d21; overflow: hidden }
-  .canvas { position: relative; width: 2000px; height: 1250px }
-  .over  { position: absolute; left: 80px; top: 56px; font-weight: 700; font-size: 20px;
-           letter-spacing: 4px; color: #b06000 }
-  .title { position: absolute; left: 80px; top: 88px; font-weight: 700; font-size: 54px }
-  .sub   { position: absolute; left: 82px; top: 162px; font-size: 24px; color: #5f6368 }
-  .box   { position: absolute; border: 3px solid #3c4043; background: #fff; padding: 20px 26px }
-  .box h3 { font-size: 28px; margin-bottom: 12px }
-  .box li { font-size: 21px; line-height: 1.5; color: #3c4043; list-style: none }
-  .amber  { border-color: #f29900; background: #fef7e0 }
-  .purple { border-color: #7627bb; background: #f3e8fd }
-  .band   { position: absolute; border: 3px solid; background: #fff }
-  .band h2 { position: absolute; left: 26px; top: 18px; font-size: 30px }
-  .band span { position: absolute; left: 26px; top: 60px; font-size: 21px; color: #5f6368 }
-  .day   { border-color: #f29900 }  .day h2 { color: #b06000 }
-  .night { border-color: #7627bb; background: #faf5ff }  .night h2 { color: #7627bb }
-  svg.wires { position: absolute; inset: 0; pointer-events: none }
-  .wires path { stroke: #5f6368; stroke-width: 3.5; fill: none }
-  .lab { position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
-         font-weight: 700; font-size: 19px; color: #5f6368; background: #fff;
-         border: 1px solid #dadce0; padding: 3px 12px }
-</style>
+<link rel="stylesheet" href="style.css">
 <body>
 <div class="canvas">
-  <div class="over">MEMORY KEEPERS</div>
-  <div class="title">How the island remembers</div>
-  <div class="sub">by day you fill libraries; by night the island consolidates them, unattended</div>
-
-  <div class="band day" style="left:80px; top:250px; width:1840px; height:400px">
-    <h2>Day</h2><span>you and one keeper at a time</span>
+  <div class="head">
+    <div class="kick" style="color:#b06000">MEMORY KEEPERS</div>
+    <h1>How the island remembers</h1>
+    <div class="sub">by day you fill libraries; by night the island consolidates them, unattended</div>
   </div>
-  <div class="box" style="left:130px; top:370px; width:310px; height:230px">
+
+  <div class="zone amber" style="left:90px; top:330px; width:2066px; height:490px">
+    <div class="zh">&#9728; Day &middot; you and one keeper at a time</div>
+  </div>
+  <div class="box slate" style="left:150px; top:490px; width:340px; height:260px">
     <h3>You</h3>
     <ul>
       <li>tell her a memory</li>
@@ -44,15 +22,15 @@
       <li>text or voice</li>
     </ul>
   </div>
-  <div class="box amber" style="left:640px; top:350px; width:450px; height:270px">
+  <div class="box amber" style="left:700px; top:470px; width:520px; height:300px">
     <h3>Keeper &middot; one per life layer</h3>
     <ul>
       <li>music, dreams, meetings, diet...</li>
       <li>isolated CAG: she answers only<br>from her own books</li>
-      <li>tired? she sleeps, and the session<br>compacts into durable memory</li>
+      <li>tired? she sleeps, the session<br>compacts into durable memory</li>
     </ul>
   </div>
-  <div class="box" style="left:1300px; top:370px; width:500px; height:230px">
+  <div class="box slate" style="left:1460px; top:490px; width:560px; height:260px">
     <h3>Her library</h3>
     <ul>
       <li>every tell becomes a real book</li>
@@ -61,10 +39,10 @@
     </ul>
   </div>
 
-  <div class="band night" style="left:80px; top:750px; width:1840px; height:400px">
-    <h2>Night</h2><span>the island dreams</span>
+  <div class="zone purple" style="left:90px; top:950px; width:2066px; height:490px">
+    <div class="zh">&#9790; Night &middot; the island dreams</div>
   </div>
-  <div class="box" style="left:130px; top:870px; width:360px; height:230px">
+  <div class="box slate" style="left:150px; top:1110px; width:400px; height:270px">
     <h3>Every keeper</h3>
     <ul>
       <li>the dream fans out</li>
@@ -72,7 +50,7 @@
       <li>no one is awake for this</li>
     </ul>
   </div>
-  <div class="box purple" style="left:660px; top:870px; width:460px; height:230px">
+  <div class="box purple tint" style="left:740px; top:1110px; width:520px; height:270px">
     <h3>Knowledge graph</h3>
     <ul>
       <li>connections across life layers</li>
@@ -80,7 +58,7 @@
       <li>what you avoid</li>
     </ul>
   </div>
-  <div class="box purple" style="left:1290px; top:870px; width:510px; height:230px">
+  <div class="box purple tint" style="left:1440px; top:1110px; width:580px; height:270px">
     <h3>Dark keepers</h3>
     <ul>
       <li>born from patterns you never<br>told anyone</li>
@@ -88,26 +66,31 @@
     </ul>
   </div>
 
-  <svg class="wires" width="2000" height="1250">
+  <svg class="wires" width="2246" height="1587">
     <defs>
-      <marker id="a" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20"
-              refX="14" refY="9" orient="auto">
-        <path d="M0,0 L16,9 L0,18 z" fill="#5f6368" stroke="none"/>
+      <marker id="a" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="16"
+              refX="13" refY="8" orient="auto">
+        <path d="M0,0 L15,8 L0,16 z" fill="#5f6368" stroke="none"/>
       </marker>
     </defs>
-    <path d="M440,450 H636" marker-end="url(#a)"/>
-    <path d="M1090,440 H1296" marker-end="url(#a)"/>
-    <path d="M1300,540 H1094" marker-end="url(#a)"/>
-    <path d="M1000,650 V746" marker-end="url(#a)"/>
-    <path d="M490,985 H656" marker-end="url(#a)"/>
-    <path d="M1120,985 H1286" marker-end="url(#a)"/>
+    <path d="M490,620 H694" marker-end="url(#a)"/>
+    <path d="M1220,560 H1454" marker-end="url(#a)"/>
+    <path d="M1460,680 H1226" marker-end="url(#a)"/>
+    <path d="M1123,824 V944" marker-end="url(#a)"/>
+    <path d="M550,1245 H734" marker-end="url(#a)"/>
+    <path d="M1260,1245 H1434" marker-end="url(#a)"/>
   </svg>
-  <div class="lab" style="left:538px; top:410px">tell / ask</div>
-  <div class="lab" style="left:1193px; top:405px">she writes books</div>
-  <div class="lab" style="left:1197px; top:578px">she reads her shelves</div>
-  <div class="lab" style="left:1000px; top:700px">Cloud Scheduler nightly &middot; Pub/Sub push</div>
-  <div class="lab" style="left:573px; top:948px">consolidation</div>
-  <div class="lab" style="left:1203px; top:948px">recurring patterns</div>
+  <div class="lab" style="left:592px; top:578px">tell / ask</div>
+  <div class="lab" style="left:1337px; top:520px">she writes books</div>
+  <div class="lab" style="left:1343px; top:722px">she reads her shelves</div>
+  <div class="lab" style="left:1123px; top:884px">Cloud Scheduler nightly &middot; Pub/Sub push</div>
+  <div class="lab" style="left:642px; top:1205px">consolidation</div>
+  <div class="lab" style="left:1347px; top:1205px">recurring patterns</div>
+
+  <div class="foot">
+    <div>Memory Keepers &middot; github.com/hec-ovi/memory-keepers</div>
+    <div>the memory model</div>
+  </div>
 </div>
 </body>
 </html>
