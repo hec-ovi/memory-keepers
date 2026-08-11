@@ -87,7 +87,9 @@ export function worldIdFrom(storage) {
   if (!storage) return "w-shared";
   let id = storage.getItem("mk-world");
   if (!id) {
-    id = "w-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    // crypto-strength id: the world is private exactly as long as its id is
+    id = "w-" + (globalThis.crypto?.randomUUID?.() ??
+      Math.random().toString(36).slice(2, 10) + Date.now().toString(36));
     storage.setItem("mk-world", id);
   }
   return id;
