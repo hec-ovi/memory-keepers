@@ -60,7 +60,13 @@ export OMDB_KEY=<omdb key>            # optional: movie facts with IMDb ratings
 scripts/deploy.sh
 ```
 
-Creates everything: Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler sweep. With `ACCESS_CODE` set, visitors enter the key once (or open a `?key=` link); anonymous traffic never reaches a model. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
+Creates everything on an existing Google Cloud project: enables the APIs, then Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler sweep. Starting from nothing:
+
+```
+gcloud projects create <project-id>
+gcloud billing projects link <project-id> --billing-account=<account-id>
+PROJECT=<project-id> scripts/deploy.sh
+``` With `ACCESS_CODE` set, visitors enter the key once (or open a `?key=` link); anonymous traffic never reaches a model. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
 ## Layout
 
