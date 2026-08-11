@@ -113,3 +113,103 @@ def test_movie_not_found_never_raises():
     def handler(request):
         raise httpx.ConnectError("down")
     assert api_with(handler).movie_facts("Nothing") == {"ok": False, "reason": "not_found"}
+
+
+# -- song_facts ---------------------------------------------------------------
+
+def test_song_facts_filters_bootlegs_to_the_official_original():
+    def handler(request):
+        assert request.url.host == "musicbrainz.org"
+        return httpx.Response(200, json={"recordings": [
+            {"title": "Bohemian Rhapsody", "score": 100,
+             "first-release-date": "1991-05-01",
+             "artist-credit": [{"name": "Queen"}],
+             "releases": [{"status": "Bootleg", "title": "Live in Fukuoka"}]},
+            {"title": "Bohemian Rhapsody", "score": 100,
+             "first-release-date": "1975-10-31",
+             "artist-credit": [{"name": "Queen"}],
+             "releases": [{"status": "Official", "title": "A Night at the Opera"}]},
+        ]})
+    out = api_with(handler).song_facts("Bohemian Rhapsody", "Queen")
+    assert out["ok"] and out["source"] == "musicbrainz"
+    assert out["year"] == "1975" and out["album"] == "A Night at the Opera"
+
+
+# -- book_facts ---------------------------------------------------------------
+
+def test_book_facts_returns_public_domain_text_url():
+    def handler(request):
+        assert request.url.host == "gutendex.com"
+        return httpx.Response(200, json={"results": [{
+            "title": "Adventures of Huckleberry Finn", "copyright": False,
+            "authors": [{"name": "Twain, Mark", "birth_year": 1835, "death_year": 1910}],
+            "subjects": ["Mississippi River", "Boys", "Humorous stories", "Race relations", "More"],
+            "formats": {"text/plain; charset=utf-8": "https://www.gutenberg.org/ebooks/76.txt.utf-8"},
+        }]})
+    out = api_with(handler).book_facts("huckleberry finn")
+    assert out["ok"] and out["public_domain"] is True
+    assert out["author"] == "Twain, Mark" and len(out["subjects"]) == 4
+    assert out["text_url"].endswith("76.txt.utf-8")
+
+
+# -- podcast_transcript -------------------------------------------------------
+
+RSS = """<?xml version="1.0"?>
+<rss xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel>
+<item><title>Ep 2: The Heist</title>
+  <podcast:transcript url="https://cdn.example/2.vtt" type="text/vtt"/></item>
+<item><title>Ep 1: Origins</title></item>
+</channel></rss>"""
+VTT = "WEBVTT\n\n1\n00:00:01.000 --> 00:00:04.000\nwe begin at night\n\n2\n00:00:04.000 --> 00:00:08.000\nwe begin at night\nwith a plan\n"
+
+
+def test_podcast_transcript_via_feed_vtt():
+    def handler(request):
+        if request.url.host == "itunes.apple.com":
+            return httpx.Response(200, json={"results": [
+                {"collectionName": "Darknet Diaries", "feedUrl": "https://feeds.example/dd"}]})
+        if request.url.host == "feeds.example":
+            return httpx.Response(200, text=RSS)
+        assert request.url.host == "cdn.example"
+        return httpx.Response(200, text=VTT)
+    out = api_with(handler).podcast_transcript("darknet diaries", "heist")
+    assert out["ok"] and out["episode"] == "Ep 2: The Heist"
+    assert out["text"] == "we begin at night with a plan"
+
+
+def test_podcast_without_transcript_tag_is_a_first_class_answer():
+    def handler(request):
+        if request.url.host == "itunes.apple.com":
+            return httpx.Response(200, json={"results": [
+                {"collectionName": "Darknet Diaries", "feedUrl": "https://feeds.example/dd"}]})
+        return httpx.Response(200, text=RSS)
+    out = api_with(handler).podcast_transcript("darknet diaries", "origins")
+    assert out == {"ok": False, "reason": "no_transcript", "show": "Darknet Diaries",
+                   "episode": "Ep 1: Origins"}
+
+
+# -- movie_plot ---------------------------------------------------------------
+
+def test_movie_plot_from_wikipedia_plot_section():
+    plot_html = "<p>" + "A thief who steals corporate secrets through dream-sharing technology is given the inverse task of planting an idea. " * 5 + "</p>"
+
+    def handler(request):
+        if "/api/rest_v1/page/summary/" in str(request.url):
+            if "Inception_(film)" in str(request.url):
+                return httpx.Response(404)
+            return httpx.Response(200, json={
+                "titles": {"canonical": "Inception"},
+                "extract": "Inception is a 2010 science fiction film.",
+                "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/Inception"}}})
+        action = request.url.params["action"]
+        assert action == "parse"
+        if request.url.params["prop"] == "sections":
+            return httpx.Response(200, json={"parse": {"sections": [
+                {"line": "Plot", "index": "1"}, {"line": "Cast", "index": "2"}]}})
+        assert request.url.params["section"] == "1"
+        return httpx.Response(200, json={"parse": {"text": {"*": plot_html}}})
+    out = api_with(handler).movie_plot("Inception")
+    assert out["ok"] and out["source"] == "wikipedia"
+    assert out["license"] == "CC BY-SA 4.0" and out["url"].endswith("/Inception")
+    assert "dream-sharing" in out["plot"] and len(out["plot"]) >= 400
+    assert out["summary"].startswith("Inception is a 2010")

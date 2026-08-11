@@ -150,3 +150,16 @@ def test_make_room_digest_merge(library, world):
     assert digest.source == "sleep" and len(digest.links) >= 2
     for merged_slug in digest.links[:2]:
         assert merged_slug.split("/")[-1] in digest.body_md  # nothing lost
+
+
+def test_append_to_book_grows_body_and_tier(library):
+    library.ensure_world("w")
+    keeper = library.create_keeper("w", "walks")
+    book = library.write_book("w", keeper.id, title="A short walk", body_md="one line",
+                              date="2026-08-11", source="told", one_liner="a walk")
+    grown = library.append_to_book("w", keeper.id, book.slug,
+                                   note_md="the long part " * 200, date="2026-08-12")
+    assert grown.slug == book.slug
+    assert "## Added 2026-08-12" in grown.body_md and grown.body_md.startswith("one line")
+    assert grown.tier != book.tier  # size re-derived
+    assert library.get_keeper("w", keeper.id).book_count == 1

@@ -31,6 +31,7 @@ Class `Library(client=None, seed=None)`: `client` injected for tests, `seed` is 
 | `world_meta / list_worlds` | | meta dict / world ids (the nightly dream sweep) |
 | `create_keeper / get_keeper / list_keepers / update_keeper / delete_keeper` | profile fields | `Keeper` record; `payload(budget)` is the API shape |
 | `write_book / get_book / list_books / delete_book` | book fields; `enforce_cap=False` only for sleep and dreaming digest writes | `Book` record, newest first listing |
+| `append_to_book(world, keeper, slug, note_md, date)` | a dated follow-up section | the grown `Book`: body extended, tier re-derived, count unchanged |
 | `index_rows(world, keeper)` | | compact rows (slug, title, date, tags, entities, one_liner, tier) for prompts |
 | `session_read / session_append / session_replace` | `Turn` list + verbatim constraints / full `Session` | `Session` record |
 | `meter_add / meter_reset` | token counts | running total (meter lives on the keeper doc) |

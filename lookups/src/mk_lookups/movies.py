@@ -1,10 +1,23 @@
 """Movie facts: OMDb when OMDB_KEY is set (free key, 1,000/day, IMDb ratings),
 keyless Wikidata otherwise. TMDB is not used: its API terms prohibit use in
-connection with LLMs without written authorization."""
+connection with LLMs without written authorization.
+
+Movie plots come from Wikipedia (CC BY-SA 4.0, attribution URL returned with
+the text): the article's Plot section when it exists, the lede otherwise."""
+import re
+from urllib.parse import quote
+
 import httpx
 
 OMDB = "https://www.omdbapi.com/"
 WIKIDATA = "https://www.wikidata.org/w/api.php"
+WIKI_SUMMARY = "https://en.wikipedia.org/api/rest_v1/page/summary/"
+WIKI_ACTION = "https://en.wikipedia.org/w/api.php"
+PLOT_HEADINGS = {"plot", "plot summary", "synopsis", "premise"}
+PLOT_CAP = 8000
+PLOT_MIN = 400
+TAG_RE = re.compile(r"<[^>]+>")
+REF_RE = re.compile(r"\[\s*\d+\s*\]|\[\s*edit\s*\]")
 CAST_CAP = 5
 
 
@@ -25,6 +38,58 @@ class MovieLookup:
         if not found:
             return {"ok": False, "reason": "not_found"}
         return {"ok": True, **found}
+
+    def plot(self, title: str, year: str = "") -> dict:
+        title, year = (title or "").strip(), str(year or "").strip()
+        if not title:
+            return {"ok": False, "reason": "no_title"}
+        try:
+            page = self._wiki_page(title, year)
+            if not page:
+                return {"ok": False, "reason": "not_found"}
+            canonical, summary, url = page
+            plot = self._wiki_plot(canonical)
+        except Exception:
+            return {"ok": False, "reason": "unavailable"}
+        if not plot and not summary:
+            return {"ok": False, "reason": "not_found"}
+        return {"ok": True, "source": "wikipedia", "title": canonical.replace("_", " "),
+                "summary": summary, "plot": plot, "url": url,
+                "license": "CC BY-SA 4.0"}
+
+    def _wiki_page(self, title: str, year: str) -> tuple[str, str, str] | None:
+        candidates = ([f"{title} ({year} film)"] if year else []) + [f"{title} (film)", title]
+        for candidate in candidates:
+            res = self._client.get(WIKI_SUMMARY + quote(candidate.replace(" ", "_"), safe=""))
+            if res.status_code != 200:
+                continue
+            data = res.json()
+            extract = (data.get("extract") or "").strip()
+            canonical = (data.get("titles") or {}).get("canonical") or candidate
+            url = ((data.get("content_urls") or {}).get("desktop") or {}).get("page") or ""
+            if extract:
+                return canonical, extract, url
+        return None
+
+    def _wiki_plot(self, canonical: str) -> str:
+        sections = self._client.get(WIKI_ACTION, params={
+            "action": "parse", "page": canonical, "prop": "sections",
+            "format": "json"}).json().get("parse", {}).get("sections", [])
+        index = next((s["index"] for s in sections
+                      if (s.get("line") or "").strip().lower() in PLOT_HEADINGS), None)
+        if index is None:
+            return ""
+        html = self._client.get(WIKI_ACTION, params={
+            "action": "parse", "page": canonical, "prop": "text",
+            "section": index, "format": "json"}).json() \
+            .get("parse", {}).get("text", {}).get("*", "")
+        text = re.sub(r"\s+", " ", TAG_RE.sub(" ", html))
+        text = REF_RE.sub("", text).strip()
+        for heading in PLOT_HEADINGS:
+            if text.lower().startswith(heading):
+                text = text[len(heading):].lstrip(" .:")
+                break
+        return text[:PLOT_CAP] if len(text) >= PLOT_MIN else ""
 
     def _omdb(self, title: str, year: str) -> dict | None:
         params = {"apikey": self._env.get("OMDB_KEY"), "t": title}

@@ -25,7 +25,7 @@ Privacy first: the same code runs against Gemini on Vertex AI or entirely on you
 - Pub/Sub + Cloud Scheduler: the nightly dream sweep
 - Cloud Text-to-Speech and Speech-to-Text: keeper voices and the talk key
 - Gemma on llama.cpp: the local model tier
-- Keeper tools: YouTube transcripts, song lyrics (LRCLIB), movie facts (OMDb or Wikidata)
+- Keeper tools: YouTube and podcast transcripts, song facts (MusicBrainz) and lyrics (LRCLIB), book facts and public-domain texts (Gutendex), movie facts and plots (OMDb, Wikidata, Wikipedia)
 - three.js frontend (no build step), FastAPI engine, Docker
 
 ## Run locally (zero cloud cost)
@@ -53,7 +53,7 @@ python3 scripts/demo_world.py http://localhost:8000 demo --verify
 ## Tests
 
 ```
-docker compose run --rm test            # python boxes (68 tests)
+docker compose run --rm test            # python boxes (76 tests)
 docker compose run --rm test-frontend   # frontend (713 tests)
 ```
 

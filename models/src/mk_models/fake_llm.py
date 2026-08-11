@@ -103,8 +103,14 @@ class FakeLlm(BaseLlm):
             return self._call("fetch_youtube_transcript", {"url": url.group(0)})
         quoted = QUOTED_RE.search(text)
         title = quoted.group(1) if quoted else _first_sentence(text, 40)
+        if ("song" in lower or "lyrics" in lower) and "find_song_facts" in tools:
+            return self._call("find_song_facts", {"title": title})
         if ("song" in lower or "lyrics" in lower) and "find_song_lyrics" in tools:
             return self._call("find_song_lyrics", {"title": title})
+        if "podcast" in lower and "find_podcast_transcript" in tools:
+            return self._call("find_podcast_transcript", {"show": title})
+        if ("book" in lower or "finished" in lower) and "find_book_facts" in tools:
+            return self._call("find_book_facts", {"title": title})
         if ("movie" in lower or "film" in lower) and "find_movie_facts" in tools:
             return self._call("find_movie_facts", {"title": title})
         return None
@@ -116,7 +122,9 @@ class FakeLlm(BaseLlm):
             if not payload.get("ok"):
                 continue
             detail = payload.get("text") or payload.get("lyrics") or ", ".join(
-                str(payload[k]) for k in ("title", "year", "director", "plot")
+                str(payload[k]) for k in ("title", "artist", "album", "author",
+                                          "year", "director", "show", "episode",
+                                          "plot")
                 if payload.get(k))
             if detail:
                 return f"\n\nFrom the lookup, kept in the margin: {detail[:400]}"
@@ -129,6 +137,7 @@ class FakeLlm(BaseLlm):
             call = self._lookup_call(req, text)
             if call is not None:
                 return call
+        extends = self._extends_slug(text, system)
         title = _first_sentence(text, 60) or "A new memory"
         tags = sorted(_words(text))[:3]
         entities = list(dict.fromkeys(ENTITY_RE.findall(text)))[:4]
@@ -143,12 +152,30 @@ class FakeLlm(BaseLlm):
             f"{', '.join(tags) if tags else 'no tags yet'}.",
         ])
         body += self._lookup_note(responses)
+        if extends:
+            return self._text({
+                "reply": "I have added it to the book.",
+                "title": title, "tags": tags, "entities": entities,
+                "one_liner": _first_sentence(text, 140) + ".",
+                "body_md": text, "extends_slug": extends,
+            })
         return self._text({
             "reply": f"It is on the shelf now: {title}.",
             "title": title, "tags": tags, "entities": entities,
             "one_liner": _first_sentence(text, 140) + ".",
             "body_md": body,
         })
+
+    @staticmethod
+    def _extends_slug(text: str, system: str) -> str | None:
+        """A follow-up cue plus word overlap with a shelved slug = extension."""
+        lower = text.lower()
+        if not lower.startswith(("also", "and ", "yes", "one more")):
+            return None
+        slugs = list(dict.fromkeys(SLUG_RE.findall(system)))
+        scored = sorted(((len(_words(text) & _words(s.replace("-", " "))), s)
+                         for s in slugs), key=lambda p: (-p[0], p[1]))
+        return scored[0][1] if scored and scored[0][0] > 0 else None
 
     def _keeper_ask(self, req, system) -> types.Content:
         responses = self._function_responses(req)

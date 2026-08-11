@@ -45,6 +45,29 @@ async def test_tell_with_a_movie_runs_the_lookup_into_the_book(api, library, loo
     assert "Christopher Nolan" in body  # the lookup result reached the shelf
 
 
+async def test_capture_a_song_runs_the_facts_lookup_into_the_book(api, library, lookups):
+    out = await api.keeper_tell("w", "music", 'Can you save this song? "Money" by Pink Floyd')
+    assert ("song_facts", "Money") in lookups.calls
+    body = library.get_book("w", "music", out["book"]["slug"]).body_md
+    assert "1973" in body and "The Dark Side of the Moon" in body
+
+
+async def test_follow_up_grows_the_same_book(api, library):
+    keeper = library.create_keeper("w", "movies")
+    first = await api.keeper_tell(
+        "w", keeper.id, 'I watched the movie "Inception" yesterday and loved it.')
+    slug = first["book"]["slug"]
+    count = library.get_keeper("w", keeper.id).book_count
+
+    grown = await api.keeper_tell(
+        "w", keeper.id, "Also, what I liked from Inception was the spinning ending.")
+    assert grown["book"] is None
+    assert grown["book_grown"]["slug"] == slug
+    body = library.get_book("w", keeper.id, slug).body_md
+    assert "## Added" in body and "spinning ending" in body
+    assert library.get_keeper("w", keeper.id).book_count == count  # grew, not minted
+
+
 async def test_ask_grounded_with_sources(api):
     out = await api.keeper_ask("w", "dreams", "what did I dream about the launch?")
     assert out["grounded"] and not out["followup"]

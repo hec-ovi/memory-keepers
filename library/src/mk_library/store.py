@@ -118,6 +118,17 @@ class Library:
         self.update_keeper(wid, kid, book_count=keeper.book_count + 1, last_book_at=now_iso())
         return book
 
+    def append_to_book(self, wid: str, kid: str, slug: str, *, note_md: str,
+                       date: str) -> Book:
+        """A follow-up grows the book: a dated section lands at the end and the
+        tier re-derives from the new size. Metadata stays the book's own."""
+        book = self.get_book(wid, kid, slug)
+        body = f"{book.body_md.rstrip()}\n\n## Added {date}\n\n{note_md.strip()}"
+        book.body_md, book.tier = body, tier_for(body)
+        self._book(wid, kid, slug).set(book.to_doc())
+        self.update_keeper(wid, kid, last_book_at=now_iso())
+        return book
+
     def get_book(self, wid: str, kid: str, slug: str) -> Book:
         snap = self._book(wid, kid, slug).get()
         if not snap.exists:

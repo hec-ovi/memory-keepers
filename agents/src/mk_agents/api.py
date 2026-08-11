@@ -47,17 +47,39 @@ class AgentsApi:
             return lookups.song_lyrics(title, artist)
 
         def find_movie_facts(title: str, year: str = "") -> dict:
-            """Look up a movie's year, director, cast and plot by title."""
+            """Look up a movie's year, director, cast and short plot by title."""
             return lookups.movie_facts(title, year)
 
-        return [fetch_youtube_transcript, find_song_lyrics, find_movie_facts]
+        def find_movie_plot(title: str, year: str = "") -> dict:
+            """Fetch a movie's full plot summary (Wikipedia, cite the url)."""
+            return lookups.movie_plot(title, year)
+
+        def find_song_facts(title: str, artist: str = "") -> dict:
+            """Look up a song's year, artist and album (open data, storable)."""
+            return lookups.song_facts(title, artist)
+
+        def find_book_facts(title: str) -> dict:
+            """Look up a book's author, subjects and, when public domain, its
+            full-text link."""
+            return lookups.book_facts(title)
+
+        def find_podcast_transcript(show: str, episode: str = "") -> dict:
+            """Fetch a podcast episode's transcript when the show publishes
+            one; missing transcripts are a normal answer."""
+            return lookups.podcast_transcript(show, episode)
+
+        return [fetch_youtube_transcript, find_song_lyrics, find_movie_facts,
+                find_movie_plot, find_song_facts, find_book_facts,
+                find_podcast_transcript]
 
     # -- keeper chat --------------------------------------------------------
     async def keeper_tell(self, world: str, kid: str, text: str) -> dict:
         keeper = self.library.get_keeper(world, kid)
         session = self.library.session_read(world, kid)
+        rows = self.library.index_rows(world, kid)
         instruction = prompt("keeper_tell", persona=keeper.persona, topic=keeper.topic,
-                             today=_today(), session=session_block(session))
+                             today=_today(), session=session_block(session),
+                             index=index_block(rows[:SHORTLIST * 2]))
         reply_data, tokens = {}, 0
         try:
             raw, tokens = await run_agent(
@@ -77,8 +99,15 @@ class AgentsApi:
         body = body.strip() if isinstance(body, str) and body.strip() else text
 
         book = None
+        grown = None
         error = None
-        if keeper.side == "light":
+        extends = reply_data.get("extends_slug")
+        if (keeper.side == "light" and isinstance(extends, str)
+                and any(r["slug"] == extends for r in rows)):
+            # A follow-up grows the existing book instead of minting a new one.
+            grown = self.library.append_to_book(world, kid, extends,
+                                                note_md=body, date=_today())
+        elif keeper.side == "light":
             try:
                 book = self.library.write_book(
                     world, kid, title=fields["title"], body_md=body, date=_today(),
@@ -90,7 +119,8 @@ class AgentsApi:
         self._record(world, kid, text, reply, tokens)
         if error:
             raise error
-        return {"reply": reply, "book": book.summary() if book else None}
+        return {"reply": reply, "book": book.summary() if book else None,
+                "book_grown": grown.summary() if grown else None}
 
     async def keeper_ask(self, world: str, kid: str, question: str) -> dict:
         keeper = self.library.get_keeper(world, kid)
