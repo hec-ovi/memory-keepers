@@ -272,6 +272,16 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     default_frontend = Path(__file__).resolve().parents[3] / "frontend"
     frontend_dir = Path(os.environ.get("FRONTEND_DIR") or default_frontend)
     if frontend_dir.is_dir():
-        app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
+        class RevalidatingStatics(StaticFiles):
+            """Statics revalidate on every load (no-cache + etag 304s): the SPA
+            has no build step, so this is the only cache-busting there is."""
+
+            def file_response(self, *args, **kwargs):
+                response = super().file_response(*args, **kwargs)
+                response.headers["Cache-Control"] = "no-cache"
+                return response
+
+        app.mount("/", RevalidatingStatics(directory=frontend_dir, html=True), name="frontend")
 
     return app

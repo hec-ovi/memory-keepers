@@ -39,6 +39,8 @@ Errors are `{"error": {"code": SYMBOL, "message": str}}`. Closed set: the librar
 
 With env `ACCESS_CODE` set, every API route (not /health, statics, or /internal) answers 401 `ACCESS_REQUIRED` unless the request carries `X-Access-Code: <code>`; anonymous traffic never reaches a model or speech service.
 
+Statics are served `Cache-Control: no-cache` (etag revalidation, 304s): the SPA has no build step, so browsers must revalidate modules on every load or ship stale UI.
+
 ## Bookkeeping owned here
 
 - **Tiredness meter.** Adds agent-reported tokens per tell/ask into the library meter. Status: `rested < 0.70 <= unrested < 0.85 <= needs_sleep` of the session budget (env `SESSION_TOKEN_BUDGET`, default 12000). At `needs_sleep`, tell/ask return 409 until she sleeps, and a tired-keeper dream event is published.
