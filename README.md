@@ -4,9 +4,26 @@ A 3D game where keepers (small blob librarians) manage your memories. Each keepe
 
 Built for the All Things Agentic Hackathon (The Collaborative Partner track).
 
-Stack: Gemini on Vertex AI, Google ADK agents, Cloud Run, Firestore, Pub/Sub, Cloud Text-to-Speech and Speech-to-Text, with a local Gemma tier.
-
 Interactive architecture map: [hec-ovi.github.io/memory-keepers](https://hec-ovi.github.io/memory-keepers/)
+
+## Why
+
+Most AI still lives in chatbots: a text box that waits. The question behind this project is how interacting with an AI can feel natural, carry real meaning, and cover the whole spectrum of what you do, instead of solving one narrow problem. We are, in the end, a collection of memories and the events that happened to us, so the app points at life and memory itself.
+
+Each layer of your life gets its own keeper: the music you hear, the movies you watch, the dreams that stay with you, your diet, your workouts, your meetings. Keepers capture who you are in those moments and hand back the details you lose ("that movie three weeks ago, the guy on an airplane?", "what was the urgent thing John asked me for?"). At night the island consolidates the day the way humans do, by dreaming: a knowledge graph connects the layers holistically and surfaces what keeps returning, including what you avoid.
+
+Privacy first: the same code runs against Gemini on Vertex AI or entirely on your own hardware with Gemma open weights, so your memories, conversations, and the graph itself never have to leave your machine.
+
+## Stack
+
+- Gemini on Vertex AI: keeper replies, synthesis, dream prose
+- Google ADK + GenAI SDK: monument root agent, one agent per keeper (call-and-return tools), dream agents
+- Cloud Run: one service, engine plus frontend
+- Firestore: worlds, keepers, books, sessions, dream runs
+- Pub/Sub + Cloud Scheduler: the nightly dream sweep
+- Cloud Text-to-Speech and Speech-to-Text: keeper voices and the talk key
+- Gemma on llama.cpp: the local model tier
+- three.js frontend (no build step), FastAPI engine, Docker
 
 ## Run locally (zero cloud cost)
 
