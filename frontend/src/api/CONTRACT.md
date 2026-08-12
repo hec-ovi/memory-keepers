@@ -11,12 +11,14 @@ at the repo root).
 ```js
 import { createApi, ApiError } from "./api/api.js";
 
-createApi({ baseUrl = "", invoke = null, fetchFn = (...args) => globalThis.fetch(...args), sleep = defaultSleep } = {}) -> api
+createApi({ baseUrl = "", invoke = null, worldId = null, fetchFn = (...args) => globalThis.fetch(...args), sleep = defaultSleep } = {}) -> api
 ```
 
 - `baseUrl` REST prefix, trailing slashes stripped; `""` = same origin.
 - `invoke(path, {method, body}) -> Promise<raw>` alternate transport; wins
   over `baseUrl` when both are given.
+- `worldId` use this world id for the session; when null it comes from
+  localStorage "mk-world" (minted once per browser, `worldIdFrom`).
 - `fetchFn` / `sleep` injectable for tests (`sleep(ms) -> Promise`).
 
 `api` methods (all return a Promise of the peeled JSON payload, all reject
@@ -45,6 +47,9 @@ monument(text)                                 // POST /monument {text}
 stt(blob)                                      // POST /voice/stt (raw opus body) -> {text}
 tts(text, kind = "light")                      // POST /voice/tts {text, kind} -> audio Blob
 setAccessCode(code)                            // remember the island key (localStorage "mk-access"); sent as X-Access-Code on every call; falsy clears it
+setWorldId(id)                                 // adopt a world id (localStorage "mk-world"); the next page load talks to that world; falsy clears it
+exportWorld()                                  // GET /world/export -> the island as one JSON
+importWorld(data)                              // POST /world/import -> {world, keepers, books}; caller adopts the fresh id
 seed()                                         // POST /dev/seed {}
 reset()                                        // POST /dev/reset {} (no UI caller today)
 ```

@@ -18,7 +18,7 @@
 // overlays get first dibs on Esc).
 
 import { renderMd } from "./md.js";
-import { createHoloPanel, ensureHoloStyles } from "./holo/holo.js";
+import { createHoloPanel, ensureHoloStyles, injectStyle, makeEl } from "./holo/holo.js";
 
 const STYLE_ID = "mk-reader-style";
 const CSS = `
@@ -44,14 +44,6 @@ const CSS = `
 .mk-reader-skeleton .skeleton:last-child{width:80%;}
 `;
 
-function ensureStyles(doc) {
-  if (doc.getElementById(STYLE_ID)) return;
-  const style = doc.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = CSS;
-  doc.head.appendChild(style);
-}
-
 // "meetings/2026-06-30-mars-sync" -> cross-keeper link; bare slug -> same keeper.
 export function parseBookLink(link, currentKeeperId) {
   const raw = String(link ?? "");
@@ -67,7 +59,7 @@ export function createReader({ root, state, bus, api, toasts, confirm, ui } = {}
   // Kit styles first, host styles second: .mk-reader positioning must come
   // later in the cascade than the kit's .holo-panel defaults.
   ensureHoloStyles(doc);
-  ensureStyles(doc);
+  injectStyle(doc, STYLE_ID, CSS);
 
   let holo = null;
   let content = null;
@@ -76,12 +68,7 @@ export function createReader({ root, state, bus, api, toasts, confirm, ui } = {}
   let destroying = false;
   const offs = [];
 
-  const el = (tag, className, text) => {
-    const node = doc.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-  };
+  const el = makeEl(doc);
 
   function toastError(message) {
     if (notify) notify.error(message);
@@ -100,7 +87,7 @@ export function createReader({ root, state, bus, api, toasts, confirm, ui } = {}
 
   function buildShell() {
     if (holo) return;
-    content = el("div", "mk-reader-content");
+    content = el("div");
     holo = createHoloPanel({
       title: "book",
       content,

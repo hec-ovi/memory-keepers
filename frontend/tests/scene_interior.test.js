@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBus } from "../src/bus.js";
 import {
   createInteriorScene,
-  hashString,
   spineColorFromTags,
   BOOK_TIERS,
   bookTier,
@@ -46,14 +45,6 @@ import {
 } from "../src/render/scene_interior.js";
 import * as THREE from "three";
 import { dreamsKeeper, flyingBook, tideBook } from "./ui_fixtures.js";
-
-describe("hashString", () => {
-  it("is deterministic and input-sensitive", () => {
-    expect(hashString("flying|ocean")).toBe(hashString("flying|ocean"));
-    expect(hashString("flying|ocean")).not.toBe(hashString("flying|oceans"));
-    expect(hashString("")).toBe(hashString(""));
-  });
-});
 
 describe("spineColorFromTags", () => {
   it("returns a #rrggbb hex string", () => {

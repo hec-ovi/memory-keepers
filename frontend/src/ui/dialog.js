@@ -65,14 +65,15 @@
 //   emits   "voice:tts"      { keeperId, on }             speaker toggle (spoken replies)
 //   emits   "voice:state"    { keeperId, mode }           visualizer mode changes
 //                            ("idle" | "listening" | "speaking")
-//   emits   "ui:open" / "ui:close"  { panel: "dialog" } for the audio blips
+//   emits   "ui:open" / "ui:close"  { panel: "dialog" }  panel lifecycle; the
+//                            overworld uses them to defer/cancel a deselect
 //
 // Only the header's X closes the panel: outside clicks and Esc never do, so a
 // conversation cannot be lost mid-thought.
 
 import { renderMd } from "./md.js";
 import { config as gameConfig } from "../config.js";
-import { createHoloPanel, ensureHoloStyles, ensureThinking } from "./holo/holo.js";
+import { createHoloPanel, ensureHoloStyles, ensureThinking, injectStyle, makeEl } from "./holo/holo.js";
 import { createVoiceViz } from "./holo/voice.js";
 
 const STYLE_ID = "mk-dialog-style";
@@ -88,9 +89,6 @@ const CSS = `
 .mk-dialog-hist-who{color:var(--holo-cyan,#3fe0ff);margin-right:6px;text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;}
 .mk-dialog-hist-row-keeper .mk-dialog-hist-who{color:var(--holo-amber,#ffb658);}
 .mk-dialog-stage{display:flex;flex-direction:column;align-items:center;gap:6px;margin:4px 0 8px;}
-.mk-dialog-viz-row{display:flex;align-items:center;gap:14px;}
-.mk-dialog-tts{min-width:42px;padding:7px 10px;font-size:.95rem;}
-.mk-dialog-tts[aria-pressed="true"]{background:var(--holo-cyan,#3fe0ff);border-color:transparent;color:#03272e;box-shadow:0 0 14px rgba(63,224,255,.6);}
 .mk-dialog-status{margin:0;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);animation:mk-dialog-breathe 1.1s ease-in-out infinite;}
 @keyframes mk-dialog-breathe{0%,100%{opacity:.9;}50%{opacity:.35;}}
 
@@ -150,14 +148,6 @@ const CSS = `
 .mk-dialog-nomem-title{margin:0 0 6px;font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);text-shadow:0 0 8px rgba(63,224,255,.5);}
 .mk-dialog-nomem-q{margin:0 0 8px;font-size:.88rem;font-style:italic;color:var(--holo-amber-hi,#ffd9a0);}
 `;
-
-function ensureStyles(doc) {
-  if (doc.getElementById(STYLE_ID)) return;
-  const style = doc.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = CSS;
-  doc.head.appendChild(style);
-}
 
 // Reply typing: ≤ ~220 ticks at 14 ms so even long replies land within ~3 s.
 export function typingStep(length, maxTicks = 220) {
@@ -237,7 +227,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   // Kit styles first, host styles second: .mk-dialog positioning must come
   // later in the cascade than the kit's .holo-panel defaults.
   ensureHoloStyles(doc);
-  ensureStyles(doc);
+  injectStyle(doc, STYLE_ID, CSS);
 
   let holo = null;
   let viz = null;
@@ -290,12 +280,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let factoryDisposed = false;
   const delay = (ms) => new Promise((r) => win.setTimeout(r, ms));
 
-  const el = (tag, className, text) => {
-    const node = doc.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-  };
+  const el = makeEl(doc);
 
   function toastError(message) {
     if (notify) notify.error(message);
@@ -404,7 +389,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     if (!histBox) return;
     const row = el("div", `mk-dialog-hist-row mk-dialog-hist-row-${kind} holo-row`);
     row.appendChild(el("span", "mk-dialog-hist-who", kind === "user" ? "you" : keeperName));
-    row.appendChild(el("span", "mk-dialog-hist-text", text));
+    row.appendChild(el("span", null, text));
     histBox.appendChild(row);
     while (histBox.children.length > 12) histBox.firstChild.remove();
     histBox.scrollTop = histBox.scrollHeight;
@@ -723,7 +708,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       hint.appendChild(el("p", "mk-dialog-nomem-title", "she does not remember this"));
       if (res?.answer) hint.appendChild(el("p", "mk-dialog-nomem-q", res.answer));
       if (keeper.kind !== "unconscious") {
-        const save = el("button", "holo-btn mk-dialog-save", "Save this as a memory");
+        const save = el("button", "holo-btn", "Save this as a memory");
         save.type = "button";
         save.addEventListener("click", () => prefillTell(question));
         hint.appendChild(save);
@@ -962,7 +947,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
     // Hero: the voice visualizer with the speaker (voice replies) toggle.
     const stage = el("div", "mk-dialog-stage");
-    const vizRow = el("div", "mk-dialog-viz-row");
     viz = createVoiceViz({ size: 150 });
     // The visualizer itself is the speaker toggle (no extra button).
     viz.el.setAttribute("role", "button");
@@ -973,7 +957,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       ttsOn = !ttsOn;
       if (!ttsOn) stopPlayback();
       viz.el.setAttribute("aria-pressed", String(ttsOn));
-      viz.el.classList.toggle("is-on", ttsOn);
       bus?.emit("voice:tts", { keeperId: keeper.id, on: ttsOn });
     };
     viz.el.addEventListener("click", toggleTts);
@@ -983,8 +966,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
         toggleTts();
       }
     });
-    vizRow.append(viz.el);
-    stage.appendChild(vizRow);
+    stage.appendChild(viz.el);
 
     statusEl = el("p", "mk-dialog-status", "listening...");
     statusEl.setAttribute("role", "status");
@@ -993,7 +975,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     content.appendChild(stage);
 
     // The "she does not remember" hint lands here, full width.
-    noteBox = el("div", "mk-dialog-notebox");
+    noteBox = el("div");
     content.appendChild(noteBox);
 
     // Reply area: consulted books on the left, the typed reply beside them.
@@ -1024,7 +1006,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
     // Tabs flip what the composer's send means (the main keeper has one voice).
     if (!isMonument) {
-    const tabs = el("div", "holo-tabs mk-dialog-tabs");
+    const tabs = el("div", "holo-tabs");
     tabs.setAttribute("role", "tablist");
     const tabDefs = ["Tell", "Ask"];
     const tabBtns = tabDefs.map((name, i) => {

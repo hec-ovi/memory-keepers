@@ -14,7 +14,7 @@
 // village plot is taken) shows a friendly inline message; other failures
 // toast. Esc, Cancel, or a backdrop click closes the modal.
 
-import { createHoloPanel } from "./holo/holo.js";
+import { createHoloPanel, injectStyle, makeEl } from "./holo/holo.js";
 
 const STYLE_ID = "mk-create-style";
 const CSS = `
@@ -23,14 +23,6 @@ const CSS = `
 .mk-create-slug code{color:var(--holo-cyan,#3fe0ff);background:rgba(10,5,2,.75);border-radius:4px;padding:1px 6px;}
 .mk-create-form textarea{resize:vertical;min-height:70px;}
 `;
-
-function ensureStyles(doc) {
-  if (doc.getElementById(STYLE_ID)) return;
-  const style = doc.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = CSS;
-  doc.head.appendChild(style);
-}
 
 // Lowercase slug, the same shape the engine derives ids from.
 export function slugify(topic) {
@@ -45,7 +37,7 @@ export function slugify(topic) {
 export function createCreateKeeper({ root, state, bus, api, toasts, ui } = {}) {
   const doc = root.ownerDocument;
   const notify = toasts ?? ui?.toasts ?? null;
-  ensureStyles(doc);
+  injectStyle(doc, STYLE_ID, CSS);
 
   let backdrop = null;
   let holo = null;
@@ -53,12 +45,7 @@ export function createCreateKeeper({ root, state, bus, api, toasts, ui } = {}) {
   let inFlight = false;
   const offs = [];
 
-  const el = (tag, className, text) => {
-    const node = doc.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-  };
+  const el = makeEl(doc);
 
   function toastError(message) {
     if (notify) notify.error(message);
@@ -186,7 +173,7 @@ export function createCreateKeeper({ root, state, bus, api, toasts, ui } = {}) {
       content: form,
       size: null, // the form sets its own min-width
       onClose: close,
-      className: "dialog mk-create",
+      className: "dialog",
     });
     holo.el.setAttribute("role", "dialog");
     holo.el.setAttribute("aria-modal", "true");

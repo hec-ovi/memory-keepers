@@ -12,6 +12,8 @@ from mk_library.store import now_iso
 
 log = logging.getLogger(__name__)
 VERBATIM_TAIL_TURNS = 3
+RECENT_TOPICS_WINDOW = 4
+CHARS_PER_TOKEN = 4  # the meter's rough estimate after compaction
 _JOBS: set[asyncio.Task] = set()  # keep sleep jobs referenced until they settle
 
 
@@ -34,13 +36,14 @@ def perform_sleep(library: Library, world: str, kid: str) -> list[dict]:
             books_written.append(book.summary())
 
     user_texts = [t.text for t in dropped if t.role == "user"]
-    for text in user_texts[-4:]:
+    for text in user_texts[-RECENT_TOPICS_WINDOW:]:
         if text not in session.blocks["recent_topics"]:
-            session.blocks["recent_topics"] = (session.blocks["recent_topics"] + [text])[-4:]
+            session.blocks["recent_topics"] = (
+                session.blocks["recent_topics"] + [text])[-RECENT_TOPICS_WINDOW:]
     session.turns = session.turns[-VERBATIM_TAIL_TURNS:]
     session.sleep_count += 1
     library.session_replace(world, kid, session)
-    library.meter_reset(world, kid, len(json.dumps(session.to_doc())) // 4)
+    library.meter_reset(world, kid, len(json.dumps(session.to_doc())) // CHARS_PER_TOKEN)
     return books_written
 
 

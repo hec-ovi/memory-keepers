@@ -4,9 +4,9 @@ import re
 TIER_BOUNDS = (400, 1200, 3000)  # body chars: small < 400 <= medium < 1200 <= big < 3000 <= large
 
 
-def slugify(text: str, max_len: int = 48) -> str:
+def slugify(text: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return slug[:max_len].rstrip("-") or "untitled"
+    return slug[:48].rstrip("-") or "untitled"
 
 
 def book_slug(date: str, title: str, taken: set[str]) -> str:

@@ -53,8 +53,8 @@ python3 scripts/demo_world.py http://localhost:8000 demo --verify
 ## Tests
 
 ```
-docker compose run --rm test            # python boxes (76 tests)
-docker compose run --rm test-frontend   # frontend (713 tests)
+docker compose run --rm test            # python boxes (79 tests)
+docker compose run --rm test-frontend   # frontend (707 tests)
 ```
 
 Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set); frontend on vitest + jsdom + Testing Library + MSW.

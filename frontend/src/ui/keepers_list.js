@@ -15,13 +15,14 @@
 //                                    inside an interior (main.js routes it)
 //   emits   "keeper:selected" { keeperId }   row click (closes first)
 //   emits   "district:travel" {}         Cross the ridge footer (closes first)
-//   emits   "ui:open" / "ui:close" { panel: "keepers" }  for the audio blips
+//   emits   "ui:open" / "ui:close" { panel: "keepers" }  panel lifecycle
+//                                    (no consumer today; see the event table)
 //
-// Esc closes, unless a modal overlay, the reader, or the talk panel is open
-// (they own Esc first). Rows re-render on every open and on state:loaded, so
-// levels and book counts never go stale.
+// Esc closes, unless a modal overlay or the reader is open (they own Esc
+// first). Rows re-render on every open and on state:loaded, so levels and
+// book counts never go stale.
 
-import { createHoloPanel, ensureHoloStyles } from "./holo/holo.js";
+import { createHoloPanel, ensureHoloStyles, injectStyle, makeEl } from "./holo/holo.js";
 
 // session.status -> what the player reads on the tiredness dot.
 export function restHint(session = null) {
@@ -56,20 +57,12 @@ const CSS = `
 .mk-keepers-travel:hover{background:rgba(63,224,255,.18);box-shadow:0 0 14px rgba(63,224,255,.45);}
 `;
 
-function ensureStyles(doc) {
-  if (doc.getElementById(STYLE_ID)) return;
-  const style = doc.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = CSS;
-  doc.head.appendChild(style);
-}
-
 export function createKeepersList({ root, state, bus } = {}) {
   const doc = root.ownerDocument;
   // Kit styles first, host styles second: .mk-keepers positioning must come
   // later in the cascade than the kit's .holo-panel defaults.
   ensureHoloStyles(doc);
-  ensureStyles(doc);
+  injectStyle(doc, STYLE_ID, CSS);
 
   let holo = null;
   let scroll = null;
@@ -77,12 +70,7 @@ export function createKeepersList({ root, state, bus } = {}) {
   let query = "";
   const offs = [];
 
-  const el = (tag, className, text) => {
-    const node = doc.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-  };
+  const el = makeEl(doc);
 
   function close() {
     if (!holo) return;
@@ -150,18 +138,15 @@ export function createKeepersList({ root, state, bus } = {}) {
       );
       return;
     }
-    const day = keepers.filter((a) => a.kind !== "unconscious");
-    const night = keepers.filter((a) => a.kind === "unconscious");
-    if (day.length) {
-      scroll.appendChild(el("h3", "mk-keepers-group", "the village"));
+    const groups = [
+      ["the village", keepers.filter((a) => a.kind !== "unconscious")],
+      ["across the ridge", keepers.filter((a) => a.kind === "unconscious")],
+    ];
+    for (const [title, members] of groups) {
+      if (!members.length) continue;
+      scroll.appendChild(el("h3", "mk-keepers-group", title));
       const list = el("div", "holo-list");
-      for (const keeper of day) list.appendChild(rowFor(keeper));
-      scroll.appendChild(list);
-    }
-    if (night.length) {
-      scroll.appendChild(el("h3", "mk-keepers-group", "across the ridge"));
-      const list = el("div", "holo-list");
-      for (const keeper of night) list.appendChild(rowFor(keeper));
+      for (const keeper of members) list.appendChild(rowFor(keeper));
       scroll.appendChild(list);
     }
   }
@@ -169,7 +154,7 @@ export function createKeepersList({ root, state, bus } = {}) {
   function open() {
     if (holo) return;
 
-    const content = el("div", "mk-keepers-inner");
+    const content = el("div");
     query = "";
     const search = el("input", "input mk-keepers-search");
     search.type = "search";

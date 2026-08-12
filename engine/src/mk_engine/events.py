@@ -11,10 +11,10 @@ log = logging.getLogger(__name__)
 
 
 class DreamDispatcher:
-    def __init__(self, library, agents_api, publisher=None):
+    def __init__(self, library, agents_api):
         self.library = library
         self.agents_api = agents_api
-        self._publisher = publisher
+        self._publisher = None  # created lazily on first publish
         self._tasks: set = set()  # keep inline runs alive until they settle
         self.mode = os.environ.get(
             "DREAM_DISPATCH", "pubsub" if os.environ.get("K_SERVICE") else "inline")

@@ -314,7 +314,7 @@ describe("createDialog", () => {
     expect(screen.queryByRole("button", { name: /^join/i })).toBeNull();
   });
 
-  it("emits ui:open / ui:close for the audio blips", () => {
+  it("emits ui:open / ui:close over the panel lifecycle", () => {
     const opened = vi.fn();
     const closed = vi.fn();
     bus.on("ui:open", opened);
@@ -659,7 +659,7 @@ describe("createDialog", () => {
     expect(screen.getByText("she needs to dream")).toBeTruthy();
   });
 
-  it("409 NEEDS_SLEEP from tell renders the send-to-sleep prompt instead of a toast", async () => {
+  it("409 NEEDS_SLEEP (shared tell/ask branch) renders the send-to-sleep prompt instead of a toast", async () => {
     const user = userEvent.setup();
     server.use(
       http.post(`${BASE}/keepers/dreams/tell`, () =>
@@ -683,26 +683,6 @@ describe("createDialog", () => {
     const meter = screen.getByRole("progressbar", { name: "rest meter" });
     expect(meter.classList.contains("mk-dialog-rest--red")).toBe(true);
     expect(screen.queryByText("she is too tired")).toBeNull(); // no raw toast
-  });
-
-  it("409 NEEDS_SLEEP from ask renders the same prompt", async () => {
-    const user = userEvent.setup();
-    server.use(
-      http.post(`${BASE}/keepers/dreams/ask`, () =>
-        HttpResponse.json(
-          { error: { code: "NEEDS_SLEEP", message: "she is too tired" } },
-          { status: 409 },
-        ),
-      ),
-    );
-    bus.emit("keeper:selected", { keeperId: "dreams" });
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    await user.type(screen.getByRole("textbox", { name: /ask/i }), "hello?");
-    await user.keyboard("{Enter}");
-    await waitFor(() =>
-      expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe(""),
-    );
-    expect(screen.getByRole("button", { name: "Send to sleep" })).toBeTruthy();
   });
 
   it("409 LIBRARY_FULL from tell: warm inline note + Send to sleep, cleared once she dreams", async () => {

@@ -1,18 +1,15 @@
 import { describe, it, expect } from "vitest";
+import { hashString, mulberry32 } from "../src/sim/rand.js";
 import {
-  hashString,
-  mulberry32,
   smoothstep,
   makeNoise2D,
   makeFbm2D,
   flattenPlots,
   shoreProfile,
-  routeToDoor,
   clampToSector,
   planPlots,
   assignPlots,
   layoutWorld,
-  makeWanderSampler,
   nearestNode,
   routeOnGraph,
   routeClearOf,
@@ -141,26 +138,6 @@ describe("sim/world primitives", () => {
     // far from the shore the profile passes through nearly unchanged
     expect(shoreProfile(3.5)).toBeCloseTo(3.5, 1);
     expect(shoreProfile(-2.8)).toBeCloseTo(-2.8, 1);
-  });
-
-  it("routeToDoor starts at the nearest waypoint and always ends at the door", () => {
-    const pts = [
-      { x: 0, z: 0 },
-      { x: 2, z: 0 },
-      { x: 4, z: 0 },
-      { x: 6, z: 0 },
-    ];
-    const door = { x: 7, z: 1 };
-    const route = routeToDoor(pts, { x: 4.2, z: 0.5 }, door);
-    expect(route[0]).toEqual({ x: 4, z: 0 }); // nearest, not the start
-    expect(route[route.length - 1]).toEqual({ x: 7, z: 1 });
-    expect(route).toHaveLength(3);
-    for (const p of route) {
-      expect(Number.isFinite(p.x)).toBe(true);
-      expect(Number.isFinite(p.z)).toBe(true);
-    }
-    // no street at all: still walks to the door
-    expect(routeToDoor([], { x: 0, z: 0 }, door)).toEqual([{ x: 7, z: 1 }]);
   });
 });
 
@@ -525,20 +502,6 @@ describe("sim/world heightAt + streets", () => {
       }
     }
   });
-
-  it("routeToDoor over a plot spur walks the spur and arrives at the door", () => {
-    const home = world.homes["dreams"];
-    const spur = world.streets.find((s) => s.plotId === home.plotId);
-    const route = routeToDoor(spur.points, home.spawn, home.door);
-    expect(route.length).toBeGreaterThan(1);
-    const last = route[route.length - 1];
-    expect(last.x).toBe(home.door.x);
-    expect(last.z).toBe(home.door.z);
-    // the walked lane stays on the street: every hop lands near the network
-    for (const p of route.slice(0, -1)) {
-      expect(world.streetWeightAt(p.x, p.z)).toBeGreaterThan(0.85);
-    }
-  });
 });
 
 describe("sim/world props + trees + wander", () => {
@@ -596,38 +559,6 @@ describe("sim/world props + trees + wander", () => {
     expect(clustered / world.trees.length).toBeGreaterThan(0.4);
   });
 
-  it("makeWanderSampler stays within the sector and on land", () => {
-    const sampler = makeWanderSampler(world.sectors.night, world);
-    const rng = mulberry32(7);
-    for (let i = 0; i < 200; i++) {
-      const p = sampler(rng);
-      const d = Math.hypot(p.x - world.sectors.night.center.x, p.z - world.sectors.night.center.z);
-      expect(d).toBeLessThanOrEqual(world.sectors.night.radius);
-      expect(world.heightAt(p.x, p.z)).toBeGreaterThan(world.waterLevel + 0.25);
-    }
-  });
-
-  it("makeWanderSampler NEVER samples the other district (both directions)", () => {
-    const rng = mulberry32(31);
-    for (const name of ["day", "night"]) {
-      const sampler = makeWanderSampler(world.sectors[name], world);
-      for (let i = 0; i < 150; i++) {
-        const p = sampler(rng);
-        expect(world.sectorNameAt(p.x, p.z)).toBe(name);
-      }
-    }
-  });
-
-  it("makeWanderSampler keeps sampled targets out of solid obstacles", () => {
-    const sampler = makeWanderSampler(world.sectors.day, world);
-    const rng = mulberry32(13);
-    for (let i = 0; i < 150; i++) {
-      const p = sampler(rng);
-      for (const o of world.obstacles) {
-        expect(Math.hypot(o.x - p.x, o.z - p.z)).toBeGreaterThan(o.r);
-      }
-    }
-  });
 
   it("garden props never become obstacles (keepers can idle in their garden)", () => {
     for (const plot of world.plots) {

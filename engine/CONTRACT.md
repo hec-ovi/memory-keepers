@@ -24,6 +24,8 @@ The frontend sends `X-World: <id>` (generated once, kept in localStorage). First
 | `POST /monument` | `{text}` | `{reply, created_keeper?}` (the root agent) |
 | `POST /dream` | `{}` | 202 `{status: queued, run_id}`; 409 `DREAM_RUNNING`; watch `/dreams/{run_id}` |
 | `GET /dreams/latest` / `GET /dreams/{run_id}` | | dream report with graph and narrative |
+| `GET /world/export` | | the whole world as one portable JSON (library `export_world`) |
+| `POST /world/import` | a world export file | 201 `{world, keepers, books}`: a fresh crypto world id holding the file's content; 422 `IMPORT_INVALID` |
 | `POST /internal/dream-run?token=` | Pub/Sub push envelope | runs the dream in-request; token-gated |
 | `POST /internal/nightly?token=` | | dispatches a dream for every world (Cloud Scheduler target) |
 

@@ -75,7 +75,7 @@
 // readout (ui/interior_views.js, bottom-left) shows her name, level, shelved
 // count against LIBRARY_CAP and her rest in warm words.
 //
-// Pure helpers (unit-tested, no three.js state): hashString,
+// Pure helpers (unit-tested, no three.js state):
 // spineColorFromTags, BOOK_TIERS, bookTier, tierSizing, shelfSlot,
 // shelfCapacity, LIBRARY_CAP, contrastInk, spineLabelSpec,
 // scaleSpineSpec, nextKeeperState, runKeeperTimeline, hopArc, labelPlacement,
@@ -86,22 +86,12 @@
 
 import * as THREE from "three";
 
+import { hashString, mulberry32 } from "../sim/rand.js";
 import { applyDrag, clampOffset, createShelfPan, panLimits, worldPerPixel } from "./shelf_pan.js";
 
 // ---------------------------------------------------------------------------
 // Pure helpers
 // ---------------------------------------------------------------------------
-
-// FNV-1a, deterministic across sessions.
-export function hashString(str) {
-  let h = 0x811c9dc5;
-  const s = String(str);
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
 
 function hslToHex(h, s, l) {
   s /= 100;
@@ -147,7 +137,7 @@ export function bookTier(book = {}) {
 }
 
 // The single bookcase holds exactly LIBRARY_CAP slots: ONE full library
-// IS the memory cap per keeper (BACKLOG 22). The backend pins the same number
+// IS the memory cap per keeper. The backend pins the same number
 // in library (mk_library/limits.py); the UI (room readout) imports it from here.
 export const LIBRARY_CAP = 24;
 
@@ -499,16 +489,6 @@ function shadeHex(hex, amt) {
   return `rgb(${c(r)},${c(g)},${c(b)})`;
 }
 
-function mulberry(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 function canvasTexture(w, h) {
   if (typeof document === "undefined") {
@@ -529,7 +509,7 @@ function makePlankTexture(size = 512) {
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
   if (!ctx) return tex;
-  const rng = mulberry(hashString("planks"));
+  const rng = mulberry32(hashString("planks"));
   ctx.fillStyle = "#7a5b40";
   ctx.fillRect(0, 0, size, size);
   const rows = 6;
@@ -610,7 +590,7 @@ function makeWallpaperTexture(night = false, size = 256) {
 function makeRugTexture(night = false, size = 256) {
   const { ctx, tex } = canvasTexture(size, size);
   if (!ctx) return tex;
-  const rng = mulberry(hashString("rug"));
+  const rng = mulberry32(hashString("rug"));
   const palette = night
     ? [0x5a4f80, 0x6d5a8f, 0x8578ad, 0x4a3f66]
     : [0xd98da8, 0xf3e3cf, 0xc9737f, 0xe8b4a0];
@@ -655,7 +635,7 @@ function makeWindowSkyTexture(night = false, w = 256, h = 200) {
   }
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
-  const rng = mulberry(hashString("window-sky"));
+  const rng = mulberry32(hashString("window-sky"));
   if (night) {
     // stars
     for (let i = 0; i < 60; i++) {
@@ -765,7 +745,7 @@ const STAND_Y = 0.52; // blob center above the floor (matches the overworld)
 const SEAT_TOP = 0.44;
 const SIT_SINK = 0.1; // how far she squishes into the cushion
 const SIT_Y = SEAT_TOP + STAND_Y - SIT_SINK;
-// The two armchairs are a cozy pair angled toward one another (BACKLOG 10):
+// The two armchairs are a cozy pair angled toward one another:
 // hers by the lamp, the guest chair across the rug, each turned a few degrees
 // shy of dead-on so the pair reads relaxed, not confrontational. Exported so
 // the geometry (facing angles, camera seat) is unit-testable.
@@ -1495,7 +1475,7 @@ export function createInteriorScene(ctx = {}) {
   }
 
   // "Back to Keeper" while the main view is already up: no view change, just a
-  // gentle turn of the camera onto her chair (BACKLOG 7).
+  // gentle turn of the camera onto her chair.
   function startReframe() {
     if (viewIsTweening(machine) || machine.current !== "main") return false;
     reframe = {
@@ -1886,8 +1866,8 @@ export function createInteriorScene(ctx = {}) {
       tweening: viewIsTweening(machine),
     });
     if (!action) return;
-    if (action.type === "hint") bus?.emit("keeper:selected", { keeperId });
-    else if (action.type === "keeper") bus?.emit("keeper:selected", { keeperId }); // same panel as outside
+    if (action.type === "hint" || action.type === "keeper")
+      bus?.emit("keeper:selected", { keeperId }); // same panel as outside
     else if (action.type === "pick") startPick(action.slug);
     else if (action.type === "view") requestView(action.view, { wall: action.wall });
   }

@@ -414,6 +414,14 @@ describe("the island key", () => {
     expect(globalThis.localStorage.getItem("mk-access")).toBe("island-key");
   });
 
+  it("setWorldId adopts a world id for the next session; falsy clears it", () => {
+    const a = api();
+    a.setWorldId("w-imported");
+    expect(globalThis.localStorage.getItem("mk-world")).toBe("w-imported");
+    a.setWorldId(null);
+    expect(globalThis.localStorage.getItem("mk-world")).toBeNull();
+  });
+
   it("a 401 keeps the engine's ACCESS_REQUIRED code", async () => {
     server.use(
       http.get(`${BASE}/state`, () =>

@@ -56,6 +56,13 @@ class Library:
     def list_worlds(self) -> list[str]:
         return [d.id for d in self._c.collection("worlds").stream()]
 
+    def delete_world(self, wid: str) -> None:
+        for keeper in self.list_keepers(wid):
+            self.delete_keeper(wid, keeper.id)
+        for run in self._world(wid).collection("dreams").stream():
+            run.reference.delete()
+        self._world(wid).delete()
+
     # -- keepers ----------------------------------------------------------
     def create_keeper(self, wid: str, topic: str, *, name: str | None = None,
                       persona: str | None = None, side: str = "light",
@@ -210,7 +217,21 @@ class Library:
     def meter_reset(self, wid: str, kid: str, tokens: int) -> None:
         self.update_keeper(wid, kid, tokens_used=max(0, tokens))
 
+    # -- world travel -------------------------------------------------------
+    def export_world(self, wid: str) -> dict:
+        from . import travel
+        return travel.export_world(self, wid)
+
+    def import_world(self, wid: str, data) -> dict:
+        from . import travel
+        return travel.import_world(self, wid, data)
+
     # -- dream runs ---------------------------------------------------------
+    def list_dreams(self, wid: str) -> list[DreamRun]:
+        runs = [DreamRun.from_doc(d.to_dict())
+                for d in self._world(wid).collection("dreams").stream()]
+        return sorted(runs, key=lambda r: r.run_id)
+
     def dream_start(self, wid: str, reason: str, status: str = "running") -> DreamRun:
         meta = self.world_meta(wid)
         n = meta.get("dream_counter", 0) + 1

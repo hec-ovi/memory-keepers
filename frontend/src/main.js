@@ -3,7 +3,7 @@
 // Scene wiring is data-driven: config.sceneModules maps a mode key to a module
 // path. Each scene module exports one factory (default export or any export
 // matching /^create.*Scene$/) called as factory(ctx) where
-//   ctx = { state, bus, api, config, container, ui }
+//   ctx = { state, bus, api, config, container, mode }
 // and returns { update(dt), dispose(), ... }. If the module is missing or
 // broken, an animated DOM placeholder takes its place, so the core runs before
 // (and without) the render/ modules. Integrators only flip config entries.
@@ -143,7 +143,7 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
   async function loadScene(mode) {
     const key = modeKey(mode);
     const path = config.sceneModules[key];
-    const ctx = { state, bus, api, config, container: appEl, ui, mode };
+    const ctx = { state, bus, api, config, container: appEl, mode };
     if (!path) return createPlaceholderScene(ctx);
     try {
       const mod = await import(path);

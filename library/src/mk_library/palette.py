@@ -9,7 +9,7 @@ NAMED = {
 }
 
 
-def palette_for(topic: str, side: str = "light") -> dict:
+def palette_for(topic: str, side: str) -> dict:
     if topic in NAMED and side == "light":
         return dict(NAMED[topic])
     h = int.from_bytes(hashlib.sha256(topic.encode()).digest()[:4], "big") / 2**32

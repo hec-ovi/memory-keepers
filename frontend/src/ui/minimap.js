@@ -16,23 +16,16 @@
 // ring at the click point.
 //
 //   const minimap = createMinimap({ root, state, bus, config });
-//   minimap.redraw(); minimap.dispose();
+//   minimap.dispose();
 
 import { layoutWorld } from "../sim/world.js";
+import { injectStyle } from "./holo/holo.js";
 
 const STYLE_ID = "mk-minimap-style";
 const CSS = `
 .mk-minimap{position:absolute;left:16px;bottom:16px;z-index:20;padding:7px;border-radius:6px;background:repeating-linear-gradient(0deg,rgba(255,196,128,.05) 0 1px,rgba(0,0,0,0) 1px 3px),rgba(24,12,4,.85);backdrop-filter:blur(6px);border:1px solid var(--line,rgba(255,166,64,.42));border-top:2px solid var(--pink,#ffb658);box-shadow:0 0 18px rgba(255,150,40,.2),0 6px 18px rgba(0,0,0,.5);}
 .mk-minimap canvas{display:block;border-radius:3px;cursor:crosshair;}
 `;
-
-function ensureStyles(doc) {
-  if (doc.getElementById(STYLE_ID)) return;
-  const style = doc.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = CSS;
-  doc.head.appendChild(style);
-}
 
 // ---------------------------------------------------------------------------
 // Pure helpers (projection + ping math) -- tested in tests/minimap.test.js
@@ -139,12 +132,16 @@ export function sampleLandMask(world, bounds, cols = COAST_GRID.cols, rows = COA
   return { cols, rows, land, night, heights, waterLevel };
 }
 
+// The unconscious quarter's deep blue/purple night tint (one source for the
+// isle fill and the mask blend).
+const NIGHT_RGB = [69, 58, 102];
+
 // Mask -> RGBA pixels (row-major, cols x rows): water transparent, land mixed
 // from the day green to the night purple by nightMaskAt, with a sandy fringe
 // where the land sits just above the waterline. Pure.
 export function maskToRgba(
   mask,
-  { landRgb = [127, 176, 105], nightRgb = [69, 58, 102], sandRgb = [214, 189, 138] } = {},
+  { landRgb = [127, 176, 105], nightRgb = NIGHT_RGB, sandRgb = [214, 189, 138] } = {},
 ) {
   const { cols, rows, land, night, heights, waterLevel } = mask;
   const out = new Uint8ClampedArray(cols * rows * 4);
@@ -172,17 +169,18 @@ const MAP_W = 190;
 const MAP_H = 158;
 
 // District tints: the village is always daylight green, the unconscious
-// quarter always a deep blue/purple night.
-const UNCONSCIOUS_FILL = "#453a66";
+// quarter always a deep blue/purple night (NIGHT_RGB).
+const UNCONSCIOUS_FILL = `rgb(${NIGHT_RGB.join(", ")})`;
 const WATER_FILL = "rgba(27, 44, 66, 0.92)";
 
 export function createMinimap({ root, state, bus, config } = {}) {
   const doc = root.ownerDocument;
-  ensureStyles(doc);
+  injectStyle(doc, STYLE_ID, CSS);
   const win = doc.defaultView ?? globalThis;
   const colors = config?.colors ?? {};
   const keeperTone = cssHex(colors.keeperTone ?? 0x9fdcff);
-  const islandGreen = cssHex(colors.island ?? 0x7fb069);
+  const islandHex = colors.island ?? 0x7fb069;
+  const islandGreen = cssHex(islandHex);
 
   const panel = doc.createElement("div");
   panel.className = "mk-minimap";
@@ -224,11 +222,7 @@ export function createMinimap({ root, state, bus, config } = {}) {
     try {
       const mask = sampleLandMask(layout, bounds);
       const rgba = maskToRgba(mask, {
-        landRgb: [
-          (colors.island ?? 0x7fb069) >> 16 & 0xff,
-          (colors.island ?? 0x7fb069) >> 8 & 0xff,
-          (colors.island ?? 0x7fb069) & 0xff,
-        ],
+        landRgb: [(islandHex >> 16) & 0xff, (islandHex >> 8) & 0xff, islandHex & 0xff],
       });
       const off = doc.createElement("canvas");
       off.width = mask.cols;
@@ -430,8 +424,6 @@ export function createMinimap({ root, state, bus, config } = {}) {
   draw();
 
   return {
-    el: panel,
-    redraw: draw,
     dispose() {
       disposed = true;
       if (pingRaf && typeof win.cancelAnimationFrame === "function") {

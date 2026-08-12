@@ -14,10 +14,9 @@
 // by tests.
 
 import * as THREE from "three";
-import { makeNoise2D, makeFbm2D, mulberry32, smoothstep } from "../sim/world.js";
-import { mixHexColor, blendBand } from "./blend.js";
-
-const clamp01 = (x) => Math.min(1, Math.max(0, x));
+import { mulberry32 } from "../sim/rand.js";
+import { makeNoise2D, makeFbm2D, smoothstep } from "../sim/world.js";
+import { clamp01, mixHexColor, blendBand } from "./blend.js";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (tested in tests/terrain_helpers.test.js)
@@ -520,50 +519,6 @@ function foamTexture(w = 256, h = 64) {
   return tex;
 }
 
-function rockTexture(size = 256) {
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  if (!ctx) return tex;
-  const fbm = makeFbm2D(3111, 3);
-  const img = ctx.createImageData(size, size);
-  for (let j = 0; j < size; j++) {
-    for (let i = 0; i < size; i++) {
-      const v = fbm(i * 0.045, j * 0.045);
-      const lum = 105 + v * 95;
-      const k = (j * size + i) * 4;
-      img.data[k] = lum;
-      img.data[k + 1] = lum * 0.94;
-      img.data[k + 2] = lum * 0.86;
-      img.data[k + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  // Cracks.
-  const rng = mulberry32(909);
-  ctx.strokeStyle = "rgba(30,26,24,0.35)";
-  ctx.lineWidth = 1.2;
-  for (let c = 0; c < 46; c++) {
-    let x = rng() * size;
-    let y = rng() * size;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    for (let s = 0; s < 5; s++) {
-      x += (rng() - 0.5) * 34;
-      y += rng() * 22;
-      ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-  tex.needsUpdate = true;
-  return tex;
-}
-
 function grassBladeTexture(size = 96) {
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -822,17 +777,6 @@ export function buildShoreFoam({ world, chains = null } = {}) {
       mat.color.set(tintHex); // follows the camera's district blend
     },
   };
-}
-
-// Coast rim: intentionally builds NOTHING. The rocky collar strips read as
-// large brown mud slabs at play distance and the owner asked for them to be
-// removed (BACKLOG item 1); grass now fades into sand and water everywhere.
-// The signature stays so the scene wiring keeps working until the next
-// scene-owned cleanup removes the call site.
-export function buildCoastRim() {
-  const group = new THREE.Group();
-  group.name = "coast-rim";
-  return { group };
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeGraphLayout, edgeId, hashString, mulberry32 } from "../src/sim/graphlayout.js";
+import { computeGraphLayout, edgeId } from "../src/sim/graphlayout.js";
 
 // Small fixture matching the dream report graph shape (dreaming/CONTRACT.md): 3 keepers, their books,
 // bridging entities, mixed-weight edges.
@@ -55,22 +55,7 @@ function bigGraph() {
 
 const dist = (a, b) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2);
 
-describe("seeded primitives", () => {
-  it("hashString is deterministic and spreads distinct inputs", () => {
-    expect(hashString("keeper:dreams")).toBe(hashString("keeper:dreams"));
-    expect(hashString("keeper:dreams")).not.toBe(hashString("keeper:fears"));
-  });
-
-  it("mulberry32 replays the same sequence for the same seed", () => {
-    const a = mulberry32(7);
-    const b = mulberry32(7);
-    const seqA = [a(), a(), a()];
-    const seqB = [b(), b(), b()];
-    expect(seqA).toEqual(seqB);
-    for (const v of seqA) expect(v).toBeGreaterThanOrEqual(0);
-    for (const v of seqA) expect(v).toBeLessThan(1);
-  });
-
+describe("edgeId", () => {
   it("edgeId is stable and unique per index", () => {
     const e = { source: "a", target: "b", kind: "mentions" };
     expect(edgeId(e, 0)).toBe(edgeId(e, 0));

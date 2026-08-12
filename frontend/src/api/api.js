@@ -281,6 +281,22 @@ export function createApi({
       }
     },
 
+    // adopt a world id: remembered for every later session (page reload picks
+    // it up via worldIdFrom)
+    setWorldId: (id) => {
+      try {
+        if (id) globalThis.localStorage?.setItem("mk-world", id);
+        else globalThis.localStorage?.removeItem("mk-world");
+      } catch {
+        /* storage may be unavailable (private mode); the session still works */
+      }
+    },
+
+    // world travel: the island as one file (cloud to local and back).
+    // importWorld resolves {world} = the fresh island id; the caller adopts it.
+    exportWorld: () => request("/world/export"),
+    importWorld: (data) => request("/world/import", { method: "POST", body: data }),
+
     // dev helpers
     seed: () => request("/dev/seed", { method: "POST", body: {} }),
     reset: () => request("/dev/reset", { method: "POST", body: {} }),

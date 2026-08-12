@@ -23,6 +23,18 @@ class OfflineLookups:
     def movie_facts(self, title, year=""):
         return {"ok": False, "reason": "unavailable"}
 
+    def movie_plot(self, title, year=""):
+        return {"ok": False, "reason": "unavailable"}
+
+    def song_facts(self, title, artist=""):
+        return {"ok": False, "reason": "unavailable"}
+
+    def book_facts(self, title):
+        return {"ok": False, "reason": "unavailable"}
+
+    def podcast_transcript(self, show, episode=""):
+        return {"ok": False, "reason": "unavailable"}
+
 
 @pytest.fixture
 def offline_lookups():
@@ -30,12 +42,12 @@ def offline_lookups():
 
 
 @pytest.fixture
-def app(library, monkeypatch):
+def app(library, offline_lookups, monkeypatch):
     monkeypatch.setenv("DREAM_DISPATCH", "inline")
     monkeypatch.setenv("VOICE", "off")
     monkeypatch.delenv("DEV_ROUTES", raising=False)
     return create_app(library=library, gateway=ModelGateway(tier="fake"),
-                      lookups=OfflineLookups())
+                      lookups=offline_lookups)
 
 
 @pytest.fixture

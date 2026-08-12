@@ -34,19 +34,22 @@ class Keeper:
     def books_to_next(self) -> int:
         return self.level**2 - self.book_count
 
-    def payload(self, budget: int) -> dict:
-        return {
+    def payload(self, budget: int | None = None) -> dict:
+        """API shape. Without a budget (report contexts) the session block is omitted."""
+        out = {
             "id": self.id, "name": self.name, "topic": self.topic, "side": self.side,
             "archetype": self.archetype, "persona": self.persona, "palette": self.palette,
             "created_at": self.created_at, "book_count": self.book_count,
             "last_book_at": self.last_book_at, "level": self.level,
             "books_to_next": self.books_to_next(),
-            "session": {
-                "tokens_used": self.tokens_used, "budget": budget,
-                "status": session_status(self.tokens_used, budget),
-            },
             "sleeping": bool(self.sleep_job and self.sleep_job.get("status") == "running"),
         }
+        if budget is not None:
+            out["session"] = {
+                "tokens_used": self.tokens_used, "budget": budget,
+                "status": session_status(self.tokens_used, budget),
+            }
+        return out
 
 
 @dataclass

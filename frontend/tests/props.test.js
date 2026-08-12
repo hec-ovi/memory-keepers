@@ -441,8 +441,8 @@ describe("buildGardens", () => {
   const occupied = WORLD.plots.filter((p) => p.occupied);
 
   it("draws the garden props only: the loop stays walkable but has no ribbon texture", () => {
-    const { group } = buildGardens({ plots: occupied, world: WORLD });
-    // no drawn path around the houses (owner feedback); walkers still use
+    const { group } = buildGardens({ plots: occupied });
+    // no drawn path around the houses; walkers still use
     // plot.garden.loop from sim/world.js
     const ribbons = group.children.filter((c) => c.name === "street");
     expect(ribbons).toHaveLength(0);
@@ -454,10 +454,10 @@ describe("buildGardens", () => {
   });
 
   it("is deterministic and survives empty input", () => {
-    const a = buildGardens({ plots: occupied, world: WORLD });
-    const b = buildGardens({ plots: occupied, world: WORLD });
+    const a = buildGardens({ plots: occupied });
+    const b = buildGardens({ plots: occupied });
     expect(a.group.children.length).toBe(b.group.children.length);
-    const none = buildGardens({ plots: [], world: WORLD });
+    const none = buildGardens({ plots: [] });
     expect(none.group.children).toHaveLength(0);
   });
 });

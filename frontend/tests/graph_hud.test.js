@@ -125,7 +125,7 @@ describe("startConsolidationWatch", () => {
     record(bus, events);
     const watchSleep = vi.fn(() => Promise.resolve());
 
-    const watch = startConsolidationWatch({ api: api(), bus, runId: "run-9", sleep: watchSleep });
+    const watch = startConsolidationWatch({ api: api(), bus, runId: "run-9", intervalMs: 2500, sleep: watchSleep });
     const report = await watch.done;
 
     expect(calls).toBe(3);
@@ -145,7 +145,7 @@ describe("startConsolidationWatch", () => {
     const events = [];
     record(bus, events);
 
-    const watch = startConsolidationWatch({ api: api(), bus, runId: "run-9" });
+    const watch = startConsolidationWatch({ api: api(), bus, runId: "run-9", intervalMs: 2500 });
     const report = await watch.done;
 
     expect(report).toBeNull();
@@ -168,7 +168,7 @@ describe("startConsolidationWatch", () => {
     const events = [];
     record(bus, events);
 
-    const watch = startConsolidationWatch({ api: api(), bus, runId: "run-9" });
+    const watch = startConsolidationWatch({ api: api(), bus, runId: "run-9", intervalMs: 2500 });
     await expect(watch.done).resolves.toBeNull();
 
     const toast = events.find(([name]) => name === "toast")[1];
@@ -194,24 +194,10 @@ describe("startConsolidationWatch", () => {
       watch.stop();
       return Promise.resolve();
     };
-    watch = startConsolidationWatch({ api: api(), bus, runId: "run-9", sleep: stoppingSleep });
+    watch = startConsolidationWatch({ api: api(), bus, runId: "run-9", intervalMs: 2500, sleep: stoppingSleep });
     await expect(watch.done).resolves.toBeNull();
 
     expect(calls).toBe(1);
     expect(events).toEqual([]);
-  });
-
-  it("works with an api exposing consolidation() instead of getConsolidation()", async () => {
-    const bus = createBus();
-    const events = [];
-    record(bus, events);
-    const fake = { consolidation: vi.fn(async () => makeReport("done")) };
-
-    const watch = startConsolidationWatch({ api: fake, bus, runId: "run-9" });
-    const report = await watch.done;
-
-    expect(fake.consolidation).toHaveBeenCalledWith("run-9");
-    expect(report.status).toBe("done");
-    expect(events[0][0]).toBe("consolidation:finished");
   });
 });

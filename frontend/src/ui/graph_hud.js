@@ -174,8 +174,6 @@ export function createGraphHud({ root, bus, report = null } = {}) {
   ];
 
   return {
-    element: hud,
-    setProgress,
     dispose() {
       for (const off of unsubs) off?.();
       hud.remove();
@@ -197,13 +195,12 @@ export function startConsolidationWatch({
   api,
   bus,
   runId,
-  intervalMs = 2500,
+  intervalMs,
   maxIntervalMs = 10000,
   backoffFactor = 1.4,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
   let stopped = false;
-  const fetchReport = api.getConsolidation ?? api.consolidation;
 
   function fail(message, extra) {
     bus.emit("toast", { message, kind: "error" });
@@ -216,7 +213,7 @@ export function startConsolidationWatch({
       if (stopped) return null;
       let report;
       try {
-        report = await fetchReport.call(api, runId);
+        report = await api.getConsolidation(runId);
       } catch (error) {
         if (stopped) return null;
         fail(`Could not check on the dreaming: ${error?.message ?? "engine unreachable"}`, { error });

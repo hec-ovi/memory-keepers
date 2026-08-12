@@ -199,7 +199,8 @@ describe("createKeepersList", () => {
     expect(document.querySelectorAll(".mk-keepers")).toHaveLength(1);
     list.dispose();
     expect(document.querySelector(".mk-keepers")).toBeNull();
-    expect(() => bus.emit("keepers_list:open")).not.toThrow(); // unsubscribed
+    bus.emit("keepers_list:open"); // unsubscribed: the panel must not open
+    expect(document.querySelector(".mk-keepers")).toBeNull();
     expect(list.isOpen()).toBe(false);
   });
 

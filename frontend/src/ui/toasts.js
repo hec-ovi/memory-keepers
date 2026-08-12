@@ -23,7 +23,6 @@ export function createToasts({ root, duration = 3500 } = {}) {
     };
     timer = setTimeout(dismiss, ms);
     toast.addEventListener("click", dismiss);
-    return { dismiss, element: toast };
   }
 
   return {

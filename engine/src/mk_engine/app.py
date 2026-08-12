@@ -1,6 +1,7 @@
 """The HTTP surface. Routes per engine/CONTRACT.md; world scoping via X-World;
 statics for the frontend; no model or Firestore access outside agents/library."""
 import os
+import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, Header, Request
@@ -15,13 +16,13 @@ from mk_models import ModelGateway
 from .events import DreamDispatcher
 from .sleep import start_sleep_job
 
-VERSION = "0.5"
+VERSION = "0.6"
 ERROR_STATUS = {
     "WORLD_NOT_FOUND": 404, "KEEPER_NOT_FOUND": 404, "BOOK_NOT_FOUND": 404,
     "DREAM_NOT_FOUND": 404, "SLEEP_NOT_FOUND": 404,
     "KEEPER_EXISTS": 409, "KEEPERS_FULL": 409, "LIBRARY_FULL": 409,
     "NEEDS_SLEEP": 409, "SLEEP_RUNNING": 409, "DREAM_RUNNING": 409,
-    "VALIDATION": 422,
+    "VALIDATION": 422, "IMPORT_INVALID": 422,
 }
 
 
@@ -32,12 +33,11 @@ class ApiError(Exception):
 
 
 def create_app(library: Library | None = None, gateway: ModelGateway | None = None,
-               voice_router=None, dispatcher: DreamDispatcher | None = None,
                lookups: LookupsApi | None = None) -> FastAPI:
     library = library or Library(seed=seed.apply)
     gateway = gateway or ModelGateway()
     agents_api = AgentsApi(library, gateway, lookups or LookupsApi())
-    dispatcher = dispatcher or DreamDispatcher(library, agents_api)
+    dispatcher = DreamDispatcher(library, agents_api)
     budget = int(os.environ.get("SESSION_TOKEN_BUDGET", SESSION_TOKEN_BUDGET_DEFAULT))
     dev_routes = os.environ.get("DEV_ROUTES") == "1"
 
@@ -47,7 +47,7 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     # carry it, so anonymous traffic never reaches a model or speech service.
     # Statics and /health stay open; /internal has its own token gate.
     access_code = os.environ.get("ACCESS_CODE")
-    GATED = ("/state", "/keepers", "/monument", "/dream", "/voice", "/dev")
+    GATED = ("/state", "/keepers", "/monument", "/dream", "/voice", "/dev", "/world")
 
     @app.middleware("http")
     async def gate_access(request: Request, call_next):
@@ -74,16 +74,31 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     def keeper_payload(world: str, kid: str) -> dict:
         return library.get_keeper(world, kid).payload(budget)
 
-    def gate_chat(world: str, kid: str) -> None:
+    def sleeping(keeper) -> bool:
+        return bool(keeper.sleep_job and keeper.sleep_job.get("status") == "running")
+
+    def keeper_tired(world: str, kid: str):
         keeper = library.get_keeper(world, kid)
-        if keeper.sleep_job and keeper.sleep_job.get("status") == "running":
+        return keeper, keeper.tokens_used >= budget * NEEDS_SLEEP_THRESHOLD
+
+    def dream_running(world: str, meta: dict) -> bool:
+        try:
+            return bool(meta.get("latest_run_id")
+                        and library.dream_latest(world).status in ("queued", "running"))
+        except LibraryError:
+            meta["latest_run_id"] = None
+            return False
+
+    def gate_chat(world: str, kid: str) -> None:
+        keeper, tired = keeper_tired(world, kid)
+        if sleeping(keeper):
             raise ApiError("SLEEP_RUNNING", "she is asleep right now")
-        if keeper.tokens_used >= budget * NEEDS_SLEEP_THRESHOLD:
+        if tired:
             raise ApiError("NEEDS_SLEEP", "she needs to sleep before talking more")
 
     async def check_tired(world: str, kid: str) -> None:
-        keeper = library.get_keeper(world, kid)
-        if keeper.tokens_used >= budget * NEEDS_SLEEP_THRESHOLD:
+        _, tired = keeper_tired(world, kid)
+        if tired:
             await dispatcher.dispatch(world, f"tired-keeper:{kid}")
 
     # -- health and state ------------------------------------------------------
@@ -95,12 +110,7 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     async def state(x_world: str | None = Header(default=None)):
         world = world_of(x_world)
         meta = library.world_meta(world)
-        running = False
-        try:
-            if meta.get("latest_run_id"):
-                running = library.dream_latest(world).status in ("queued", "running")
-        except LibraryError:
-            meta["latest_run_id"] = None
+        running = dream_running(world, meta)
         return {"keepers": [k.payload(budget) for k in library.list_keepers(world)],
                 "dream": {"latest_run_id": meta.get("latest_run_id"), "running": running}}
 
@@ -128,7 +138,7 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     async def delete_keeper(kid: str, x_world: str | None = Header(default=None)):
         world = world_of(x_world)
         keeper = library.get_keeper(world, kid)
-        if keeper.sleep_job and keeper.sleep_job.get("status") == "running":
+        if sleeping(keeper):
             raise ApiError("SLEEP_RUNNING", "she is asleep right now")
         library.delete_keeper(world, kid)
         return {"deleted": True}
@@ -189,7 +199,7 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     async def sleep(kid: str, x_world: str | None = Header(default=None)):
         world = world_of(x_world)
         keeper = library.get_keeper(world, kid)
-        if keeper.sleep_job and keeper.sleep_job.get("status") == "running":
+        if sleeping(keeper):
             raise ApiError("SLEEP_RUNNING", "she is already asleep")
         return {"job_id": start_sleep_job(library, world, kid), "status": "running"}
 
@@ -207,8 +217,7 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     async def dream(x_world: str | None = Header(default=None)):
         world = world_of(x_world)
         meta = library.world_meta(world)
-        if (meta.get("latest_run_id")
-                and library.dream_latest(world).status in ("queued", "running")):
+        if dream_running(world, meta):
             raise ApiError("DREAM_RUNNING", "the island is already dreaming")
         run = library.dream_start(world, "asked", status="queued")
         await dispatcher.dispatch(world, "asked", run.run_id)
@@ -221,6 +230,16 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     @app.get("/dreams/{run_id}")
     async def dream_get(run_id: str, x_world: str | None = Header(default=None)):
         return library.dream_get(world_of(x_world), run_id).to_doc()
+
+    # -- world travel -------------------------------------------------------
+    @app.get("/world/export")
+    async def world_export(x_world: str | None = Header(default=None)):
+        return library.export_world(world_of(x_world))
+
+    @app.post("/world/import", status_code=201)
+    async def world_import(body: dict):
+        wid = "w-" + secrets.token_hex(16)  # a fresh island; the file never carries its old id
+        return {"world": wid} | library.import_world(wid, body)
 
     def _gate_internal(request: Request):
         token = os.environ.get("INTERNAL_TOKEN")
@@ -248,11 +267,9 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
         return {"dispatched": len(worlds)}
 
     # -- voice and dev -----------------------------------------------------
-    if voice_router is None:
-        from mk_voice import create_voice_router, unavailable_router
-        voice_router = (unavailable_router() if os.environ.get("VOICE") == "off"
-                        else create_voice_router())
-    app.include_router(voice_router)
+    from mk_voice import create_voice_router, unavailable_router
+    app.include_router(unavailable_router() if os.environ.get("VOICE") == "off"
+                       else create_voice_router())
 
     @app.post("/dev/seed")
     async def dev_seed(x_world: str | None = Header(default=None)):
@@ -264,15 +281,11 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     if dev_routes:
         @app.post("/dev/reset")
         async def dev_reset(x_world: str | None = Header(default=None)):
-            world = world_of(x_world)
-            for keeper in library.list_keepers(world):
-                library.delete_keeper(world, keeper.id)
-            library._world(world).delete()
+            library.delete_world(world_of(x_world))
             return {"reset": True}
 
     # engine/src/mk_engine/app.py -> repo root, so the mount works from any CWD
-    default_frontend = Path(__file__).resolve().parents[3] / "frontend"
-    frontend_dir = Path(os.environ.get("FRONTEND_DIR") or default_frontend)
+    frontend_dir = Path(__file__).resolve().parents[3] / "frontend"
     if frontend_dir.is_dir():
 
         class RevalidatingStatics(StaticFiles):

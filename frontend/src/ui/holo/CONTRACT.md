@@ -91,6 +91,10 @@ ensureThinking(el, on = true) -> el
 
 Secondary exports (stable, used by hosts/tests):
 `ensureHoloStyles(doc)` inject the stylesheet without creating a panel;
+`injectStyle(doc, id, css)` inject any stylesheet once per document
+(id-deduped; the host panels use it for their own scoped styles);
+`makeEl(doc) -> el(tag, className, text)` tiny element factory bound to a
+document (className and text optional);
 `prefersReducedMotion(win)`; `HOLO_STYLE_ID`; `HOLO_CLASSES`;
 `HOLO_OPEN_MS` = `{ shards: 420, skin: 420, content: 560, total: 820 }`;
 `HOLO_CLOSE_MS` = 350. From voice.js: `VOICE_MODES`, `MODE_PARAMS`,
@@ -129,13 +133,13 @@ One `<style id="holo-kit-style">` per document, injected on first use:
 | `holo-panel` | panel shell: dark translucent, amber chrome, top bar, scan lines, glow. Positioning: the kit only sets a zero-specificity default (`:where(.holo-panel){position:relative}`), so any host rule (`.mk-dialog{position:absolute;...}`) wins regardless of stylesheet injection order |
 | `holo-panel__head` / `__title` / `__body` | header row / amber uppercase h2 / content wrap |
 | `holo-close` | header ✕ button |
-| `holo-panel--materializing/--skin/--ready/--open/--reduced` | animation state classes |
+| `holo-panel--materializing/--skin/--ready/--reduced` | animation state classes |
 | `holo-shards` | the overlay canvases |
 | `holo-btn` | amber outline button, hover glow |
 | `holo-btn--primary` | filled amber, dark ink text |
 | `holo-btn--danger` | red-orange outline (destroy actions) |
 | `holo-tabs` / `holo-tab` / `holo-tab--active` | tab bar; active tab = solid amber like the reference (`[aria-selected="true"]` also matches) |
-| `holo-list` / `holo-row` / `holo-row--selected` | rows; selected row = solid cyan fill with dark ink, like the reference nav list |
+| `holo-list` / `holo-row` | rows |
 | `holo-chip` | small amber outlined tag (button.holo-chip is interactive) |
 | `holo-input` | dark field, amber border, cyan caret + focus glow |
 | `holo-thinking` | thinking border: spinning amber/cyan/magenta conic ring + glow around the element (reduced motion: pulse). Toggle via `ensureThinking` |

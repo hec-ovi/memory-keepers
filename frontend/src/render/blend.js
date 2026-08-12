@@ -4,7 +4,7 @@
 // position drives a 0..1 blend (world.nightMaskAt at the camera target) that
 // crossfades sky, fog, key light, hemisphere, water/cloud tints and bloom.
 
-const clamp01 = (x) => Math.min(1, Math.max(0, x));
+export const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
 export function mixHexColor(a, b, t) {
   const k = clamp01(t);

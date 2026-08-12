@@ -8,7 +8,8 @@
 // unit-tested; the builders are three.js.
 
 import * as THREE from "three";
-import { hashString, mulberry32, makeNoise2D } from "../sim/world.js";
+import { hashString, mulberry32 } from "../sim/rand.js";
+import { makeNoise2D } from "../sim/world.js";
 import { mixHex, darkenHex } from "./keeper_mesh.js";
 
 // ---------------------------------------------------------------------------
@@ -477,7 +478,7 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
   }
 
   group.scale.setScalar(variant.scale);
-  // Topic flag (BACKLOG item 8): a small corner pole flying a banner with the
+  // Topic flag: a small corner pole flying a banner with the
   // keeper's topic, readable from BOTH sides (two faces, one shared texture,
   // MeshBasic so it stays legible in the night quarter).
   const topic = (keeper.topic ?? keeper.name ?? "").toString().trim();
@@ -627,7 +628,7 @@ export function buildEmptyPlots({ plots = [] } = {}) {
   const STONES = 9;
   const stoneGeo = new THREE.DodecahedronGeometry(0.16, 0);
   // No ground ring here: the faint white circle read badly and the owner
-  // asked for it to be removed (BACKLOG item 2). Stones + signpost + mist
+  // asked for it to be removed. Stones + signpost + mist
   // carry the "undiscovered" look on their own.
   // The post stops where the board begins, so it never crosses the VACANT
   // lettering on either face.
@@ -740,15 +741,11 @@ export function buildEmptyPlots({ plots = [] } = {}) {
 // Gardens: a tiny dirt loop + 2-3 small props around every OCCUPIED cottage
 // ---------------------------------------------------------------------------
 
-// buildGardens({plots, world, texture}) -> { group, glowMats }
+// buildGardens({plots}) -> { group, glowMats }
 // Draws each plot's pre-planned garden props (existing prop kinds only).
 // The garden LOOP stays walkable (sim/world.js plot.garden.loop feeds the
-// walkers) but draws no ribbon texture: the owner asked for the circular
-// path texture around houses to be removed (BACKLOG item 3). The world and
-// texture params stay for signature compatibility.
-export function buildGardens({ plots = [], world = null, texture = null } = {}) {
-  void world;
-  void texture;
+// walkers) but draws no ribbon texture.
+export function buildGardens({ plots = [] } = {}) {
   const group = new THREE.Group();
   group.name = "gardens";
   const glowMats = [];

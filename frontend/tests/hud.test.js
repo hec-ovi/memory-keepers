@@ -17,14 +17,14 @@ let root, bus, state, toasts, hud;
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterAll(() => server.close());
 
-function build(keepers) {
+function build(keepers, extra = {}) {
   root = document.createElement("div");
   document.body.appendChild(root);
   bus = createBus();
   state = makeState(keepers);
   toasts = createToasts({ root });
   const api = createApi({ baseUrl: BASE, sleep: noSleep });
-  hud = createHud({ root, state, bus, api, toasts });
+  hud = createHud({ root, state, bus, api, toasts, ...extra });
 }
 
 beforeEach(() => build([dreamsKeeper(), meetingsKeeper()])); // 2 keepers, 2+3 books
@@ -193,5 +193,64 @@ describe("createHud", () => {
     await user.click(screen.getByRole("button", { name: "How to play" }));
     expect(create).toHaveBeenCalledTimes(1);
     expect(howto).toHaveBeenCalledTimes(1);
+  });
+
+  it("Export island downloads the world file on a lived-in island", async () => {
+    const user = userEvent.setup();
+    expect(screen.queryByRole("button", { name: "Import island" })).toBeNull();
+    server.use(
+      http.get(`${BASE}/world/export`, () =>
+        HttpResponse.json({ format: "memory-keepers-world", version: 1,
+          exported_at: "2026-08-12T08:00:00Z", meta: {}, keepers: [], dreams: [] }),
+      ),
+    );
+    URL.createObjectURL = vi.fn(() => "blob:island");
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    try {
+      await user.click(screen.getByRole("button", { name: "Export island" }));
+      await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+      expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+      expect(screen.getByText("the island is saved as a file")).toBeTruthy();
+    } finally {
+      click.mockRestore();
+      delete URL.createObjectURL;
+      delete URL.revokeObjectURL;
+    }
+  });
+
+  it("Import island adopts the fresh world id and reloads", async () => {
+    hud.dispose();
+    root.remove();
+    const reload = vi.fn();
+    build([], { reload });
+    expect(screen.queryByRole("button", { name: "Export island" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Import island" })).toBeTruthy();
+    server.use(
+      http.post(`${BASE}/world/import`, () =>
+        HttpResponse.json({ world: "w-fresh", keepers: 2, books: 5 }, { status: 201 }),
+      ),
+    );
+    const input = root.querySelector('input[type="file"]');
+    const file = new File([JSON.stringify({ format: "memory-keepers-world", version: 1 })],
+      "island.json", { type: "application/json" });
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(localStorage.getItem("mk-world")).toBe("w-fresh");
+    localStorage.removeItem("mk-world");
+  });
+
+  it("Import island rejects a file that is not an island", async () => {
+    hud.dispose();
+    root.remove();
+    const reload = vi.fn();
+    build([], { reload });
+    const input = root.querySelector('input[type="file"]');
+    const file = new File(["not json at all"], "notes.txt", { type: "text/plain" });
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await waitFor(() => expect(screen.getByText("that file is not an island")).toBeTruthy());
+    expect(reload).not.toHaveBeenCalled();
   });
 });

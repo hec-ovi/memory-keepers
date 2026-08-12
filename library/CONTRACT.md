@@ -28,20 +28,22 @@ Class `Library(client=None, seed=None)`: `client` injected for tests, `seed` is 
 | method | in | out |
 |---|---|---|
 | `ensure_world(world_id)` | id from the engine | world meta; seeds demo content on first touch |
-| `world_meta / list_worlds` | | meta dict / world ids (the nightly dream sweep) |
-| `create_keeper / get_keeper / list_keepers / update_keeper / delete_keeper` | profile fields | `Keeper` record; `payload(budget)` is the API shape |
+| `world_meta / list_worlds / delete_world` | | meta dict / world ids (the nightly dream sweep) / removes a world and all it holds |
+| `create_keeper / get_keeper / list_keepers / update_keeper / delete_keeper` | profile fields | `Keeper` record; `payload(budget)` is the API shape (`budget=None` omits the session block, for report contexts) |
 | `write_book / get_book / list_books / delete_book` | book fields; `enforce_cap=False` only for sleep and dreaming digest writes | `Book` record, newest first listing |
 | `append_to_book(world, keeper, slug, note_md, date)` | a dated follow-up section | the grown `Book`: body extended, tier re-derived, count unchanged |
 | `index_rows(world, keeper)` | | compact rows (slug, title, date, tags, entities, one_liner, tier) for prompts |
 | `session_read / session_append / session_replace` | `Turn` list + verbatim constraints / full `Session` | `Session` record |
 | `meter_add / meter_reset` | token counts | running total (meter lives on the keeper doc) |
 | `make_room(world, keeper, incoming)` | slots needed | `(digests_written, fits)`: binds the two oldest `told`/`sleep` books into one digest per merge until `incoming` fit plus one spare; nothing a merged book held is lost |
-| `dream_start / dream_update / dream_get / dream_latest` | run fields; `dream_start(world, reason, status="running")` can pre-queue with `status="queued"` | `DreamRun` record |
+| `dream_start / dream_update / dream_get / dream_latest / list_dreams` | run fields; `dream_start(world, reason, status="running")` can pre-queue with `status="queued"` | `DreamRun` record; `list_dreams` all runs oldest first |
+| `export_world(world)` | | the whole world as one portable dict: `{format, version, exported_at, meta, keepers: [{...keeper, books, session}], dreams}` |
+| `import_world(world, data)` | an export dict; target world must not exist | `{keepers, books}` written; caps enforced, records re-parsed, sleep jobs cleared |
 
 ## Errors (closed set)
 
 `WORLD_NOT_FOUND`, `KEEPER_NOT_FOUND`, `KEEPER_EXISTS`, `KEEPERS_FULL`,
-`BOOK_NOT_FOUND`, `LIBRARY_FULL`, `DREAM_NOT_FOUND`.
+`BOOK_NOT_FOUND`, `LIBRARY_FULL`, `DREAM_NOT_FOUND`, `IMPORT_INVALID`.
 
 ## Invariants
 

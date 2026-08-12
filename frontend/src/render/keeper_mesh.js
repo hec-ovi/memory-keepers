@@ -5,8 +5,7 @@
 // ignored for the body); unconscious keepers keep the darker moonlit variant.
 // Locomotion is a squash-stretch hop with a ground-contact squish; idle has
 // breathing and periodic blinks. Unconscious keepers are darker, hover-float
-// and blink slower, but fully OPAQUE like everyone else (the old body
-// translucency was removed per owner feedback, BACKLOG 11).
+// and blink slower, but fully OPAQUE like everyone else.
 //
 // Session fatigue (round 5): setTired(level) with 0 rested / 1 unrested /
 // 2 needs_sleep droops the eyelids (eye scale + offset), slows the hop a
@@ -19,12 +18,11 @@
 // timing/color math and are unit-tested without WebGL.
 
 import * as THREE from "three";
+import { clamp01 } from "./blend.js";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no three.js) -- tested in tests/render_helpers.test.js
 // ---------------------------------------------------------------------------
-
-const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
 export function hexToRgb(hex) {
   let h = typeof hex === "number" ? hex : parseInt(String(hex).replace(/^#/, ""), 16);
@@ -62,7 +60,7 @@ const UNCONSCIOUS_TINT = 0x6d5a8f;
 
 // Shared material palette for every keeper (the `palette` argument is accepted
 // for interface stability but ignored). kind === "unconscious" shifts
-// everything darker/violet; the body stays fully opaque (BACKLOG 11).
+// everything darker/violet; the body stays fully opaque.
 export function derivePalette(_palette = {}, kind = "conscious") {
   const primary = DEFAULT_PRIMARY;
   let out = {

@@ -1,5 +1,7 @@
 # Changelog
 
+0.6: worlds travel: Export island saves the whole world (keepers, books, sessions, dream runs) as one JSON file; Import island lands it on a fresh crypto world id, cloud to local and back. Emulator data survives restarts in a compose volume. A lean pass across every box: shared helpers, tighter contracts, the ask prompt names all seven lookup tools. 79 backend + 707 frontend tests.
+
 0.5: keepers author their books: each told memory becomes a full markdown work (short scroll to multi-page volume, sized by the material; spine tiers follow). Keepers list gains a live search filter; ?world= opens a named world and ?key= carries the island key in a shared link. Demo world seeder + verify generator (scripts/demo_world.py) with public-domain memories across ten keepers. 53 backend + 726 frontend tests.
 
 0.4: voice end to end: hold T push to talk in every dialog (Cloud STT, latest_short model) and spoken replies per keeper kind (Cloud TTS); dream runs carry a run_id from POST /dream so the graph movie plays when consolidation lands; internal routes require the deploy token; hosted on Cloud Run (Vertex Gemini on the global endpoint) behind the island key gate (ACCESS_CODE), with a hard billing cap (budget -> Pub/Sub -> detach function) and free-tier scale-to-zero deploys. 53 backend + 723 frontend tests.

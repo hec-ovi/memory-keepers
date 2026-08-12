@@ -9,7 +9,8 @@
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { computeGraphLayout, edgeId, mulberry32 } from "../sim/graphlayout.js";
+import { computeGraphLayout, edgeId } from "../sim/graphlayout.js";
+import { mulberry32 } from "../sim/rand.js";
 import { createGraphHud } from "../ui/graph_hud.js";
 import { config as defaultConfig } from "../config.js";
 

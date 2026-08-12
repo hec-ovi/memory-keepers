@@ -1,6 +1,6 @@
 """Pins library/CONTRACT.md: every method, error and cap once."""
 import pytest
-from mk_library import LIBRARY_CAP, LibraryError, Library
+from mk_library import DARK_CAP, LIBRARY_CAP, LIGHT_CAP, LibraryError, Library
 from mk_library.records import Turn
 from mk_library.testing import FakeFirestore
 
@@ -37,13 +37,13 @@ def test_keeper_lifecycle_and_errors(library, world):
 
 
 def test_caps_per_side(library, world):
-    for i in range(13):  # 3 seeded + 13 = 16
+    for i in range(LIGHT_CAP - 3):  # 3 seeded
         library.create_keeper(world, f"topic {i}")
     with pytest.raises(LibraryError) as e:
         library.create_keeper(world, "one too many")
     assert e.value.code == "KEEPERS_FULL"
 
-    for i in range(8):
+    for i in range(DARK_CAP):
         library.create_keeper(world, f"shadow {i}", side="dark", archetype="fear")
     with pytest.raises(LibraryError) as e:
         library.create_keeper(world, "ninth shadow", side="dark", archetype="fear")
@@ -90,6 +90,7 @@ def test_library_cap(library, world):
     # dreaming and sleep may bypass while they merge room free
     library.write_book(world, "music", title="digest", body_md="b", date="2026-08-08",
                        source="sleep", one_liner="s", enforce_cap=False)
+    assert len(library.list_books(world, "music")) == LIBRARY_CAP + 1
 
 
 def test_session_and_meter(library, world):
@@ -163,3 +164,52 @@ def test_append_to_book_grows_body_and_tier(library):
     assert "## Added 2026-08-12" in grown.body_md and grown.body_md.startswith("one line")
     assert grown.tier != book.tier  # size re-derived
     assert library.get_keeper("w", keeper.id).book_count == 1
+
+
+def test_world_travel_round_trip(library, world):
+    library.write_book(world, "dreams", title="Travel proof", body_md="carried",
+                       date="2026-08-12", source="told", one_liner="travels")
+    library.session_append(world, "dreams",
+                           [Turn(t="2026-08-12T00:00:00Z", role="user", text="hi")],
+                           constraints=["never spoilers"])
+    run = library.dream_start(world, "asked")
+    library.dream_update(world, run.run_id, status="done")
+
+    data = library.export_world(world)
+    assert data["format"] == "memory-keepers-world" and data["version"] == 1
+
+    target = f"{world}-copy"
+    out = library.import_world(target, data)
+    assert out["keepers"] == len(library.list_keepers(world))
+    assert ({b.slug for b in library.list_books(target, "dreams")}
+            == {b.slug for b in library.list_books(world, "dreams")})
+    slug = library.list_books(world, "dreams")[0].slug
+    assert library.get_book(target, "dreams", slug).body_md == \
+        library.get_book(world, "dreams", slug).body_md
+    assert "never spoilers" in library.session_read(target, "dreams").blocks["constraints"]
+    assert library.dream_latest(target).run_id == run.run_id
+    assert library.get_keeper(target, "dreams").sleep_job is None
+
+
+def test_world_import_rejects_bad_files(library, world):
+    data = library.export_world(world)
+    with pytest.raises(LibraryError) as e:
+        library.import_world(world, data)  # target already exists
+    assert e.value.code == "IMPORT_INVALID"
+    with pytest.raises(LibraryError) as e:
+        library.import_world(f"{world}-bad", {"format": "something-else"})
+    assert e.value.code == "IMPORT_INVALID"
+    over = dict(data, keepers=[dict(data["keepers"][0], id=f"k{i}", books=[])
+                               for i in range(LIGHT_CAP + 1)])
+    with pytest.raises(LibraryError) as e:
+        library.import_world(f"{world}-over", over)
+    assert e.value.code == "IMPORT_INVALID"
+
+
+def test_delete_world_removes_everything(library, world):
+    run = library.dream_start(world, "asked")
+    library.dream_update(world, run.run_id, status="done")
+    library.delete_world(world)
+    assert world not in library.list_worlds()
+    with pytest.raises(LibraryError):
+        library.world_meta(world)

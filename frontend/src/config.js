@@ -37,17 +37,9 @@ export const config = {
   // --- colors (hex) ---
   colors: {
     skyDay: 0x87b7e8,
-    skyNight: 0x131028,
-    waterDay: 0x3a7ca5,
-    waterNight: 0x1b2340,
     island: 0x7fb069,
-    fogNight: 0x2a2145,
     keeperTone: 0x9fdcff,
-    keeperBlush: 0xf27ba4,
-    unconsciousTint: 0x6d5a8f,
     selectionRing: 0xffd3a6,
-    graphNode: 0xb9a7f8,
-    graphEdge: 0x5a4a80,
   },
 
   // --- graph movie ---

@@ -22,6 +22,8 @@
 // The scene (render/scene_overworld.js) owns the choreography and the
 // timing; this module only renders its beats.
 
+import { injectStyle } from "./holo/holo.js";
+
 const STYLE_ID = "mk-cinematic-style";
 const BAR_EXIT_MS = 600; // matches the bar transform transition below
 const REVEAL_HOLD_MS = 260; // black stays up while the interior mounts
@@ -52,17 +54,9 @@ const CSS = `
 .ui-cinematic .toast-stack{opacity:0;visibility:hidden;pointer-events:none;animation:none;transition:opacity 240ms ease,visibility 0s 240ms;}
 `;
 
-function ensureStyles(doc) {
-  if (doc.getElementById(STYLE_ID)) return;
-  const style = doc.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = CSS;
-  doc.head.appendChild(style);
-}
-
 export function createCinematic({ root, state, bus } = {}) {
   const doc = root.ownerDocument;
-  ensureStyles(doc);
+  injectStyle(doc, STYLE_ID, CSS);
 
   let active = false;
   let keeperId = null;

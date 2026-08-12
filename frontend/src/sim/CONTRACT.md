@@ -8,7 +8,15 @@ Pure game logic. No three.js, no DOM, no network. Everything here is
 deterministic given its inputs (seeded hashes/PRNG), which is what makes the
 whole layer unit-testable and the world stable across sessions.
 
-Modules: `world.js`, `walker.js`, `chatter.js`, `graphlayout.js`.
+Modules: `rand.js`, `world.js`, `walker.js`, `chatter.js`, `graphlayout.js`.
+
+## rand.js
+
+Purpose: seeded randomness shared by the sim modules and importable by
+render scenes.
+
+- `hashString(str) -> uint32` FNV-1a.
+- `mulberry32(seed) -> () -> [0,1)` seeded PRNG.
 
 ## world.js
 
@@ -20,8 +28,6 @@ Geography NEVER depends on which keepers exist; only occupancy does.
 
 Primitives:
 
-- `hashString(str) -> uint32` FNV-1a.
-- `mulberry32(seed) -> () -> [0,1)` seeded PRNG.
 - `smoothstep(edge0, edge1, x) -> 0..1`
 - `makeNoise2D(seed) -> (x, z) -> [0,1)` value noise, continuous.
 - `makeFbm2D(seed, octaves = 3) -> (x, z) -> [0,1]` fractal noise.
@@ -29,9 +35,6 @@ Primitives:
   strictly monotonic.
 - `flattenPlots(h, x, z, plots) -> h'` blends height toward plot levels.
 - `clampToSector(sector, point, margin = 1.0) -> {x, z}` disc clamp.
-- `routeToDoor(points, from, door) -> [{x, z}]` legacy polyline route
-  (nearest waypoint to the end, then the door). The scene now uses the graph
-  route (`world.routeToDoorFrom`), this stays for compatibility.
 
 Plot grid:
 
@@ -62,8 +65,6 @@ Street graph routing:
   centerpieceClearance) and stay on the entry side of the disc; every
   planned route is passed through `routeClearOf` for the district's
   centerpiece, so walkers path around the well/obelisk, never into it.
-- `makeWanderSampler(sector, world, margin, obstacles) -> (random) -> {x, z}`
-  legacy free-roam point sampler (no longer used by the overworld scene).
 
 Constants: `WORLD_DEFAULTS` (sizes, radii, plot counts 16/8, street width
 tiers `{ridge, avenue, lane, spur, garden}`, `coast` irregularity tuning,
@@ -147,9 +148,7 @@ of pushing chest-to-chest; zero for neighbors beside/behind.
 `createWalker(opts) -> walker` with opts:
 
 - `position, speed, arriveRadius, pauseRange`
-- `sampleTarget(random) -> {x,z}` legacy point wander
-- `sampleRoute(random, pos) -> [{x,z}]` graph-route wander (wins over
-  sampleTarget when provided)
+- `sampleRoute(random, pos) -> [{x,z}]` graph-route wander
 - `random, neighbors() -> [{x,z}], obstacles, separationRadius,
   separationSpeed, separationBias, clamp(point) -> {x,z}`
 - `routeWobble = 0.45` max lateral offset given to intermediate waypoints
@@ -198,13 +197,13 @@ cooldown, no same speaker twice in a row when avoidable.
 
 ## graphlayout.js
 
-Unchanged this round. Seeded 3D force layout for the consolidation movie.
+Seeded 3D force layout for the consolidation movie.
 Exports: `computeGraphLayout(graph, opts = {}) -> { positions, timeline }`
 (positions: `Map(nodeId -> {x, y, z})`; timeline: ordered waves
 `[{t, nodeIds: [...]}, ..., {t, edgeIds: [...]}]`, t normalized in (0..1],
 keepers first, then books, then entities, then edges by weight descending),
-plus `hashString(str)`, `mulberry32(seed)`, `edgeId(edge, index)`. Same
-graph in, identical positions and timeline out, independent of node order.
+plus `edgeId(edge, index)`. Same graph in, identical positions and timeline
+out, independent of node order.
 
 ## Bus events
 

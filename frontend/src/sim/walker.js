@@ -13,8 +13,7 @@
 // clamped to within routeClamp of the current segment: separation and
 // obstacle pushes can slow a walker down or make it pass on the shoulder,
 // but never shove it off the path. Wandering uses `sampleRoute(random, pos)`
-// (a street-graph planner) when provided, else the legacy point sampler
-// `sampleTarget(random)`.
+// (a street-graph planner).
 // update(dt) returns an array of events: {type: "arrive", target, goal}
 // and {type: "depart", target}.
 //
@@ -118,7 +117,6 @@ export function createWalker({
   speed = 1.4,
   arriveRadius = 0.3,
   pauseRange = [1.5, 5],
-  sampleTarget, // (random) -> {x, z}; where wandering is allowed to go
   sampleRoute = null, // (random, pos) -> [{x,z}, ...]; graph-route wandering
   random = Math.random,
   neighbors = null, // () -> [{x, z}] positions of the other bodies
@@ -189,18 +187,9 @@ export function createWalker({
   }
 
   function startWander() {
-    if (typeof sampleRoute === "function") {
-      const pts = sampleRoute(random, { x: pos.x, z: pos.z });
-      return Array.isArray(pts) && pts.length ? beginRoute(pts, false) : false;
-    }
-    if (typeof sampleTarget !== "function") return false;
-    const t = sampleTarget(random);
-    if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.z)) return false;
-    target = clamped(t);
-    route = null;
-    goalFlag = false;
-    resetWatchdog();
-    return true;
+    if (typeof sampleRoute !== "function") return false;
+    const pts = sampleRoute(random, { x: pos.x, z: pos.z });
+    return Array.isArray(pts) && pts.length ? beginRoute(pts, false) : false;
   }
 
   // Separation + obstacle + sector-clamp pushes; applied every update, even

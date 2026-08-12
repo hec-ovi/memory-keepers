@@ -23,7 +23,7 @@
 // amber/orange chrome and type, cyan selection accents, scan lines, glow.
 // Shared classes (also usable without createHoloPanel): holo-panel, holo-btn,
 // holo-btn--primary, holo-btn--danger, holo-tabs, holo-tab, holo-tab--active,
-// holo-list, holo-row, holo-row--selected, holo-chip, holo-input, holo-close.
+// holo-list, holo-row, holo-chip, holo-input, holo-close.
 // Theming: override the --holo-* custom properties (see CSS below).
 
 import { runShards } from "./shards.js";
@@ -44,7 +44,6 @@ export const HOLO_CLASSES = [
   "holo-tab--active",
   "holo-list",
   "holo-row",
-  "holo-row--selected",
   "holo-chip",
   "holo-input",
   "holo-close",
@@ -151,7 +150,6 @@ const CSS = `
   background:var(--holo-bg-2);border:1px solid rgba(255,166,64,.16);border-radius:2px;
   color:var(--holo-text);font-size:.85rem;padding:6px 10px;
 }
-.holo-row--selected{background:var(--holo-cyan);border-color:var(--holo-cyan);color:var(--holo-ink-cyan);font-weight:700;text-shadow:none;}
 
 .holo-chip{
   display:inline-block;background:rgba(40,20,4,.55);
@@ -210,12 +208,29 @@ button.holo-chip:focus-visible{outline:2px solid var(--holo-cyan);outline-offset
 }
 `;
 
-export function ensureHoloStyles(doc = globalThis.document) {
-  if (!doc || doc.getElementById(HOLO_STYLE_ID)) return;
+// Inject a stylesheet once per document (id-deduped). Shared by the kit and
+// by every host panel for its own scoped styles.
+export function injectStyle(doc, id, css) {
+  if (!doc || doc.getElementById(id)) return;
   const style = doc.createElement("style");
-  style.id = HOLO_STYLE_ID;
-  style.textContent = CSS;
+  style.id = id;
+  style.textContent = css;
   doc.head.appendChild(style);
+}
+
+export function ensureHoloStyles(doc = globalThis.document) {
+  injectStyle(doc, HOLO_STYLE_ID, CSS);
+}
+
+// Tiny element factory bound to a document; the shared building block of the
+// host panels: makeEl(doc) -> el(tag, className, text).
+export function makeEl(doc) {
+  return (tag, className, text) => {
+    const node = doc.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
 }
 
 export function prefersReducedMotion(win) {
@@ -355,7 +370,6 @@ export function createHoloPanel({ title = "", content = null, size = "md", onClo
   function finishOpen() {
     dropShards();
     el.classList.remove("holo-panel--materializing");
-    el.classList.add("holo-panel--open");
     if (!closed) el.dataset.holoState = "open";
   }
 

@@ -144,7 +144,6 @@ describe("createHoloPanel", () => {
       "holo-tab--active",
       "holo-list",
       "holo-row",
-      "holo-row--selected",
       "holo-chip",
       "holo-input",
     ];

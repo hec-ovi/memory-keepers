@@ -10,11 +10,10 @@
 // Everything sits on world.heightAt.
 //
 // Factory contract (main.js): createOverworldScene(ctx) with
-//   ctx = { state, bus, api, config, container, ui, mode, renderer?, camera? }
+//   ctx = { state, bus, api, config, container, mode, renderer?, camera? }
 // Returns { scene, update(dt), dispose(), onResize(w,h), joinKeeper(keeperId) }.
 //
 // Bus events emitted:  "keeper:selected" {keeperId}, "house:enter" {keeperId},
-//                      "mode:set" "interior:<id>",
 //                      "district:changed" {district: "day"|"night"} when the
 //                      camera's dominant district flips (throttled),
 //                      "minimap:update" {keepers, camera} (throttled),
@@ -60,7 +59,7 @@ import { createRenderer } from "./renderer.js";
 import { createCameraRig, FOLLOW_FRAMING } from "./camera.js";
 import { createKeeperMesh, tiredLevelFor } from "./keeper_mesh.js";
 import { createSpeech, bubbleSeconds } from "./speech.js";
-import { buildTerrain, buildWater, buildShoreFoam, buildCoastRim, buildGrass, extractShoreline } from "./terrain.js";
+import { buildTerrain, buildWater, buildShoreFoam, buildGrass, extractShoreline } from "./terrain.js";
 import { buildSkyDome, buildClouds, buildNightSky } from "./sky.js";
 import {
   buildCottage,
@@ -75,7 +74,7 @@ import {
   makeSandPathTexture,
 } from "./props.js";
 import { overworldFlags, createBloomPipeline } from "./fx.js";
-import { envAt, easeBlend, createDistrictTracker } from "./blend.js";
+import { clamp01, envAt, easeBlend, createDistrictTracker } from "./blend.js";
 import {
   layoutWorld,
   makeGraphWanderPlanner,
@@ -314,10 +313,9 @@ export function createSleepTimeline(timing = {}) {
 // Dream-effect intensity for a timeline state: ramps in while she enters,
 // full while dreaming, fades while waking. Pure; clamped to [0, 1].
 export function sleepGlow(phase, clock, timing = SLEEP_TIMING) {
-  const clamp = (v) => Math.min(1, Math.max(0, v));
-  if (phase === "entering") return clamp(clock / Math.max(1e-6, timing.enterS));
+  if (phase === "entering") return clamp01(clock / Math.max(1e-6, timing.enterS));
   if (phase === "dreaming") return 1;
-  if (phase === "waking") return 1 - clamp(clock / Math.max(1e-6, timing.wakeS));
+  if (phase === "waking") return 1 - clamp01(clock / Math.max(1e-6, timing.wakeS));
   return 0;
 }
 
@@ -328,7 +326,7 @@ export function dreamWisp(u, { rise = 1.3 } = {}) {
   return { y: k * rise, opacity: Math.sin(Math.PI * k) * 0.55, scale: 0.55 + 0.5 * k };
 }
 
-// The selection ring's render spec (BACKLOG 5): street ribbons draw at
+// The selection ring's render spec: street ribbons draw at
 // renderOrder 1 with polygonOffset -2, so the ring renders AFTER them (order
 // 2) and biases deeper (-4): it always reads crisply ON the path, never
 // under the street texture, while normal depth testing still hides it
@@ -342,7 +340,7 @@ export const SELECTION_RING = {
   polygonOffsetUnits: -4,
 };
 
-// Chatter etiquette (BACKLOG 4): while ANY keeper is walking to a house (the
+// Chatter etiquette: while ANY keeper is walking to a house (the
 // join cinematic, or a sleep walk home) no chatter bubble spawns anywhere;
 // bubbles resume once she arrives. Pure; the scene's chatter driver feeds
 // chatter.update an empty visible list while this is true (timers keep
@@ -355,7 +353,7 @@ export function chatterPausedFor({ cinematicActive = false, sleepPhases = [] } =
 
 // Resolve a raycast hit to its pick target: walk up the parents to the first
 // node carrying userData.pick (a door mesh keeps its own pick; any other
-// cottage part bubbles up to the group's "house" pick, BACKLOG 13). Hidden
+// cottage part bubbles up to the group's "house" pick). Hidden
 // targets resolve to null: the raycaster does not honor ancestor visibility.
 export function resolvePickTarget(obj) {
   let node = obj;
@@ -369,7 +367,8 @@ export function resolvePickTarget(obj) {
 // feeds it the first resolvePickTarget hit, or null when the ray met
 // nothing pickable). Clicking her or her cottage selects; the door enters;
 // clicking anywhere else while someone is selected DESELECTS her (ring off,
-// follow ends, the talk panel closes via "keeper:deselected").
+// follow ends; "keeper:deselected" is emitted but the talk panel stays
+// open, only its header X closes it).
 export function clickOutcome(target, selectedKeeperId = null) {
   if (target) {
     const { pick, keeperId } = target;
@@ -385,6 +384,7 @@ export function createOverworldScene(ctx = {}) {
   const { state = { keepers: [] }, bus, api } = ctx;
   const config = ctx.config ?? defaultConfig;
   const colors = config.colors;
+  const monumentId = config.monumentId ?? "the-monument";
 
   // Renderer + camera: use injected ones, else own them.
   const ownRenderer = !ctx.renderer;
@@ -434,9 +434,9 @@ export function createOverworldScene(ctx = {}) {
   const moonFill = new THREE.PointLight(0x9db4ff, 14, 68, 0.8);
   scene.add(moonFill);
 
-  // --- optional bloom (render/fx.js flags; config.bloom can override) ---
+  // --- optional bloom (render/fx.js flags) ---
   let pipeline = null;
-  const wantBloom = ctx.config?.bloom ?? overworldFlags.bloom;
+  const wantBloom = overworldFlags.bloom;
   if (wantBloom && ownRenderer && typeof rendererWrap.setPipeline === "function" && rendererWrap.renderer) {
     try {
       pipeline = createBloomPipeline({ renderer: rendererWrap.renderer, scene, camera, width, height });
@@ -558,7 +558,6 @@ export function createOverworldScene(ctx = {}) {
     const shoreline = extractShoreline(world);
     foam = buildShoreFoam({ world, chains: shoreline });
     worldGroup.add(foam.group);
-    worldGroup.add(buildCoastRim({ world }).group);
     grass = buildGrass({ world });
     worldGroup.add(grass.mesh);
     // The instanced forest (groves + singles, 4 species).
@@ -590,7 +589,7 @@ export function createOverworldScene(ctx = {}) {
 
     // The Monument herself: a larger, translucent keeper hologram floating
     // over the well. No visor, no shadow: light projected from the water.
-    monumentHolo = createKeeperMesh({ keeper: { id: "the-monument" }, config });
+    monumentHolo = createKeeperMesh({ keeper: { id: monumentId }, config });
     monumentBaseY = world.heightAt(world.plaza.center.x, world.plaza.center.z) + 2.6;
     const holoGroup = monumentHolo.group;
     holoGroup.scale.setScalar(2.1);
@@ -646,8 +645,6 @@ export function createOverworldScene(ctx = {}) {
     mists.push(...sites.mist);
     const gardens = buildGardens({
       plots: world.plots.filter((p) => p.occupied),
-      world,
-      texture: sand,
     });
     worldGroup.add(gardens.group);
     nightGlowMats.push(...gardens.glowMats);
@@ -778,9 +775,7 @@ export function createOverworldScene(ctx = {}) {
       else followSelected(keeperId);
     } else if (type === "enter") {
       bus?.emit("house:enter", { keeperId });
-      bus?.emit("mode:set", `interior:${keeperId}`);
     } else if (type === "monument") {
-      const monumentId = config.monumentId ?? "the-monument";
       if (state.selectedKeeperId && state.selectedKeeperId !== monumentId) {
         bus?.emit("keeper:deselected", { keeperId: state.selectedKeeperId });
       }
@@ -788,10 +783,9 @@ export function createOverworldScene(ctx = {}) {
       if (bus) bus.emit("keeper:selected", { keeperId: monumentId });
       else followSelected(monumentId);
     } else if (type === "deselect") {
-      // Clicking elsewhere (empty ground, a tree, the sea) deselects: the
-      // talk panel closes first ("keeper:deselected"), then the ring and the
-      // follow end. Order matters: the panel close emits "ui:close", which
-      // only arms the deferred deselect; the direct call resolves it now.
+      // Clicking elsewhere (empty ground, a tree, the sea) deselects:
+      // "keeper:deselected" is emitted (the talk panel stays open; only its
+      // header X closes it), then deselect() ends the ring and the follow.
       bus?.emit("keeper:deselected", { keeperId });
       deselect();
     }
@@ -800,7 +794,7 @@ export function createOverworldScene(ctx = {}) {
   dom.addEventListener("pointerdown", onPointerDown);
   dom.addEventListener("pointerup", onPointerUp);
 
-  // --- select-to-follow (BACKLOG 14) -----------------------------------------
+  // --- select-to-follow -----------------------------------------
   // Selecting a keeper (click on her, on her cottage, or any module emitting
   // "keeper:selected") tweens the camera to the standard framing and FOLLOWS
   // her while she walks. The rig already cancels follow on any user camera
@@ -813,7 +807,7 @@ export function createOverworldScene(ctx = {}) {
     if (cine) return; // the join cinematic owns the camera
     const entry = population.get(keeperId);
     if (!entry) {
-      if (keeperId === (config.monumentId ?? "the-monument") && monumentHolo) {
+      if (keeperId === monumentId && monumentHolo) {
         cameraRig.follow(monumentHolo.group, { framing: FOLLOW_FRAMING });
       }
       return;
@@ -1450,7 +1444,7 @@ export function createOverworldScene(ctx = {}) {
     }
 
     // Chatter. While anyone is walking to a house (join cinematic or a sleep
-    // walk home) nobody speaks anywhere (BACKLOG 4): the driver feeds an
+    // walk home) nobody speaks anywhere: the driver feeds an
     // empty visible list so the timers keep ticking without a pick.
     const paused = chatterPausedFor({
       cinematicActive: Boolean(cine),

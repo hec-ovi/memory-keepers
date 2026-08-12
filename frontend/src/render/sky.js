@@ -5,10 +5,9 @@
 // cloud placement math (cloudLayout) is pure and unit-tested.
 
 import * as THREE from "three";
-import { mulberry32, smoothstep } from "../sim/world.js";
-import { ENV, mixHexColor } from "./blend.js";
-
-const clamp01 = (x) => Math.min(1, Math.max(0, x));
+import { mulberry32 } from "../sim/rand.js";
+import { smoothstep } from "../sim/world.js";
+import { ENV, clamp01, mixHexColor } from "./blend.js";
 
 // ---------------------------------------------------------------------------
 // Pure: cloud layout (tested in tests/sky_helpers.test.js)

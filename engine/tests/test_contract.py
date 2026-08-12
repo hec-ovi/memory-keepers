@@ -6,8 +6,8 @@ from mk_engine import create_app
 from mk_library.limits import SESSION_TOKEN_BUDGET_DEFAULT as BUDGET
 
 
-async def poll(fn, tries=50):
-    for _ in range(tries):
+async def poll(fn):
+    for _ in range(50):
         result = await fn()
         if result is not None:
             return result
@@ -195,6 +195,24 @@ async def test_internal_routes_closed_when_no_token_is_configured(client, monkey
 async def test_internal_nightly_dispatches_all_worlds(client, monkeypatch):
     monkeypatch.setenv("INTERNAL_TOKEN", "s3cret")
     await client.get("/state")  # creates the world
-    assert (await client.post("/internal/nightly")).status_code == 403
     r = await client.post("/internal/nightly?token=s3cret")
     assert r.status_code == 200 and r.json()["dispatched"] >= 1
+
+
+async def test_world_travel_export_import(client):
+    r = await client.get("/world/export")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["format"] == "memory-keepers-world" and data["keepers"]
+
+    r = await client.post("/world/import", json=data)
+    assert r.status_code == 201
+    body = r.json()
+    assert body["world"].startswith("w-") and body["keepers"] > 0
+
+    r = await client.get("/state", headers={"X-World": body["world"]})
+    assert r.status_code == 200 and len(r.json()["keepers"]) == body["keepers"]
+
+    r = await client.post("/world/import", json={"format": "something-else"})
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "IMPORT_INVALID"

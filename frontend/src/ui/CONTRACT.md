@@ -156,13 +156,18 @@ chattable night keepers who keep no books of what you tell them.
 (show once), `mode:changed` (hide outside overworld).
 
 ### hud.js: top bar (holo-styled `.panel`, cyan View keepers button)
-`createHud({ root, state, bus, api, toasts, ui } = {})`.
+`createHud({ root, state, bus, api, toasts, ui, reload } = {})`; `reload`
+defaults to a page reload and is injectable for tests.
 Buttons: View keepers (cyan, opens the roster; the crossing shortcut moved
 into that list), Create keeper, Dreaming (label "Dreaming", tooltip "Send your
 keepers to sleep so they can consolidate"; POST /dream, disabled while a
 run is active; a 409 always toasts the warm "they are already dreaming",
 never the engine's consolidation-worded message), How to play, Demo data
-(zero keepers only).
+(zero keepers only), and world travel: Export island (keepers exist;
+downloads `api.exportWorld()` as a JSON file) / Import island (zero keepers;
+hidden file input aria-label "island file"; `api.importWorld` then adopts
+the returned world id into localStorage "mk-world" and reloads; a non-island
+file toasts "that file is not an island").
 - emits `create_keeper:open`, `consolidation:started` {runId}, `howto:open`,
   `keepers_list:open`, `state:loaded` (after Demo data)
 - listens `state:loaded`, `consolidation:finished`, `report:loaded`,
@@ -184,7 +189,7 @@ then `keeper:selected` {keeperId} (the comm panel opens; the overworld focuses
 her). Footer keeps the crossing shortcut: a "Cross the ridge" button that
 closes and emits `district:travel` {}. Empty state: "nobody lives here
 yet...". Esc closes unless a modal overlay or the reader is
-open (checks `.overlay-backdrop` / `.mk-reader` / `.mk-dialog` first).
+open (checks `.overlay-backdrop` / `.mk-reader` first).
 - listens `keepers_list:open` (the HUD emits it), `state:loaded` (re-render)
 - emits `mode:set` "overworld" (from interiors), `keeper:selected` {keeperId},
   `district:travel` {}, `ui:open`/`ui:close` {panel:"keepers"}
@@ -212,8 +217,9 @@ house/keeper dots, wedge and ping unchanged.
 `createGraphHud({ root, bus, report = null } = {})`; narrative header reads
 "The Dreaming".
 - emits `graph:skip`, `graph:back`; listens `graph:progress`, `graph:settled`
-- `startConsolidationWatch({ api, bus, runId, intervalMs = 2500,
+- `startConsolidationWatch({ api, bus, runId, intervalMs,
   maxIntervalMs = 10000, backoffFactor = 1.4, sleep } = {}) -> { stop(), done }`
+  (`intervalMs` required; main.js passes `config.CONSOLIDATION_POLL_MS`)
   poll helper: emits `consolidation:finished` {report} /
   `consolidation:failed` {runId, ...} + `toast` on failure (warm copy: "The
   dreaming came apart; try again." / "Could not check on the dreaming: ...")
@@ -259,7 +265,7 @@ everywhere else). Uses `ensureHoloStyles` from the kit, no createHoloPanel.
 - Esc ordering: `.overlay-backdrop` modals (confirm/howto/create) own Esc
   first, then `.mk-reader`, then the dialog, then the keepers list, then
   main.js mode exit. Panels check `doc.querySelector(".overlay-backdrop")`
-  (and the list also `.mk-reader`/`.mk-dialog`) before handling Esc.
+  (and the list also `.mk-reader`) before handling Esc.
 - Panel close is synchronous DOM removal (the holo kit plays its scatter
   ghost independently); `isOpen()` flips immediately.
 - Hosts that anchor a holo panel with their own class (`.mk-dialog` top-right,
@@ -273,8 +279,8 @@ everywhere else). Uses `ensureHoloStyles` from the kit, no createHoloPanel.
   `keeper:created` / `book:created` / `book:destroyed`.
 - Keep aria labels stable: "talk to {name}", "close talk panel", "book
   reader", "close reader", "game hud", "minimap", "welcome hints",
-  "keepers list", "close keepers list", "hold to talk",
-  "toggle voice replies", "toggle sound", "rest meter", "consulted books",
+  "keepers list", "close keepers list", "toggle talking",
+  "toggle voice replies", "rest meter", "consulted books",
   "scroll books up", "scroll books down"; button texts "Send to sleep",
   "Save this as a memory", "View keepers", "Cross the ridge".
 - The reader body and paper palette stay light; everything else is dark

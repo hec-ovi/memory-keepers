@@ -71,7 +71,7 @@ const scene = createInteriorScene({ state, bus, api, config, container, mode, ke
 (canvas appended to `container`, removed on dispose); with `container: null`
 it runs fully headless (that is how the tests drive it).
 
-Pure helpers (exported, no three.js state): `hashString`,
+Pure helpers (exported, no three.js state):
 `spineColorFromTags`, `BOOK_TIERS`, `bookTier`, `tierSizing`, `shelfSlot`,
 `shelfCapacity`, `LIBRARY_CAP` (= 24 = `shelfCapacity()`),
 `SHELF_LAYOUT`, `CHAIR_POS`, `CHAIR_ANGLE`, `SECOND_CHAIR`, `CHAIRS_POSE`,
@@ -102,7 +102,7 @@ import { createInteriorViews, createInteriorReadout } from "./ui/interior_views.
 const views = createInteriorViews({ root, bus, onSelect, onExit, active });
 // -> { el, setActive(view), dispose() }
 const readout = createInteriorReadout({ root, bus, state, keeperId, capacity });
-// -> { el, refresh(), dispose() }
+// -> { el, dispose() }
 ```
 
 The navigation cluster: four holo-kit buttons (classes `holo-btn`, active view
@@ -258,6 +258,7 @@ transition bands. Pure math, no three.js.
 ### Public API
 
 - `ENV` day/night presets; `envAt(n) -> env` continuous crossfade;
+  `clamp01(x) -> 0..1` (the render layer's shared clamp);
   `mixHexColor(a, b, t) -> hex`; `easeBlend(current, target, dt, rate = 3.2)`;
   `createDistrictTracker({initial, low, high, minGapS}) -> {district, update(n, dt) -> name|null}`.
 - `blendBand(value, edge0, edge1, dither = 0.5, ditherAmp = 0.6) -> 0..1`
@@ -286,8 +287,7 @@ hysteresis (low/high) and throttles flips (minGapS); blendBand stays in
 Overworld ground, water, coast and grass: the heightfield mesh (dithered
 vertex colors x a procedural macro texture), depth-tinted water with calm
 glints, animated shore foam, and instanced swaying grass tufts. Procedural
-canvas textures only. There is NO rocky coast rim anymore: the owner asked
-for the brown collar slabs to be removed (BACKLOG 1); grass fades into sand
+canvas textures only. There is no rocky coast rim: grass fades into sand
 and water everywhere.
 
 ### Public API
@@ -305,8 +305,6 @@ Builders: `buildTerrain({world, resolution}) -> {mesh}`;
 `buildWater({world, size, segments = 200}) -> {mesh, update(elapsed, tintHex)}`
 (200 segments smooth the widened turquoise shallow band; calmer, dimmer
 glints; slightly smaller waves); `buildShoreFoam({world, chains})`;
-`buildCoastRim()` (returns an EMPTY named group: kept only so the scene call
-site keeps working until the next scene-owned cleanup removes it);
 `buildGrass({world, placements}) -> {mesh, update(elapsed)}`.
 
 ### Bus events
@@ -337,7 +335,7 @@ Pure (tested): `cottageVariant(keeperId)`, `cottagePalette(palette, dark,
 variant)`, `cottageObstacles(keeperId, {x, z, angle}) -> [{x, z, r}]`
 (world-space collision circles for the variant's solid EXTENSIONS: two
 porch pillars flanking the doorway, or the side shed; empty for
-flowerbox/none; the door approach corridor is never covered, BACKLOG 18),
+flowerbox/none; the door approach corridor is never covered),
 `endFadeAlpha(d, fadeLen = 2.4) -> 0..1` (terminal alpha ramp: 0 at the
 tip, quadratic, 1 past the stretch), `vacantSignSpec() -> {text: "VACANT",
 w, h, bg, ink, frame, font}`, `drawVacantSign(ctx, spec)` (draws on any
@@ -349,9 +347,9 @@ Builders:
 - `buildCottage({keeper, dark}) -> {group, door, windowMats, lanternMats}`;
   when `keeper.topic` (or name) is non-empty the group also carries a topic
   flag: `topic-flag-pole` plus `topic-flag-front`/`topic-flag-back` meshes
-  (one shared MeshBasic canvas texture, readable from both sides, BACKLOG 8).
-  The GROUP picks as the owner's house (`userData.pick "house"` + `keeperId`,
-  BACKLOG 13): clicking any cottage part selects her; the door mesh AND its
+  (one shared MeshBasic canvas texture, readable from both sides).
+  The GROUP picks as the owner's house (`userData.pick "house"` +
+  `keeperId`): clicking any cottage part selects her; the door mesh AND its
   knob keep their own `"door"` pick, so a door click still enters the
   interior. Flag meshes carry no pick of their own (they bubble to "house").
 - `buildStreetRibbon({points, world, width = 1.15, texture, fade = 1, endFade = null}) -> mesh|null`
@@ -361,7 +359,7 @@ Builders:
   `endFade` (`{head, tail, length = 2.4}`) fades per-vertex alpha (RGBA
   color attribute, itemSize 4) to 0 at the flagged terminals over the last
   stretch (clamped to 40% of the lane per end), so ends meeting the plaza,
-  the hub or another lane never draw a hard collided edge (BACKLOG 15); the
+  the hub or another lane never draw a hard collided edge; the
   scene flags them from `world.streets[].ends` junction hints (plot ends
   stay solid). Ribbons render at `renderOrder 1`, polygonOffset -2.
 - `buildPlaza({center, radius, world, dark, texture}) -> {group, glowMats}`
@@ -369,15 +367,12 @@ Builders:
 - `buildEmptyPlots({plots}) -> {group, mist}` instanced undiscovered sites:
   stones, posts, boards, plus TWO instanced VACANT text faces (front and
   back of every board, one shared canvas texture, MeshBasic so it reads in
-  the night quarter). 5 instanced draws total + one mist sprite per plot;
-  the faint white ground ring was removed per owner feedback (BACKLOG 2).
+  the night quarter). 5 instanced draws total + one mist sprite per plot.
   The post stops under the board so it never crosses the lettering.
-- `buildGardens({plots, world, texture}) -> {group, glowMats}` renders each
+- `buildGardens({plots}) -> {group, glowMats}` renders each
   plot's pre-planned garden PROPS only (2-3 seeded props of existing
   kinds). The garden loop stays walkable via `plot.garden.loop` in
-  sim/world.js but draws NO ribbon texture (BACKLOG 3). `world`/`texture`
-  params are accepted and ignored for signature compatibility. Call with
-  OCCUPIED plots only.
+  sim/world.js but draws NO ribbon texture. Call with OCCUPIED plots only.
 - `buildTrees({trees}) -> {group}` (max 2 instanced draws per species),
   `buildProp(prop, dark) -> {group, glowMats, floaty}`,
   `makeCobbleTexture()`, `makeSandPathTexture()`.
@@ -458,18 +453,18 @@ mini cinematic from her doorstep; a scene rebuild aborts all sleeps.
 Round 6 (overworld behaviors): select-to-follow (any `keeper:selected`, from
 a pick on her or her cottage or an outside module, tweens the camera to
 `camera.FOLLOW_FRAMING` and follows her; user camera input, clicking
-elsewhere, or the talk panel closing exits, BACKLOG 13+14); a global
-chatter gate while anyone walks home (BACKLOG 4); the selection ring layers
-over street ribbons (`SELECTION_RING`, BACKLOG 5); street-end alpha fades
-from the graph's junction hints (BACKLOG 15); cottage extension footprints
-feed the walkers (`props.cottageObstacles`, BACKLOG 18); the sleep dream
+elsewhere, or the talk panel closing exits); a global
+chatter gate while anyone walks home; the selection ring layers
+over street ribbons (`SELECTION_RING`); street-end alpha fades
+from the graph's junction hints; cottage extension footprints
+feed the walkers (`props.cottageObstacles`); the sleep dream
 always dwells `SLEEP_TIMING.minDreamS` before waking.
 
 ### Public API
 
 ```js
 import { createOverworldScene } from "./render/scene_overworld.js";
-const scene = createOverworldScene({ state, bus, api, config, container, ui, renderer, camera });
+const scene = createOverworldScene({ state, bus, api, config, container, renderer, camera });
 // -> { scene, update(dt), dispose(), onResize(w, h), joinKeeper(keeperId) }
 ```
 
@@ -501,8 +496,8 @@ mapping of the first resolved pick to what a click means: keeper/house
 selects, the door enters, the plaza well/hologram maps to "monument" (no
 keeperId; the scene selects `config.monumentId`), and a click that resolves
 NOTHING while someone is selected deselects her; the scene then emits
-`keeper:deselected` {keeperId} so the talk panel closes, and clears the
-ring + follow itself).
+`keeper:deselected` {keeperId} (the talk panel stays open; only its header
+X closes it) and clears the ring + follow itself).
 
 Walkers: each keeper gets `createWalker` with
 `sampleRoute: makeGraphWanderPlanner(world, {sector, plotId})`, so NPCs walk
@@ -523,9 +518,9 @@ the door keeps its enter pick; the plaza well and its floating hologram
 carry `userData.pick = "monument"` and select `config.monumentId`, while
 she is selected the follow tracks the hologram group), `keeper:deselected
 {keeperId}` (a true click on nothing pickable while someone is selected, and
-a monument click while a different keeper is selected; the talk panel closes
-on it and the scene clears the ring + follow), `house:enter {keeperId}`,
-`mode:set "interior:<id>"`, `district:changed {district}`,
+a monument click while a different keeper is selected; the talk panel stays
+open and the scene clears the ring + follow), `house:enter {keeperId}`,
+`district:changed {district}`,
 `minimap:update {keepers, camera}`, `cinematic:started {keeperId, name}`,
 `cinematic:fade {seconds}`, `cinematic:ended {keeperId}`.
 
@@ -713,8 +708,7 @@ canvas alphaMap) with digital blue eyes glowing behind it, cheek status LEDs
 and cat ears; the only other canvas texture is the tiny Zzz sprite.
 Conscious keepers all share KEEPER_WHITE; unconscious ones are darker
 (moonlit tint), hover-float and blink slower, but fully OPAQUE like everyone
-else: the old body translucency was removed per owner feedback (BACKLOG 11
-visual half; `derivePalette("unconscious").opacity` is 1). Locomotion is a
+else (`derivePalette("unconscious").opacity` is 1). Locomotion is a
 squash-stretch hop with ground-contact squish. Session fatigue (round 5):
 `setTired(level)` droops the eyelids, slows the hop slightly and shows a
 pulsing Zzz sprite at level 2; `setSleeping(v)` shuts the eyes and switches

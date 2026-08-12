@@ -24,7 +24,7 @@
 // "state:loaded", exactly like the tired look does.
 //
 //   const readout = createInteriorReadout({ root, bus, state, keeperId });
-//   readout.refresh(); readout.dispose();
+//   readout.dispose();
 //
 // Styling comes from the shared holo kit (ensureHoloStyles injects the
 // holo-btn / holo-btn--primary classes); only the local placement is here.
@@ -172,7 +172,6 @@ export function createInteriorReadout({
   root.appendChild(el);
   return {
     el,
-    refresh,
     dispose() {
       off();
       el.remove();

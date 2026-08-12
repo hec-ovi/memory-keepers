@@ -45,7 +45,6 @@ export function createHowto({ root } = {}) {
     backdrop.className = "overlay-backdrop";
 
     const content = doc.createElement("div");
-    content.className = "howto";
 
     const list = doc.createElement("ul");
     list.className = "howto-list";

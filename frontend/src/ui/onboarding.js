@@ -13,7 +13,7 @@
 //   listens "state:loaded"   -> shows the card (first time, unless dismissed)
 //   listens "mode:changed"   -> hides outside the overworld, returns with it
 
-import { createHoloPanel, ensureHoloStyles } from "./holo/holo.js";
+import { createHoloPanel, ensureHoloStyles, injectStyle } from "./holo/holo.js";
 
 export const ONBOARDING_KEY = "memory-keepers:onboarded";
 
@@ -33,20 +33,12 @@ const CSS = `
 .mk-onboard-actions{display:flex;justify-content:flex-end;}
 `;
 
-function ensureStyles(doc) {
-  if (doc.getElementById(STYLE_ID)) return;
-  const style = doc.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = CSS;
-  doc.head.appendChild(style);
-}
-
 export function createOnboarding({ root, bus, storage = null } = {}) {
   const doc = root.ownerDocument;
   // Kit styles first, host styles second: .mk-onboard positioning must come
   // later in the cascade than the kit's .holo-panel defaults.
   ensureHoloStyles(doc);
-  ensureStyles(doc);
+  injectStyle(doc, STYLE_ID, CSS);
 
   let holo = null;
   let dismissed = false;

@@ -49,16 +49,16 @@ describe("sim/walker", () => {
     expect(finite(w.heading)).toBe(true);
   });
 
-  it("wanders: pauses, departs to a sampled target, arrives", () => {
+  it("wanders: pauses, departs on a sampled route, arrives", () => {
     let calls = 0;
     const w = createWalker({
       position: { x: 0, z: 0 },
       speed: 4,
       arriveRadius: 0.1,
       pauseRange: [1, 1],
-      sampleTarget: () => {
+      sampleRoute: () => {
         calls++;
-        return { x: 3, z: 4 };
+        return [{ x: 3, z: 4 }];
       },
       random: () => 0.5,
     });
@@ -81,7 +81,7 @@ describe("sim/walker", () => {
       position: { x: 0, z: 0 },
       speed: 1,
       pauseRange: [0, 0],
-      sampleTarget: () => ({ x: 10, z: 10 }),
+      sampleRoute: () => [{ x: 10, z: 10 }],
       random: () => 0.5,
     });
     w.update(0.1); // starts wandering
@@ -243,7 +243,7 @@ describe("sim/walker sector clamping (NPCs never cross districts)", () => {
       position: { x: 10, z: -5 },
       speed: 3,
       pauseRange: [0, 0],
-      sampleTarget: () => ({ x: 100, z: 100 }), // hostile sampler
+      sampleRoute: () => [{ x: 100, z: 100 }], // hostile sampler
       random: () => 0.5,
       clamp,
     });

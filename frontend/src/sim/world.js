@@ -30,26 +30,7 @@
 // and all streets flattened into it, so keepers, houses, props, street
 // ribbons and the selection ring all sit on the ground.
 
-export function hashString(str) {
-  // FNV-1a 32-bit.
-  let h = 0x811c9dc5;
-  for (let i = 0; i < String(str).length; i++) {
-    h ^= String(str).charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
-
-export function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function random() {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { hashString, mulberry32 } from "./rand.js";
 
 // ---------------------------------------------------------------------------
 // Small math helpers (exported for tests and the render layer)
@@ -154,24 +135,6 @@ export function clampToSector(sector, point, margin = 1.0) {
   if (d <= maxR) return { x: point.x, z: point.z };
   const s = maxR / d;
   return { x: center.x + dx * s, z: center.z + dz * s };
-}
-
-// Waypoint route for the join choreography: from the nearest street waypoint,
-// follow the street to its end, then step to the door. Pure; tested.
-export function routeToDoor(points = [], from = { x: 0, z: 0 }, door = null) {
-  let start = 0;
-  let best = Infinity;
-  for (let i = 0; i < points.length; i++) {
-    const d = Math.hypot(points[i].x - from.x, points[i].z - from.z);
-    if (d < best) {
-      best = d;
-      start = i;
-    }
-  }
-  const route = [];
-  for (let i = start; i < points.length; i++) route.push({ x: points[i].x, z: points[i].z });
-  if (door && Number.isFinite(door.x) && Number.isFinite(door.z)) route.push({ x: door.x, z: door.z });
-  return route;
 }
 
 // ---------------------------------------------------------------------------
@@ -815,7 +778,6 @@ export function layoutWorld(keepers = [], options = {}) {
       y: plot.y,
       angle: plot.angle,
       sector: plot.sector,
-      isle: plot.sector === "night" ? "unconscious" : "main", // legacy alias (minimap)
       plotId: plot.id,
       plotRadius: opts.plotRadius,
       door: { ...plot.door },
@@ -1283,25 +1245,5 @@ export function layoutWorld(keepers = [], options = {}) {
     sectorNameAt,
     streetWeightAt,
     hubWeightAt,
-  };
-}
-
-// Sample a wander point inside a sector, biased toward the middle, kept on
-// land (world.heightAt above the waterline) and out of solid obstacles.
-// Suitable as a walker's sampleTarget.
-export function makeWanderSampler(sector, world = null, margin = 2, obstacles = null) {
-  const { center, radius } = sector;
-  const solids = obstacles ?? world?.obstacles ?? [];
-  return (random) => {
-    for (let i = 0; i < 18; i++) {
-      const angle = random() * Math.PI * 2;
-      const r = Math.sqrt(random()) * Math.max(1, radius - margin);
-      const x = center.x + Math.cos(angle) * r;
-      const z = center.z + Math.sin(angle) * r;
-      if (world && world.heightAt(x, z) <= (world.waterLevel ?? 0) + 0.3) continue;
-      if (solids.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 0.35)) continue;
-      return { x, z };
-    }
-    return { x: center.x, z: center.z };
   };
 }
