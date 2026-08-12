@@ -1,6 +1,10 @@
 .git
 .venv
+.env
+*.key
+.research
 docs
+video.mp4
 frontend/node_modules
 **/__pycache__
 **/.pytest_cache

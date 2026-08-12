@@ -30,13 +30,13 @@ async def test_job_lifecycle_submit_claim_reply_poll(client):
 
     assert (await client.post(f"/jobs/{job_id}/reply",
                               json={"text": "old pond, frog, splash"})).json() == {"ok": True}
-    done = (await client.get(f"/jobs/{job_id}", params={"wait": 1})).json()
+    done = (await client.get(f"/jobs/{job_id}")).json()
     assert done == {"status": "done", "reply": "old pond, frog, splash"}
 
 
 async def test_claim_idles_when_no_work_and_unknown_jobs_answer(client):
     assert (await client.get("/jobs/next", params={"wait": 0.05})).json() == {"idle": True}
-    assert (await client.get("/jobs/nope")).json() == {"status": "unknown"}
+    assert (await client.get("/jobs/nope")).json() == {"status": "unknown", "reply": None}
     assert (await client.post("/jobs/nope/reply", json={"text": "x"})).json() == {
         "ok": False, "reason": "unknown_job"}
 

@@ -4,6 +4,8 @@ LRCLIB silently drops connections for disfavored User-Agent strings, so the
 shared client carries the project's own UA and any failure falls through."""
 import httpx
 
+from .common import clean
+
 LRCLIB_SEARCH = "https://lrclib.net/api/search"
 LYRICS_OVH = "https://api.lyrics.ovh/v1/{artist}/{title}"
 LYRICS_CAP = 8000
@@ -14,7 +16,7 @@ class LyricsLookup:
         self._client = client
 
     def lyrics(self, title: str, artist: str = "") -> dict:
-        title, artist = (title or "").strip(), (artist or "").strip()
+        title, artist = clean(title), clean(artist)
         if not title:
             return {"ok": False, "reason": "no_title"}
         found = self._lrclib(title, artist) or self._ovh(title, artist)

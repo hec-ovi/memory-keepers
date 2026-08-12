@@ -22,7 +22,8 @@ FENCE_RE = re.compile(r"^```[a-z]*\n|\n```$")
 
 def new_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        base_url=os.environ.get("AGY_BROKER_URL", "http://localhost:8765"), timeout=35)
+        base_url=os.environ.get("AGY_BROKER_URL", "http://localhost:8765"),
+        timeout=POLL_WAIT_S + 10)  # each poll long-waits POLL_WAIT_S; headroom on top
 
 
 def timeout_s() -> float:

@@ -31,7 +31,7 @@ class ModelGateway:
                 from .agy_llm import AgyLlm
             except ImportError as e:
                 raise ModelsError("agy tier needs the mk-models[agy] extra") from e
-            return AgyLlm(model="agy-1")
+            return AgyLlm()
         if tier == "local":
             try:
                 from google.adk.models.lite_llm import LiteLlm
@@ -43,4 +43,4 @@ class ModelGateway:
                 api_key=os.environ.get("LOCAL_MODEL_KEY", "local"),
             )
         from .fake_llm import FakeLlm
-        return FakeLlm(model="fake-1")
+        return FakeLlm()

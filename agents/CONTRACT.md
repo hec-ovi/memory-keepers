@@ -23,7 +23,7 @@ Class `AgentsApi(library, gateway, lookups=None)`; `lookups` is a `LookupsApi`-s
 
 ## Invariants
 
-- Grounding is validated outside the model: `used_slugs` are filtered to books the agent actually opened via `read_book`; nothing left means `grounded: false` plus a follow-up. A memory is never invented.
+- Grounding in `keeper_ask` is validated outside the model: `used_slugs` are filtered to books the agent actually opened via `read_book`; nothing left means `grounded: false` plus a follow-up. A memory is never invented.
 - Relative dates in questions resolve by rules (`dates.py`) and bias the shortlist; no model involved.
 - Every tell/ask appends both turns to the keeper's session, harvests imperative constraint sentences verbatim, and meters reported token usage (estimate fallback).
 - Every model call goes through `gateway.model_for(role)`; roles used: `chat`, `dream`.

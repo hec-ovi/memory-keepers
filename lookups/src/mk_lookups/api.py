@@ -10,7 +10,7 @@ from .podcasts import PodcastTranscript
 from .songs import SongFacts
 from .youtube import TranscriptLookup
 
-USER_AGENT = "memory-keepers/0.5 (+https://github.com/hec-ovi/memory-keepers)"
+USER_AGENT = "memory-keepers/0.6 (+https://github.com/hec-ovi/memory-keepers)"
 TIMEOUT_S = 8
 
 

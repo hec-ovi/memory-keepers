@@ -6,8 +6,9 @@ import xml.etree.ElementTree as ET
 
 import httpx
 
+from .common import TEXT_CAP, clean
+
 ITUNES = "https://itunes.apple.com/search"
-TEXT_CAP = 12000
 CUE_RE = re.compile(r"^\d\d:\d\d.*-->.*$|^WEBVTT.*$|^\d+$|^NOTE\b.*$", re.M)
 
 
@@ -26,7 +27,7 @@ class PodcastTranscript:
         self._client = client
 
     def transcript(self, show: str, episode: str = "") -> dict:
-        show, episode = (show or "").strip(), (episode or "").strip()
+        show, episode = clean(show), clean(episode)
         if not show:
             return {"ok": False, "reason": "no_title"}
         try:

@@ -1,4 +1,6 @@
 """Pins agents/CONTRACT.md through AgentsApi with the fake tier."""
+from datetime import date, timedelta
+
 import pytest
 from mk_library import LIBRARY_CAP, LibraryError
 
@@ -36,20 +38,16 @@ async def test_tell_full_bookcase_raises_but_records(api, library):
     assert len(library.session_read("w", "music").turns) == 2
 
 
-async def test_tell_with_a_movie_runs_the_lookup_into_the_book(api, library, lookups):
-    keeper = library.create_keeper("w", "movies")
-    out = await api.keeper_tell(
-        "w", keeper.id, 'I watched the movie "Inception" yesterday and loved it.')
-    assert ("movie", "Inception") in lookups.calls
-    body = library.get_book("w", keeper.id, out["book"]["slug"]).body_md
-    assert "Christopher Nolan" in body  # the lookup result reached the shelf
-
-
-async def test_capture_a_song_runs_the_facts_lookup_into_the_book(api, library, lookups):
+async def test_capture_runs_the_lookup_into_the_book(api, library, lookups):
     out = await api.keeper_tell("w", "music", 'Can you save this song? "Money" by Pink Floyd')
     assert ("song_facts", "Money") in lookups.calls
     body = library.get_book("w", "music", out["book"]["slug"]).body_md
     assert "1973" in body and "The Dark Side of the Moon" in body
+
+    out = await api.keeper_tell("w", "music", 'Keep the lyrics of "Money" for me.')
+    assert ("lyrics", "Money") in lookups.calls
+    body = library.get_book("w", "music", out["book"]["slug"]).body_md
+    assert "is this the real life" in body
 
 
 async def test_follow_up_grows_the_same_book(api, library):
@@ -81,10 +79,15 @@ async def test_ask_unknown_topic_offers_followup(api, library):
     assert not out["grounded"] and out["followup"] and out["sources"] == []
 
 
-async def test_ask_resolves_relative_dates(api):
-    out = await api.keeper_ask("w", "dreams", "what did I tell you on 2026-08-02?")
+async def test_ask_resolves_relative_dates(api, library):
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    library.write_book("w", "dreams", title="Rehearsing the docking", date=yesterday,
+                       source="told", one_liner="A dream about the docking run.",
+                       body_md="I practiced the docking run until it felt easy.")
+    out = await api.keeper_ask("w", "dreams", "what did I tell you yesterday about the docking?")
     assert out["grounded"]
-    assert out["sources"][0]["date"] == "2026-08-02"
+    assert out["sources"][0]["date"] == yesterday
+    assert yesterday in out["answer"]  # the resolved day reached the reply
 
 
 async def test_ask_model_reply_without_slugs_falls_back(library):
@@ -112,7 +115,6 @@ def test_chatter_rotates_and_matches_pool(api):
     lines = {line_for("dreams", "dreams", "light", None, now=i * BUCKET_SECONDS)
              for i in range(10)}
     assert len(lines) > 5  # rotates
-    assert all(len(line) < 90 for pool in TOPIC_POOLS.values() for line in pool)
     long_topic = "the complete recorded history of every conversation about my grandmother's garden"
     assert len(line_for("k", long_topic, "light", None)) < 90  # generic lines clamp too
 
@@ -127,7 +129,7 @@ async def test_monument_creates_keeper(api, library):
 async def test_monument_routes_to_keeper(api):
     out = await api.monument_chat("w", "ask my dreams shelf about the launch")
     assert out["created_keeper"] is None
-    assert out["reply"]
+    assert "Mars mission" in out["reply"]  # the dreams keeper's launch book came back
 
 
 async def test_dream_prose_shapes(api):

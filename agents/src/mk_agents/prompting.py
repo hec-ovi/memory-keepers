@@ -12,14 +12,14 @@ def prompt(name: str, **values) -> str:
     return _CACHE[name].substitute(**values)
 
 
-def session_block(session, tail: int = 6) -> str:
+def session_block(session) -> str:
     lines = []
     for key, label in (("constraints", "Constraints"), ("recent_topics", "Recent topics")):
         items = session.blocks.get(key, [])
         if items:
             lines.append(f"{label}:")
             lines.extend(f"- {item}" for item in items)
-    turns = session.turns[-tail:]
+    turns = session.turns[-6:]
     if turns:
         lines.append("Last turns:")
         lines.extend(f"- [{t.t}] {t.role}: {t.text}" for t in turns)

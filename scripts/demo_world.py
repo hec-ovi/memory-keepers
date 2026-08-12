@@ -20,7 +20,19 @@ BASE, WORLD = sys.argv[1].rstrip("/"), sys.argv[2]
 HEADERS = {"X-World": WORLD, "content-type": "application/json"}
 if os.environ.get("ACCESS_CODE"):
     HEADERS["X-Access-Code"] = os.environ["ACCESS_CODE"]
+HTTP_TIMEOUT_S = 120  # one call: a tell runs the live model
+SLEEP_POLL_S = 2  # sleep-job poll interval
+DREAM_POLLS = 60  # dream run: up to DREAM_POLLS polls, DREAM_POLL_S apart
+DREAM_POLL_S = 5
 failures: list[str] = []
+keeper_ids: dict[str, str] = {}  # topic -> id, remembered when the server minted one
+
+
+def keeper_id(topic, created=None):
+    """One id per topic for seed and verify; the server's when it minted one."""
+    if created and created.get("id"):
+        keeper_ids[topic] = created["id"]
+    return keeper_ids.get(topic) or topic.replace(" ", "-")
 
 
 def call(method, path, body=None):
@@ -28,18 +40,18 @@ def call(method, path, body=None):
         BASE + path, method=method, headers=HEADERS,
         data=json.dumps(body).encode() if body is not None else None)
     try:
-        with urllib.request.urlopen(req, timeout=120) as res:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_S) as res:
             return res.status, json.loads(res.read() or b"{}")
     except urllib.error.HTTPError as e:
         return e.code, json.loads(e.read() or b"{}")
 
 
 def sleep_off(kid):
-    status, job = call("POST", f"/keepers/{kid}/sleep", {})
+    _, job = call("POST", f"/keepers/{kid}/sleep", {})
     job_id = job.get("job_id")
     while job_id:
-        time.sleep(2)
-        status, job = call("GET", f"/keepers/{kid}/sleep/{job_id}")
+        time.sleep(SLEEP_POLL_S)
+        _, job = call("GET", f"/keepers/{kid}/sleep/{job_id}")
         if job.get("status") in ("done", "failed"):
             print(f"  {kid}: slept ({job.get('status')})")
             return
@@ -57,7 +69,7 @@ def call_rested(method, path, body):
 def seed(keepers):
     for keeper in keepers:
         status, out = call("POST", "/keepers", {"topic": keeper["topic"]})
-        kid = out.get("id") or keeper["topic"].replace(" ", "-")
+        kid = keeper_id(keeper["topic"], out)
         _, books = call("GET", f"/keepers/{kid}/books")
         have = len(books) if isinstance(books, list) else 0
         if have >= len(keeper["memories"]):
@@ -77,7 +89,7 @@ def verify(keepers):
         ask = keeper.get("ask")
         if not ask:
             continue
-        kid = keeper["topic"].replace(" ", "-")
+        kid = keeper_id(keeper["topic"])
         s, out = call_rested("POST", f"/keepers/{kid}/ask",
                              {"question": ask["question"]})
         grounded = s == 200 and out.get("grounded") and out.get("sources")
@@ -93,8 +105,8 @@ def verify(keepers):
         _, out = call("GET", "/dreams/latest")
     run_id = out.get("run_id")
     print(f"dream {run_id}: ", end="", flush=True)
-    for _ in range(60):
-        time.sleep(5)
+    for _ in range(DREAM_POLLS):
+        time.sleep(DREAM_POLL_S)
         _, run = call("GET", f"/dreams/{run_id}")
         if run.get("status") in ("done", "failed"):
             break

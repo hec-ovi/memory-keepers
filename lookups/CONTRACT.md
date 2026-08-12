@@ -4,7 +4,7 @@ Purpose: external lookups the keeper agents call while capturing and answering: 
 
 ## Public API
 
-Class `LookupsApi(client=None, transcript_fetch=None, env=None)`. `client` is an `httpx.Client` (injectable for tests; the default carries the project User-Agent and an 8 s timeout), `transcript_fetch` overrides the YouTube fetcher, `env` defaults to `os.environ`.
+Class `LookupsApi(client=None, transcript_fetch=None, env=None)`. `client` is an `httpx.Client` (injectable for tests; the default carries an 8 s timeout, and the project User-Agent header is stamped on whichever client is used, injected ones included), `transcript_fetch` overrides the YouTube fetcher, `env` defaults to `os.environ`.
 
 | method | in | out |
 |---|---|---|

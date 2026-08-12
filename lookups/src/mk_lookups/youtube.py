@@ -5,7 +5,8 @@ IPs (the local tier, the demo) and degrades to {"ok": False} on Cloud Run;
 the keeper writes her book without the transcript."""
 import re
 
-TEXT_CAP = 12000
+from .common import TEXT_CAP
+
 _ID_PATTERNS = (
     re.compile(r"(?:youtu\.be/|shorts/|watch\?v=|[?&]v=|embed/)([A-Za-z0-9_-]{11})"),
     re.compile(r"^([A-Za-z0-9_-]{11})$"),

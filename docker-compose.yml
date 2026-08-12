@@ -42,7 +42,7 @@ services:
   # docker compose run --rm test
   test:
     build: { context: ., target: dev }
-    command: /opt/venv/bin/pytest library models agents engine dreaming voice lookups agy -q
+    command: /opt/venv/bin/pytest -q
     volumes: [".:/app"]
     profiles: ["test"]
 

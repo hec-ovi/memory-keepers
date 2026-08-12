@@ -3,8 +3,11 @@ Its default ranking puts live bootlegs first, so results are filtered to
 official releases and the earliest release date wins."""
 import httpx
 
+from .common import clean
+
 MUSICBRAINZ = "https://musicbrainz.org/ws/2/recording"
 NOT_THE_SONG = ("karaoke", "tribute", "cover version", "made famous")
+NO_YEAR = 9999  # undated releases sort last
 
 
 def _year(date: str) -> int | None:
@@ -16,7 +19,7 @@ class SongFacts:
         self._client = client
 
     def facts(self, title: str, artist: str = "") -> dict:
-        title, artist = (title or "").strip(), (artist or "").strip()
+        title, artist = clean(title), clean(artist)
         if not title:
             return {"ok": False, "reason": "no_title"}
         query = (f'recording:"{title}"' + (f" AND artist:{artist}" if artist else "")
@@ -36,7 +39,7 @@ class SongFacts:
             if not official:
                 continue
             year = _year(rec.get("first-release-date", ""))
-            if best is None or (year or 9999) < (best[0] or 9999):
+            if best is None or (year or NO_YEAR) < (best[0] or NO_YEAR):
                 best = (year, rec, official[0])
         if not best:
             return {"ok": False, "reason": "not_found"}

@@ -9,6 +9,8 @@ from urllib.parse import quote
 
 import httpx
 
+from .common import clean
+
 OMDB = "https://www.omdbapi.com/"
 WIKIDATA = "https://www.wikidata.org/w/api.php"
 WIKI_SUMMARY = "https://en.wikipedia.org/api/rest_v1/page/summary/"
@@ -27,7 +29,7 @@ class MovieLookup:
         self._env = env
 
     def facts(self, title: str, year: str = "") -> dict:
-        title, year = (title or "").strip(), str(year or "").strip()
+        title, year = clean(title), clean(year)
         if not title:
             return {"ok": False, "reason": "no_title"}
         found = None
@@ -40,7 +42,7 @@ class MovieLookup:
         return {"ok": True, **found}
 
     def plot(self, title: str, year: str = "") -> dict:
-        title, year = (title or "").strip(), str(year or "").strip()
+        title, year = clean(title), clean(year)
         if not title:
             return {"ok": False, "reason": "no_title"}
         try:
@@ -116,10 +118,11 @@ class MovieLookup:
                 return None
             entity = self._wikidata_entity(entity_id)
             claims = entity.get("claims", {})
-            people = self._claim_ids(claims, "P57") + self._claim_ids(claims, "P161")[:CAST_CAP]
-            labels = self._wikidata_labels(people)
-            directors = [labels[i] for i in self._claim_ids(claims, "P57") if i in labels]
-            cast = [labels[i] for i in self._claim_ids(claims, "P161")[:CAST_CAP] if i in labels]
+            director_ids = self._claim_ids(claims, "P57")
+            cast_ids = self._claim_ids(claims, "P161")[:CAST_CAP]
+            labels = self._wikidata_labels(director_ids + cast_ids)
+            directors = [labels[i] for i in director_ids if i in labels]
+            cast = [labels[i] for i in cast_ids if i in labels]
             date = self._first_time(claims, "P577")
             return {"source": "wikidata",
                     "title": entity.get("labels", {}).get("en", {}).get("value") or title,

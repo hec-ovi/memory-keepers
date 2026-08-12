@@ -46,7 +46,7 @@ async def _dream(library: Library, agents_api, world: str) -> dict:
                     world, theme["key"], name=prose["name"], persona=prose["persona"],
                     side="dark", archetype=theme["archetype"])
                 dark[theme["key"]] = keeper
-                created_keepers.append(keeper.payload(budget=1) | {"session": None})
+                created_keepers.append(keeper.payload())
             except LibraryError:
                 skipped.append({"key": theme["key"], "archetype": theme["archetype"]})
                 continue

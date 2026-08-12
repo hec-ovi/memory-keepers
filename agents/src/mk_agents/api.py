@@ -2,11 +2,12 @@
 Every flow survives a broken model through deterministic fallbacks."""
 import logging
 import re
-from datetime import date, datetime, timezone
+from datetime import date
 
 from google.adk.tools.agent_tool import AgentTool
 from mk_library import Library, LibraryError
 from mk_library.records import Turn
+from mk_library.store import now_iso
 from mk_models import ModelGateway
 
 from . import chatter, dates
@@ -17,10 +18,7 @@ from .runtime import build_agent, run_agent
 
 log = logging.getLogger(__name__)
 SHORTLIST = 6
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+TURN_TEXT_CAP = 200  # chars of each turn kept in the session
 
 
 def _today() -> str:
@@ -71,6 +69,24 @@ class AgentsApi:
         return [fetch_youtube_transcript, find_song_lyrics, find_movie_facts,
                 find_movie_plot, find_song_facts, find_book_facts,
                 find_podcast_transcript]
+
+    def _read_book_tool(self, world: str, kid: str, allowed: set[str] | None = None,
+                        opened: list[str] | None = None):
+        """One read_book closure for every ask flow; allowed=None opens any shelf slug."""
+
+        def read_book(slug: str) -> dict:
+            """Open one book from the shelf by its slug and read it."""
+            if allowed is not None and slug not in allowed:
+                return {"error": "not on this shelf"}
+            try:
+                book = self.library.get_book(world, kid, slug)
+            except LibraryError:
+                return {"error": "not on this shelf"}
+            if opened is not None:
+                opened.append(slug)
+            return book.payload()
+
+        return read_book
 
     # -- keeper chat --------------------------------------------------------
     async def keeper_tell(self, world: str, kid: str, text: str) -> dict:
@@ -128,17 +144,10 @@ class AgentsApi:
         rows = self.library.index_rows(world, kid)
         resolved = dates.resolve(question, date.today())
         shortlist = self._shortlist(rows, question, resolved)
-        allowed = {r["slug"] for r in shortlist}
         opened: list[str] = []
-
-        def read_book(slug: str) -> dict:
-            """Open one book from the shelf by its slug and read it."""
-            if slug not in allowed:
-                return {"error": "not on this shelf"}
-            book = self.library.get_book(world, kid, slug)
-            opened.append(slug)
-            return book.payload()
-
+        read_book = self._read_book_tool(world, kid,
+                                         allowed={r["slug"] for r in shortlist},
+                                         opened=opened)
         date_note = (f"\nThe question points at {resolved[2]} "
                      f"({resolved[0]} to {resolved[1]}).\n") if resolved else ""
         instruction = prompt("keeper_ask", persona=keeper.persona, topic=keeper.topic,
@@ -212,21 +221,12 @@ class AgentsApi:
         if not reply.strip():
             reply = ("Done. " + created[0].name + " has her house now.") if created else \
                 "I watch over the island. Ask me to create a keeper, or what your memories share."
-        payload = created[0].payload(budget=1) if created else None
-        if payload:
-            payload.pop("session", None)
+        payload = created[0].payload() if created else None
         return {"reply": reply.strip(), "created_keeper": payload}
 
     def _ask_subagent(self, world: str, keeper):
         rows = self.library.index_rows(world, keeper.id)
-
-        def read_book(slug: str) -> dict:
-            """Open one book from this keeper's shelf by its slug."""
-            try:
-                return self.library.get_book(world, keeper.id, slug).payload()
-            except LibraryError:
-                return {"error": "not on this shelf"}
-
+        read_book = self._read_book_tool(world, keeper.id)
         instruction = prompt("keeper_ask", persona=keeper.persona, topic=keeper.topic,
                              today=_today(), index=index_block(rows[:SHORTLIST]),
                              date_note="", session="(asked by the monument)")
@@ -290,11 +290,11 @@ class AgentsApi:
                [row for _, row in scored[:SHORTLIST]]
 
     def _record(self, world, kid, user_text, keeper_text, tokens):
-        t = _now_iso()
+        t = now_iso()
         self.library.session_append(
             world, kid,
-            [Turn(t=t, role="user", text=first_sentence(user_text, 200)),
-             Turn(t=t, role="keeper", text=first_sentence(keeper_text, 200))],
+            [Turn(t=t, role="user", text=first_sentence(user_text, TURN_TEXT_CAP)),
+             Turn(t=t, role="keeper", text=first_sentence(keeper_text, TURN_TEXT_CAP))],
             constraints=harvest_constraints(user_text))
         estimate = tokens or (len(user_text) + len(keeper_text)) // 4
         self.library.meter_add(world, kid, estimate)

@@ -57,7 +57,7 @@ def create_broker() -> FastAPI:
     async def poll(job_id: str, wait: float = 0):
         job = jobs.get(job_id)
         if not job:
-            return {"status": "unknown"}
+            return {"status": "unknown", "reply": None}
         if wait and not job.done.is_set():
             try:
                 await asyncio.wait_for(job.done.wait(), timeout=min(wait, WAIT_CAP_S))

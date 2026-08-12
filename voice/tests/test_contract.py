@@ -5,11 +5,15 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from mk_voice import create_voice_router, unavailable_router
+from mk_voice.router import VOICES
 
 
 class FakeTts:
+    def __init__(self):
+        self.voice = None
+
     def synthesize_speech(self, input, voice, audio_config):
-        assert voice.name and voice.language_code
+        self.voice = voice
         return SimpleNamespace(audio_content=b"OggS-fake-audio")
 
 
@@ -33,10 +37,12 @@ def _client(router):
 
 @pytest.mark.asyncio
 async def test_tts_returns_audio():
-    async with _client(create_voice_router(tts_client=FakeTts())) as client:
+    tts = FakeTts()
+    async with _client(create_voice_router(tts_client=tts)) as client:
         r = await client.post("/voice/tts", json={"text": "hello", "kind": "dark"})
     assert r.status_code == 200
     assert r.headers["content-type"] == "audio/ogg" and r.content.startswith(b"OggS")
+    assert tts.voice.name == VOICES["dark"] and tts.voice.language_code == "en-US"
 
 
 @pytest.mark.asyncio

@@ -8,16 +8,18 @@ import os
 import httpx
 from mcp.server.mcpserver import MCPServer
 
+from mk_agy.broker import WAIT_CAP_S
+
 mcp = MCPServer("memory-keepers-agy")
 
 
 def broker_client() -> httpx.Client:
     return httpx.Client(base_url=os.environ.get("AGY_BROKER_URL", "http://localhost:8765"),
-                        timeout=40)
+                        timeout=WAIT_CAP_S + 10)
 
 
 def next_job(client: httpx.Client) -> dict:
-    res = client.get("/jobs/next", params={"wait": 30})
+    res = client.get("/jobs/next", params={"wait": WAIT_CAP_S})
     return res.json()
 
 

@@ -3,6 +3,8 @@ work is public domain the direct plain-text URL comes back too, so a keeper
 can hold not just the memory of a book but the book itself."""
 import httpx
 
+from .common import clean
+
 GUTENDEX = "https://gutendex.com/books"
 
 
@@ -11,7 +13,7 @@ class BookFacts:
         self._client = client
 
     def facts(self, title: str) -> dict:
-        title = (title or "").strip()
+        title = clean(title)
         if not title:
             return {"ok": False, "reason": "no_title"}
         try:

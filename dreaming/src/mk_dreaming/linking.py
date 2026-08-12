@@ -29,7 +29,7 @@ def link(keepers_books: dict[str, list]) -> tuple[dict, list[dict]]:
             edges.append({"source": f"keeper:{kid}", "target": bid,
                           "kind": "shelf", "weight": 1})
             for kind, values in (("entity", book.entities), ("tag", book.tags)):
-                for value in values:
+                for value in dict.fromkeys(values):  # one citation per book
                     element_books[(kind, value)].append((kid, book))
 
     themes = []
@@ -61,5 +61,4 @@ def _archetype(theme: dict) -> str:
     text = " ".join(e["body_md"] for e in theme["evidence"]).lower()
     scores = {a: sum(text.count(w) for w in words)
               for a, words in ARCHETYPE_LEXICON.items()}
-    best = max(scores.items(), key=lambda p: (p[1], p[0]))
-    return best[0] if best[1] > 0 else "obsession"
+    return max(scores.items(), key=lambda p: (p[1], p[0]))[0]

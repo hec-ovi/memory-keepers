@@ -36,7 +36,6 @@ def test_tiers(monkeypatch):
         ModelGateway(tier="cloud").model_for("chat")
 
 
-@pytest.mark.asyncio
 async def test_fake_tell_returns_valid_json():
     model = ModelGateway(tier="fake").model_for("chat")
     resp = await _run(model, _req(
@@ -47,7 +46,6 @@ async def test_fake_tell_returns_valid_json():
     assert resp.usage_metadata.total_token_count > 0
 
 
-@pytest.mark.asyncio
 async def test_fake_ask_reads_then_answers():
     model = ModelGateway(tier="fake").model_for("chat")
     system = "<!-- flow:keeper_ask -->\nindex:\n2026-08-05-rehearsing-the-launch\n2026-08-02-the-glass-elevator"
@@ -66,7 +64,6 @@ async def test_fake_ask_reads_then_answers():
     assert not data["needs_followup"] and "countdown" in data["answer"]
 
 
-@pytest.mark.asyncio
 async def test_fake_ask_with_no_match_asks_followup():
     model = ModelGateway(tier="fake").model_for("chat")
     resp = await _run(model, _req("<!-- flow:keeper_ask -->\n(no books)", "zzz?"))
@@ -74,7 +71,6 @@ async def test_fake_ask_with_no_match_asks_followup():
     assert data["needs_followup"] and data["used_slugs"] == []
 
 
-@pytest.mark.asyncio
 async def test_fake_monument_creates_keeper():
     model = ModelGateway(tier="fake").model_for("chat")
     resp = await _run(model, _req(
@@ -83,7 +79,6 @@ async def test_fake_monument_creates_keeper():
     assert call.name == "create_keeper" and call.args["topic"] == "my favorite films"
 
 
-@pytest.mark.asyncio
 async def test_fake_dream_flows():
     model = ModelGateway(tier="fake").model_for("dream")
     resp = await _run(model, _req("<!-- flow:dream_write -->",

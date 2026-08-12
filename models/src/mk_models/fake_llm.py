@@ -103,10 +103,10 @@ class FakeLlm(BaseLlm):
             return self._call("fetch_youtube_transcript", {"url": url.group(0)})
         quoted = QUOTED_RE.search(text)
         title = quoted.group(1) if quoted else _first_sentence(text, 40)
-        if ("song" in lower or "lyrics" in lower) and "find_song_facts" in tools:
-            return self._call("find_song_facts", {"title": title})
-        if ("song" in lower or "lyrics" in lower) and "find_song_lyrics" in tools:
+        if "lyrics" in lower and "find_song_lyrics" in tools:
             return self._call("find_song_lyrics", {"title": title})
+        if "song" in lower and "find_song_facts" in tools:
+            return self._call("find_song_facts", {"title": title})
         if "podcast" in lower and "find_podcast_transcript" in tools:
             return self._call("find_podcast_transcript", {"show": title})
         if ("book" in lower or "finished" in lower) and "find_book_facts" in tools:
@@ -141,6 +141,13 @@ class FakeLlm(BaseLlm):
         title = _first_sentence(text, 60) or "A new memory"
         tags = sorted(_words(text))[:3]
         entities = list(dict.fromkeys(ENTITY_RE.findall(text)))[:4]
+        if extends:
+            return self._text({
+                "reply": "I have added it to the book.",
+                "title": title, "tags": tags, "entities": entities,
+                "one_liner": _first_sentence(text, 140) + ".",
+                "body_md": text, "extends_slug": extends,
+            })
         names = ", ".join(entities) if entities else "no one by name"
         body = "\n\n".join([
             f"# {title}", text,
@@ -152,13 +159,6 @@ class FakeLlm(BaseLlm):
             f"{', '.join(tags) if tags else 'no tags yet'}.",
         ])
         body += self._lookup_note(responses)
-        if extends:
-            return self._text({
-                "reply": "I have added it to the book.",
-                "title": title, "tags": tags, "entities": entities,
-                "one_liner": _first_sentence(text, 140) + ".",
-                "body_md": text, "extends_slug": extends,
-            })
         return self._text({
             "reply": f"It is on the shelf now: {title}.",
             "title": title, "tags": tags, "entities": entities,

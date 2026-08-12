@@ -1,16 +1,17 @@
 """Speech in and out: one FastAPI router the engine mounts under /voice.
 Clients are injected in tests; missing credentials degrade to 503 and the
 frontend falls back to text-only dialogs."""
-import os
-
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
+from google.cloud import speech, texttospeech
 
 VOICES = {
-    "light": os.environ.get("VOICE_LIGHT", "en-US-Neural2-F"),
-    "dark": os.environ.get("VOICE_DARK", "en-US-Neural2-D"),
-    "monument": os.environ.get("VOICE_MONUMENT", "en-US-Neural2-J"),
+    "light": "en-US-Neural2-F",
+    "dark": "en-US-Neural2-D",
+    "monument": "en-US-Neural2-J",
 }
+STT_LANGUAGE = "en-US"
+STT_MODEL = "latest_short"
 
 
 def _unavailable() -> JSONResponse:
@@ -25,19 +26,16 @@ def create_voice_router(tts_client=None, stt_client=None) -> APIRouter:
 
     def _tts():
         if clients["tts"] is None:
-            from google.cloud import texttospeech
             clients["tts"] = texttospeech.TextToSpeechClient()
         return clients["tts"]
 
     def _stt():
         if clients["stt"] is None:
-            from google.cloud import speech
             clients["stt"] = speech.SpeechClient()
         return clients["stt"]
 
     @router.post("/voice/tts")
     async def tts(body: dict):
-        from google.cloud import texttospeech
         text = str(body.get("text", "")).strip()
         if not text:
             return JSONResponse(status_code=422, content={
@@ -57,14 +55,12 @@ def create_voice_router(tts_client=None, stt_client=None) -> APIRouter:
 
     @router.post("/voice/stt")
     async def stt(request: Request):
-        from google.cloud import speech
         audio = await request.body()
         if not audio:
             return JSONResponse(status_code=422, content={
                 "error": {"code": "VALIDATION", "message": "audio body is required"}})
         config = dict(encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
-                      language_code=os.environ.get("VOICE_LANGUAGE", "en-US"),
-                      model=os.environ.get("VOICE_STT_MODEL", "latest_short"),
+                      language_code=STT_LANGUAGE, model=STT_MODEL,
                       enable_automatic_punctuation=True)
         if "ogg" in request.headers.get("content-type", ""):
             config.update(encoding=speech.RecognitionConfig.AudioEncoding.OGG_OPUS,
