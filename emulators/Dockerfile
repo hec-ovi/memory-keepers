@@ -7,6 +7,7 @@ RUN apt-get update \
     && npm install -g firebase-tools \
     && npm cache clean --force
 WORKDIR /fb
-COPY firebase.json .
+COPY firebase.json start.sh ./
+RUN chmod +x start.sh
 EXPOSE 8480 4000
-CMD ["firebase", "emulators:start", "--project", "memory-keepers-local"]
+CMD ["./start.sh"]

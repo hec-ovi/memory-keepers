@@ -14,6 +14,6 @@ Each box is one folder with a CONTRACT.md; outsiders use the contract, never the
 | lookups | external lookups for keepers: transcripts (YouTube, podcasts), song and book facts, lyrics, movie plots | - |
 | agy | the agy model tier machinery: job broker + MCP toolkit for a CLI brain | - |
 
-Deployment: one Cloud Run service (engine + frontend statics). Dreaming rides Pub/Sub: Cloud Scheduler hits `/internal/nightly`, tired keepers publish events, and a push subscription delivers both into `/internal/dream-run`. Firestore is the only store. `scripts/deploy.sh` creates all of it; `docker-compose.yml` runs the same stack locally on the official Firestore emulator at zero cost (dream dispatch runs inline there).
+Deployment: one Cloud Run service (engine + frontend statics). Dreaming rides Pub/Sub: Cloud Scheduler hits `/internal/nightly`, tired keepers publish events, and a push subscription delivers both into `/internal/dream-run`. Firestore is the only store. `scripts/deploy.sh` creates all of it; `docker-compose.yml` runs the same stack locally on the official Firestore emulator at zero cost (dream dispatch runs inline there; emulator data persists in a compose volume).
 
 Reading order for a fresh session: this file, then the CONTRACT.md of the box being changed.

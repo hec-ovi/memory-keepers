@@ -34,7 +34,7 @@ Privacy first: the same code runs against Gemini on Vertex AI or entirely on you
 docker compose up
 ```
 
-The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000). Three brains, one switch, nothing else changes:
+The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000). Emulator data survives restarts in a compose volume; `docker compose down -v` starts clean. Three brains, one switch, nothing else changes:
 
 | MODEL_TIER | brain | needs |
 |---|---|---|
