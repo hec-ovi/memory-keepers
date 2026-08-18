@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["library", "models", "agents", "engine", "dreaming", "voice", "lookups", "agy"]
+members = ["library", "models", "agents", "engine", "dreaming", "voice", "lookups"]
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-asyncio>=1", "httpx>=0.28"]
@@ -14,4 +14,4 @@ dev = ["pytest>=8", "pytest-asyncio>=1", "httpx>=0.28"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "--import-mode=importlib"
-testpaths = ["library", "models", "agents", "engine", "dreaming", "voice", "lookups", "agy"]
+testpaths = ["library", "models", "agents", "engine", "dreaming", "voice", "lookups"]

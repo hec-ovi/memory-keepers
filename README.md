@@ -38,24 +38,14 @@ Keepers read sources at capture time and store only what they write: a book hold
 docker compose up
 ```
 
-The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000). Emulator data survives restarts in a compose volume; `docker compose down -v` starts clean. Three brains, one switch, nothing else changes:
+The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000). Emulator data survives restarts in a compose volume; `docker compose down -v` starts clean. One switch picks the brain, nothing else changes:
 
 | MODEL_TIER | brain | needs |
 |---|---|---|
 | `fake` (default) | deterministic in-process model | nothing |
 | `local` | Gemma on a llama.cpp server on the host | a machine that fits it |
-| `agy` | any MCP-capable CLI you already have | `docker compose --profile agy up`, then point the CLI at `agy/src/mk_agy/mcp_server.py` and tell it to serve the island |
 
 Nothing installs on the machine; everything lives in the containers.
-
-To make [Gemini CLI](https://github.com/google-gemini/gemini-cli) the brain (Google's own agent serving the island), register the toolkit and tell it to serve:
-
-```
-MODEL_TIER=agy docker compose --profile agy up -d
-gemini mcp add island -- docker compose exec -T agy /opt/venv/bin/python agy/src/mk_agy/mcp_server.py
-gemini
-> Serve the island: loop serve_next_model_job, write each answer yourself, hand it back with submit_model_reply.
-```
 
 To fill a world with sample memories and test the whole loop (tells, grounded asks, a dream with its knowledge graph):
 
@@ -100,6 +90,8 @@ Four steps from a blank Google account to your own island; `scripts/deploy.sh` d
 
 4. Open the URL the script prints. Done: the script enabled the APIs and created the Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler dream sweep.
 
+No permissions to grant by hand: you created the project, so you own it, and Cloud Run runs as the project's default service account, which on a personal project already reaches Firestore, Vertex AI, and the speech APIs. Inside a company organization with hardened defaults, give that service account `roles/datastore.user` and `roles/aiplatform.user`.
+
 Optional env before step 3: `ACCESS_CODE=<island key>` gates the API behind `X-Access-Code` (visitors enter it once, or open a `?key=` link; anonymous traffic never reaches a model). `OMDB_KEY=<free key>` adds IMDb ratings to movie lookups. `MIN_INSTANCES=1 CPU_ALWAYS=1` keeps one instance warm for demo days. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
 ### Or let Gemini set it up
@@ -124,8 +116,7 @@ Box map and dependency edges: `docs/INDEX.md`. Each box is one folder with a CON
 | `engine/` | FastAPI surface, world scoping, meters, jobs |
 | `agents/` | ADK: monument root agent, keeper agents, dream prose |
 | `library/` | Firestore store: worlds, keepers, books, sessions, dream runs |
-| `models/` | model gateway: cloud / local / agy / fake tiers |
+| `models/` | model gateway: cloud / local / fake tiers |
 | `dreaming/` | consolidation: linking pass and dark side writer |
 | `voice/` | Cloud TTS / STT router |
 | `lookups/` | keeper tools: transcripts, lyrics, movie facts |
-| `agy/` | the agy tier: job broker + MCP toolkit |

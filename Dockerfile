@@ -15,8 +15,7 @@ COPY engine/pyproject.toml engine/
 COPY dreaming/pyproject.toml dreaming/
 COPY voice/pyproject.toml voice/
 COPY lookups/pyproject.toml lookups/
-COPY agy/pyproject.toml agy/
-RUN for b in library models agents engine dreaming voice lookups agy; do \
+RUN for b in library models agents engine dreaming voice lookups; do \
         mkdir -p $b/src/mk_$b && touch $b/src/mk_$b/__init__.py; \
     done && \
     uv sync --all-packages --all-extras --frozen --no-dev
