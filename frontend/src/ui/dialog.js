@@ -246,6 +246,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let holdActive = false;
   let typeTimer = null;
   let holdTimer = null;
+  let typingRun = null; // { span, text, md } of the reply row typing right now
   let lastVoiceMode = null;
   let histBox = null;
   let keeperName = "";
@@ -320,6 +321,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     spkBtn?.classList.toggle("mk-dialog-spk--speaking", mode === "speaking" && ttsOn);
   }
 
+  // Stops the typing effect; an interrupted reply row finishes instantly so
+  // the chat never keeps a half-typed sentence.
   function cancelTyping() {
     if (typeTimer !== null) win.clearTimeout(typeTimer);
     if (holdTimer !== null) win.clearTimeout(holdTimer);
@@ -327,6 +330,16 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     holdTimer = null;
     typingActive = false;
     holdActive = false;
+    if (typingRun) {
+      const { span, text, md } = typingRun;
+      typingRun = null;
+      if (md) {
+        span.textContent = "";
+        renderMd(span, text);
+      } else {
+        span.textContent = text;
+      }
+    }
   }
 
   // Types `text` into a fresh keeper chat row; markdown is swapped in once
@@ -338,6 +351,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     typingActive = true;
     syncVoice();
     const { span, body } = pushHistory("keeper", "");
+    typingRun = { span, text, md };
     const step = typingStep(text.length);
     let idx = 0;
     const tick = () => {
@@ -346,6 +360,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       if (histBox) histBox.scrollTop = histBox.scrollHeight;
       if (idx >= text.length) {
         typeTimer = null;
+        typingRun = null;
         if (md) {
           span.textContent = "";
           renderMd(span, text);
@@ -809,6 +824,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       if (!text || sending || chatLocked) return;
       sending = true;
       sync();
+      // The user's row lands in the chat the moment it is sent, not when the
+      // reply arrives; a failed send leaves it there and keeps the input.
+      pushHistory("user", label ?? text);
       setInFlight(true);
       ensureThinking(form, true);
       try {
@@ -816,7 +834,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
           const res = await api.monument(text);
           setInFlight(false);
           ensureThinking(form, false);
-          pushHistory("user", text);
           say(res?.reply ?? "...", { md: true });
           input.value = "";
           if (res?.created_keeper) {
@@ -826,7 +843,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
           const res = await api.say(keeper.id, text);
           setInFlight(false);
           ensureThinking(form, false);
-          pushHistory("user", label ?? text);
           if (res?.kind === "ask") {
             const replyBody = say(res?.answer ?? "", { md: true });
             renderAskResult(keeper, res, text, replyBody);
