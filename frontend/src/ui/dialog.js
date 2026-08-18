@@ -85,7 +85,7 @@ const CSS = `
 .mk-dialog-join{display:block;width:100%;margin:2px 0 10px;}
 /* scrollback: a framed chat block, newest at the bottom (autoscrolled),
    older rows scroll away behind a always-visible thin scrollbar */
-.mk-dialog-hist{max-height:22vh;overflow-y:scroll;margin-bottom:8px;padding:4px;border:1px solid var(--holo-line,rgba(255,166,64,.42));border-radius:4px;background:rgba(0,0,0,.35);scrollbar-width:thin;scrollbar-color:var(--holo-amber-dim,rgba(255,166,64,.55)) transparent;}
+.mk-dialog-hist{min-height:96px;max-height:22vh;overflow-y:scroll;margin-bottom:8px;padding:4px;border:1px solid var(--holo-line,rgba(255,166,64,.42));border-radius:4px;background:rgba(0,0,0,.35);scrollbar-width:thin;scrollbar-color:var(--holo-amber-dim,rgba(255,166,64,.55)) transparent;}
 .mk-dialog-hist::-webkit-scrollbar{width:6px;}
 .mk-dialog-hist::-webkit-scrollbar-thumb{background:var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:3px;}
 .mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;}
