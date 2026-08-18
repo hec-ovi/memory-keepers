@@ -79,9 +79,9 @@ import {
   layoutWorld,
   makeGraphWanderPlanner,
   clampToSector,
-  hashString,
   CAMERA_OVERRIDES,
 } from "../sim/world.js";
+import { hashString } from "../sim/rand.js";
 import { createWalker } from "../sim/walker.js";
 import { createChatter } from "../sim/chatter.js";
 import { config as defaultConfig } from "../config.js";

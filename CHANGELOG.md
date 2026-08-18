@@ -1,5 +1,7 @@
 # Changelog
 
+0.6.1: model tiers are cloud (Vertex Gemini), local (Gemma on llama.cpp), fake; the frontend suite proves the whole module graph resolves, so the three.js scenes load in every browser. 74 backend + 708 frontend tests.
+
 0.6: worlds travel: Export island saves the whole world (keepers, books, sessions, dream runs) as one JSON file; Import island lands it on a fresh crypto world id, cloud to local and back. Emulator data survives restarts in a compose volume. A lean pass across every box: shared helpers, tighter contracts, the ask prompt names all seven lookup tools. 79 backend + 707 frontend tests.
 
 0.5: keepers author their books: each told memory becomes a full markdown work (short scroll to multi-page volume, sized by the material; spine tiers follow). Keepers list gains a live search filter; ?world= opens a named world and ?key= carries the island key in a shared link. Demo world seeder + verify generator (scripts/demo_world.py) with public-domain memories across ten keepers. 53 backend + 726 frontend tests.
