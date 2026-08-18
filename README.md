@@ -47,6 +47,16 @@ The game is at http://localhost:8000, running against the official Firestore emu
 
 Nothing installs on the machine; everything lives in the containers.
 
+The local tier needs a llama.cpp server on the host (any OpenAI-compatible server works). With a Gemma GGUF:
+
+```
+llama-server --model <path to gemma .gguf> --alias gemma-4-26b-a4b-qat-q4 \
+  --host 0.0.0.0 --port 8080 --jinja -ngl 99
+MODEL_TIER=local docker compose up -d
+```
+
+Defaults line up: the island looks for `http://host.docker.internal:8080/v1` and asks for the model id `gemma-4-26b-a4b-qat-q4`; override with `LOCAL_MODEL_URL` and `LOCAL_MODEL_ID` if your server differs.
+
 To fill a world with sample memories and test the whole loop (tells, grounded asks, a dream with its knowledge graph):
 
 ```
