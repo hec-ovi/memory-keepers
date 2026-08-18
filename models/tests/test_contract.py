@@ -70,6 +70,14 @@ async def test_fake_ask_with_no_match_asks_followup():
     assert data["needs_followup"] and data["used_slugs"] == []
 
 
+async def test_fake_say_route_is_deterministic():
+    model = ModelGateway(tier="fake").model_for("chat")
+    resp = await _run(model, _req("<!-- flow:say_route -->", "what did I dream last night?"))
+    assert json.loads(resp.content.parts[0].text) == {"kind": "ask"}
+    resp = await _run(model, _req("<!-- flow:say_route -->", "I saw a fox by the river."))
+    assert json.loads(resp.content.parts[0].text) == {"kind": "tell"}
+
+
 async def test_fake_monument_creates_keeper():
     model = ModelGateway(tier="fake").model_for("chat")
     resp = await _run(model, _req(

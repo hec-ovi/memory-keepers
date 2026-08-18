@@ -94,7 +94,7 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 | `district:changed` | `{ district: "day"\|"night" }` | render/scene_overworld | main.js (state.district) |
 | `minimap:update` | `{ keepers: [{id, x, z}], camera: {x, z, angle} }` | render/scene_overworld | ui/minimap |
 | `minimap:jump` | `{ x, z }` | ui/minimap | render/scene_overworld |
-| (main keeper) | clicking the well or her hologram selects `config.monumentId` through the normal `keeper:selected` flow; the dialog renders her without Join/tabs/session and routes sends through `api.monument` | render/scene_overworld | ui/dialog |
+| (main keeper) | clicking the well or her hologram selects `config.monumentId` through the normal `keeper:selected` flow; the dialog renders her without Join/session and routes sends through `api.monument` | render/scene_overworld | ui/dialog |
 | `cinematic:started` | `{ keeperId, name }` | render/scene_overworld | ui/cinematic |
 | `cinematic:fade` | `{ seconds }` | render/scene_overworld | ui/cinematic |
 | `cinematic:ended` | `{ keeperId }` | render/scene_overworld | ui/cinematic |

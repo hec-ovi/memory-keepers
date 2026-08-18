@@ -75,7 +75,7 @@ describe("createDialog", () => {
     // bottom-pinned: the composer is the last block of the flex column
     expect(inner.lastElementChild).toBe(form);
     // the input and the mic live INSIDE the pill; Enter sends
-    const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
+    const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
     expect(input.closest("form")).toBe(form);
     const mic = screen.getByRole("button", { name: /toggle talking/i });
     expect(mic.closest("form")).toBe(form);
@@ -84,23 +84,22 @@ describe("createDialog", () => {
     expect(form.lastElementChild).toBe(mic);
   });
 
-  it("tabs flip what the composer sends: Tell <-> Ask relabel the same pill", async () => {
-    const user = userEvent.setup();
+  it("one input serves the whole conversation: no tabs, attach + speaker + mic in the pill", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
-    const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
-
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    expect(input.getAttribute("aria-label")).toBe("ask Keeper of Dreams");
-
-    await user.click(screen.getByRole("tab", { name: "Tell" }));
-    expect(input.getAttribute("aria-label")).toBe("tell Keeper of Dreams");
+    expect(screen.queryByRole("tab")).toBeNull();
+    const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
+    expect(input.placeholder).toBe("tell her a memory, or ask her anything...");
+    const form = input.closest("form");
+    expect(screen.getByRole("button", { name: /attach a memory file/i }).closest("form")).toBe(form);
+    expect(screen.getByRole("button", { name: /toggle voice replies/i }).closest("form")).toBe(form);
+    expect(screen.getByRole("button", { name: /toggle talking/i }).closest("form")).toBe(form);
   });
 
   it("tell flow: typing enables submit, in-flight shows UNDERSTANDING, reply types out while SPEAKING", async () => {
     const user = userEvent.setup();
     const gate = deferred();
     server.use(
-      http.post(`${BASE}/keepers/dreams/tell`, async ({ request }) => {
+      http.post(`${BASE}/keepers/dreams/say`, async ({ request }) => {
         const body = await request.json();
         expect(body).toEqual({ text: "I flew over a black ocean" });
         await gate.promise;
@@ -116,7 +115,7 @@ describe("createDialog", () => {
     bus.on("voice:state", (p) => voiceStates.push(p.mode));
     bus.emit("keeper:selected", "dreams");
 
-    const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
+    const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
     await user.type(input, "I flew over a black ocean");
     await user.keyboard("{Enter}");
     // in flight: the breathing status line
@@ -144,12 +143,12 @@ describe("createDialog", () => {
   it("Enter inside the pill sends too", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/dreams/tell`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json({ reply: "noted by enter.", book: { slug: "b", title: "B" } }),
       ),
     );
     bus.emit("keeper:selected", { keeperId: "dreams" });
-    const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
+    const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
     await user.type(input, "remember the rain{Enter}");
     await screen.findByText("noted by enter.");
     expect(input.value).toBe("");
@@ -158,7 +157,7 @@ describe("createDialog", () => {
   it("tell failure: toast shown, input preserved, submit re-enabled, voice back to idle", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/dreams/tell`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json(
           { error: { code: "HARNESS_ERROR", message: "the harness exploded" } },
           { status: 502 },
@@ -168,7 +167,7 @@ describe("createDialog", () => {
     const voiceStates = [];
     bus.on("voice:state", (p) => voiceStates.push(p.mode));
     bus.emit("keeper:selected", { keeperId: "dreams" });
-    const input = screen.getByRole("textbox", { name: /tell/i });
+    const input = screen.getByRole("textbox", { name: /speak to/i });
     await user.type(input, "remember this");
     await user.keyboard("{Enter}");
 
@@ -182,7 +181,7 @@ describe("createDialog", () => {
   it("unconscious keepers are chattable: Tell works, keeps no book, shows the whisper hint", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/still-water/tell`, () =>
+      http.post(`${BASE}/keepers/still-water/say`, () =>
         HttpResponse.json({ reply: "I hear you. The water is listening." }),
       ),
     );
@@ -195,26 +194,22 @@ describe("createDialog", () => {
     const hint = screen.getByText(/keeps no books of what you tell her/i);
     expect(hint.textContent).toMatch(/born from dreaming/i);
 
-    const input = screen.getByRole("textbox", { name: /tell the still water/i });
+    const input = screen.getByRole("textbox", { name: /speak to the still water/i });
     await user.type(input, "I am afraid of the deep");
     await user.keyboard("{Enter}");
 
     await screen.findByText("I hear you. The water is listening.");
     expect(created).not.toHaveBeenCalled(); // conversational: no book was born
     expect(state.keepers[1].book_count).toBe(1); // unchanged
-
-    // the hint belongs to the Tell tab only
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    expect(hint.style.display).toBe("none");
-    await user.click(screen.getByRole("tab", { name: "Tell" }));
-    expect(hint.style.display).toBe("");
+    expect(hint.isConnected).toBe(true); // the hint stays with the composer
   });
 
   it("ask flow: answer types out, consulted books clickable and emit book:open", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/dreams/ask`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json({
+          kind: "ask",
           answer: "You dreamt of water.",
           sources: [
             { slug: "2026-07-02-flying-over-water", title: "Flying over water" },
@@ -227,8 +222,7 @@ describe("createDialog", () => {
     bus.on("book:open", opened);
     bus.emit("keeper:selected", { keeperId: "dreams" });
 
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    const input = screen.getByRole("textbox", { name: /ask keeper of dreams/i });
+    const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
     await user.type(input, "what did I dream?");
     await user.keyboard("{Enter}");
 
@@ -245,13 +239,12 @@ describe("createDialog", () => {
   it("ask failure toasts and keeps the question", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/dreams/ask`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json({ error: { code: "HARNESS_ERROR", message: "no answer today" } }, { status: 502 }),
       ),
     );
     bus.emit("keeper:selected", { keeperId: "dreams" });
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    const input = screen.getByRole("textbox", { name: /ask/i });
+    const input = screen.getByRole("textbox", { name: /speak to/i });
     await user.type(input, "hello?");
     await user.keyboard("{Enter}");
     await screen.findByText("no answer today");
@@ -332,18 +325,18 @@ describe("createDialog", () => {
     const user = userEvent.setup();
     const gate = deferred();
     server.use(
-      http.post(`${BASE}/keepers/dreams/tell`, async () => {
+      http.post(`${BASE}/keepers/dreams/say`, async () => {
         await gate.promise;
         return HttpResponse.json({ reply: "noted.", book: { slug: "b", title: "B" } });
       }),
     );
     bus.emit("keeper:selected", { keeperId: "dreams" });
 
-    const form = screen.getByRole("textbox", { name: /tell/i }).closest("form");
+    const form = screen.getByRole("textbox", { name: /speak to/i }).closest("form");
     expect(form.classList.contains("mk-dialog-io")).toBe(true);
     expect(form.classList.contains("holo-thinking")).toBe(false);
 
-    await user.type(screen.getByRole("textbox", { name: /tell/i }), "remember the rain");
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "remember the rain");
     await user.keyboard("{Enter}");
     expect(form.classList.contains("holo-thinking")).toBe(true); // spinning glow
 
@@ -355,13 +348,12 @@ describe("createDialog", () => {
   it("wears the thinking border for asks too, clearing even on failure", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/dreams/ask`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json({ error: { code: "HARNESS_ERROR", message: "boom" } }, { status: 502 }),
       ),
     );
     bus.emit("keeper:selected", { keeperId: "dreams" });
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    const input = screen.getByRole("textbox", { name: /ask/i });
+    const input = screen.getByRole("textbox", { name: /speak to/i });
     const form = input.closest("form");
     await user.type(input, "anything?");
     await user.keyboard("{Enter}");
@@ -372,8 +364,9 @@ describe("createDialog", () => {
   it("grounded ask: clickable book links under the reply, staggered glow, memory:used", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/dreams/ask`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json({
+          kind: "ask",
           answer: "You dreamt of water.",
           grounded: true,
           followup: false,
@@ -390,8 +383,7 @@ describe("createDialog", () => {
     bus.on("book:open", opened);
     bus.emit("keeper:selected", { keeperId: "dreams" });
 
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    await user.type(screen.getByRole("textbox", { name: /ask/i }), "what did I dream?");
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "what did I dream?");
     await user.keyboard("{Enter}");
 
     const box = await screen.findByLabelText("consulted books");
@@ -439,13 +431,12 @@ describe("createDialog", () => {
       tags: [`tag-${i}`],
     }));
     server.use(
-      http.post(`${BASE}/keepers/dreams/ask`, () =>
-        HttpResponse.json({ answer: "Many books.", grounded: true, followup: false, sources }),
+      http.post(`${BASE}/keepers/dreams/say`, () =>
+        HttpResponse.json({ kind: "ask", answer: "Many books.", grounded: true, followup: false, sources }),
       ),
     );
     bus.emit("keeper:selected", { keeperId: "dreams" });
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    await user.type(screen.getByRole("textbox", { name: /ask/i }), "everything?");
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "everything?");
     await user.keyboard("{Enter}");
 
     const box = await screen.findByLabelText("consulted books");
@@ -453,11 +444,12 @@ describe("createDialog", () => {
     expect(screen.queryByRole("button", { name: /scroll books/ })).toBeNull();
   });
 
-  it("ungrounded ask with followup: no-memory hint + save shortcut pre-fills the Tell tab", async () => {
+  it("ungrounded ask with followup: no-memory hint + save shortcut pre-fills the input", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/dreams/ask`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json({
+          kind: "ask",
           answer: "When did that concert happen?",
           sources: [],
           grounded: false,
@@ -469,8 +461,7 @@ describe("createDialog", () => {
     bus.on("memory:used", used);
     bus.emit("keeper:selected", { keeperId: "dreams" });
 
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    await user.type(screen.getByRole("textbox", { name: /ask/i }), "the concert we went to");
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "the concert we went to");
     await user.keyboard("{Enter}");
 
     await screen.findByText(/she does not remember this/i);
@@ -480,24 +471,61 @@ describe("createDialog", () => {
     expect(screen.queryByLabelText("consulted books")).toBeNull();
     expect(used).not.toHaveBeenCalled();
 
-    // the shortcut jumps to Tell with the question pre-filled and sendable
+    // the shortcut pre-fills the input with keep-this wording (routes as tell)
     await user.click(screen.getByRole("button", { name: /save this as a memory/i }));
-    const tellTab = screen.getByRole("tab", { name: "Tell" });
-    expect(tellTab.getAttribute("aria-selected")).toBe("true");
-    const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
-    expect(input.value).toBe("the concert we went to");
+    const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
+    expect(input.value).toBe("Remember this: the concert we went to");
+  });
+
+  it("an ungrounded answer without followup renders as a plain reply (a question about her)", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post(`${BASE}/keepers/dreams/say`, () =>
+        HttpResponse.json({
+          kind: "ask",
+          answer: "I keep your dreams and can look up songs and movies.",
+          sources: [],
+          grounded: false,
+          followup: false,
+        }),
+      ),
+    );
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "what can you do?");
+    await user.keyboard("{Enter}");
+    await screen.findByText(/I keep your dreams/);
+    expect(screen.queryByText(/she does not remember this/i)).toBeNull();
+  });
+
+  it("the + button attaches a .md file: its content is sent to keep, the chat shows the file reference", async () => {
+    const user = userEvent.setup();
+    let sent = null;
+    server.use(
+      http.post(`${BASE}/keepers/dreams/say`, async ({ request }) => {
+        sent = await request.json();
+        return HttpResponse.json({ kind: "tell", reply: "Kept from your file." });
+      }),
+    );
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    const file = new File(["# March\nWe sailed at dawn."], "march-notes.md", { type: "text/markdown" });
+    const picker = root.querySelector('input[type="file"]');
+    Object.defineProperty(picker, "files", { configurable: true, value: [file] });
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+    await screen.findByText("Kept from your file.");
+    expect(sent.text).toContain('my file "march-notes.md"');
+    expect(sent.text).toContain("We sailed at dawn.");
+    expect(screen.getByText("[file] march-notes.md")).toBeTruthy(); // scrollback reference
   });
 
   it("omits the save shortcut for unconscious keepers (telling writes no book)", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/still-water/ask`, () =>
-        HttpResponse.json({ answer: "Who told you?", sources: [], grounded: false, followup: true }),
+      http.post(`${BASE}/keepers/still-water/say`, () =>
+        HttpResponse.json({ kind: "ask", answer: "Who told you?", sources: [], grounded: false, followup: true }),
       ),
     );
     bus.emit("keeper:selected", { keeperId: "still-water" });
-    await user.click(screen.getByRole("tab", { name: "Ask" }));
-    await user.type(screen.getByRole("textbox", { name: /ask/i }), "the deep?");
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "the deep?");
     await user.keyboard("{Enter}");
     await screen.findByText(/she does not remember this/i);
     expect(screen.queryByRole("button", { name: /save this as a memory/i })).toBeNull();
@@ -592,7 +620,7 @@ describe("createDialog", () => {
     // dreaming: the composer and the button lock, the status line flips
     expect(screen.getByText("dreaming...")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send to sleep" }).disabled).toBe(true);
-    expect(screen.getByRole("textbox", { name: /tell/i }).disabled).toBe(true);
+    expect(screen.getByRole("textbox", { name: /speak to/i }).disabled).toBe(true);
 
     await waitFor(() => expect(rested).toHaveBeenCalledWith({ keeperId: "dreams" }));
     expect(slept).toHaveBeenCalledTimes(1);
@@ -605,7 +633,7 @@ describe("createDialog", () => {
     );
     expect(screen.getByText("LV 4")).toBeTruthy();
     expect(state.keepers[0].level).toBe(4);
-    expect(screen.getByRole("textbox", { name: /tell/i }).disabled).toBe(false);
+    expect(screen.getByRole("textbox", { name: /speak to/i }).disabled).toBe(false);
     expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe("none");
   });
 
@@ -625,14 +653,14 @@ describe("createDialog", () => {
 
     await screen.findByText("already dreaming"); // toast
     expect(screen.getByRole("button", { name: "Send to sleep" }).disabled).toBe(false);
-    expect(screen.getByRole("textbox", { name: /tell/i }).disabled).toBe(false);
+    expect(screen.getByRole("textbox", { name: /speak to/i }).disabled).toBe(false);
     expect(screen.getByText("she needs to dream")).toBeTruthy();
   });
 
   it("409 NEEDS_SLEEP (shared tell/ask branch) renders the send-to-sleep prompt instead of a toast", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${BASE}/keepers/dreams/tell`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json(
           { error: { code: "NEEDS_SLEEP", message: "she is too tired" } },
           { status: 409 },
@@ -642,7 +670,7 @@ describe("createDialog", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe("none");
 
-    await user.type(screen.getByRole("textbox", { name: /tell/i }), "one more thing");
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "one more thing");
     await user.keyboard("{Enter}");
 
     await waitFor(() =>
@@ -659,7 +687,7 @@ describe("createDialog", () => {
     const user = userEvent.setup();
     let polls = 0;
     server.use(
-      http.post(`${BASE}/keepers/dreams/tell`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json(
           { error: { code: "LIBRARY_FULL", message: "bookcase at capacity" } },
           { status: 409 },
@@ -684,7 +712,7 @@ describe("createDialog", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe("none");
 
-    await user.type(screen.getByRole("textbox", { name: /tell/i }), "one book too many");
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "one book too many");
     await user.keyboard("{Enter}");
 
     // the warm inline note, not a toast

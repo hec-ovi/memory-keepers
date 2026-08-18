@@ -56,6 +56,16 @@ async def test_tell_ask_and_books(client):
     assert (await client.get(f"/keepers/dreams/books/{slug}")).status_code == 404
 
 
+async def test_say_routes_to_tell_or_ask(client):
+    told = (await client.post("/keepers/dreams/say",
+                              json={"text": "I dreamed of a red kite over the bay."})).json()
+    assert told["kind"] == "tell" and told["book"]["source"] == "told"
+
+    asked = (await client.post("/keepers/dreams/say",
+                               json={"text": "what did I dream about the kite?"})).json()
+    assert asked["kind"] == "ask" and asked["grounded"] and asked["sources"]
+
+
 async def test_chatter_and_monument(client):
     line = (await client.get("/keepers/music/chatter")).json()["line"]
     assert 0 < len(line) < 90

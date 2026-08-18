@@ -23,12 +23,12 @@
 // line and a "Send to sleep" button appear: it calls api.sleep, emits
 // "keeper:sleep", disables the chat inputs, polls api.sleepJob until done, then
 // refreshes the keeper record and emits "keeper:rested". A 409 NEEDS_SLEEP from
-// tell/ask is caught and rendered as the same send-to-sleep prompt; a 409
+// a send is caught and rendered as the same send-to-sleep prompt; a 409
 // LIBRARY_FULL from tell (her one bookcase is full) renders the same prompt
 // with a "her library is full" note: dreaming makes room.
 //
 // Unconscious keepers can be talked to as well: she listens and answers, but
-// keeps no books of what you tell her (a soft hint on the Tell tab says so;
+// keeps no books of what you tell her (a soft hint above the composer says so;
 // her books are born from dreaming). A tell reply without a book emits no
 // "book:created".
 //
@@ -262,8 +262,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let sleepNote = null;
   let sleepBtn = null;
   let chatLocked = false;
-  let composer = null; // { form, input, micBtn, spkBtn, sync, setTab }
-  let tabSelect = null;
+  let composer = null; // { form, input, micBtn, spkBtn, attachBtn, sync }
 
   // keepers currently dreaming; polling continues even if the panel closes
   const sleepingIds = new Set();
@@ -590,7 +589,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     setChatDisabled(dreaming);
   }
 
-  // A 409 NEEDS_SLEEP from tell/ask lands here: same prompt as a filling meter.
+  // A 409 NEEDS_SLEEP from a send lands here: same prompt as a filling meter.
   function showNeedsSleep() {
     session = { ...(session ?? {}), status: "needs_sleep" };
     renderSession();
@@ -671,15 +670,14 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     sayEl = groundingBox = noteBox = histBox = statusEl = null;
     levelEl = meterEl = meterFill = sleepRow = sleepNote = sleepBtn = null;
     composer = null;
-    tabSelect = null;
     bus?.emit("ui:close", { panel: "dialog" });
   }
 
-  // "Save this as a memory": jump to the Tell tab with the question pre-filled.
-  function prefillTell(text) {
-    if (!composer || !tabSelect) return;
-    tabSelect(0);
-    composer.input.value = text;
+  // "Save this as a memory": pre-fill the input with keep-this wording so the
+  // router reads it as a tell.
+  function prefillMemory(text) {
+    if (!composer) return;
+    composer.input.value = `Remember this: ${text}`;
     composer.sync();
     composer.input.focus();
   }
@@ -698,7 +696,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       if (keeper.kind !== "unconscious") {
         const save = el("button", "holo-btn", "Save this as a memory");
         save.type = "button";
-        save.addEventListener("click", () => prefillTell(question));
+        save.addEventListener("click", () => prefillMemory(question));
         hint.appendChild(save);
       }
       noteBox.appendChild(hint);
@@ -731,9 +729,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     bus?.emit("memory:used", { keeperId: keeper.id, slugs: sources.map((s) => s.slug) });
   }
 
-  // One composer serves both tabs: a pill input merging into the circular mic
-  // button, with a compact round send button inside the pill. Enter sends
-  // (native form submission). The Tell/Ask tabs only flip what a send means.
+  // One pill input for the whole conversation, merging into the round attach,
+  // speaker and mic buttons. Enter sends (native form submission); the model
+  // routes each send to tell or ask.
   function buildComposer(keeper) {
     const form = doc.createElement("form");
     form.className = "mk-dialog-io";
@@ -741,6 +739,36 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     const input = doc.createElement("input");
     input.type = "text";
     input.className = "mk-dialog-field";
+
+    // Attach: a .md/.txt file whose content is kept as a memory.
+    const fileInput = doc.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".md,.txt,text/markdown,text/plain";
+    fileInput.style.display = "none";
+    fileInput.setAttribute("aria-hidden", "true");
+    const attachBtn = el("button", "holo-btn mk-dialog-mic", "+");
+    attachBtn.type = "button";
+    attachBtn.setAttribute("aria-label", "attach a memory file");
+    attachBtn.addEventListener("click", () => fileInput.click());
+    const readFileText = (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new (win.FileReader ?? FileReader)();
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(file);
+      });
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = "";
+      if (!file) return;
+      const body = (await readFileText(file)).trim();
+      if (!body) {
+        toastInfo("that file is empty");
+        return;
+      }
+      send(`Keep this memory from my file "${file.name}":\n\n${body}`,
+           { label: `[file] ${file.name}` });
+    });
 
     // Speaker toggle: spoken replies on/off; glows while she speaks.
     const spkBtn = el("button", "holo-btn mk-dialog-mic mk-dialog-spk", "🔊");
@@ -765,7 +793,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       else startRecording("pointer");
     });
 
-    form.append(input, spkBtn, micBtn);
+    form.append(input, fileInput, attachBtn, spkBtn, micBtn);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -774,7 +802,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       }
     });
 
-    let tab = "tell";
     let sending = false;
 
     const sync = () => {
@@ -782,26 +809,18 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     };
     input.addEventListener("input", sync);
 
-    const setTab = (name) => {
-      tab = name;
-      const who = keeper.name || keeper.id;
-      if (keeper.monument) {
-        input.setAttribute("aria-label", `speak to ${who}`);
-        input.placeholder = "ask across every shelf, or ask for a new keeper...";
-        return;
-      }
-      if (name === "tell") {
-        input.setAttribute("aria-label", `tell ${who}`);
-        input.placeholder = "tell her something to remember...";
-      } else {
-        input.setAttribute("aria-label", `ask ${who}`);
-        input.placeholder = "ask her a question...";
-      }
-    };
+    const who = keeper.name || keeper.id;
+    input.setAttribute("aria-label", `speak to ${who}`);
+    input.placeholder = keeper.monument
+      ? "ask across every shelf, or ask for a new keeper..."
+      : "tell her a memory, or ask her anything...";
 
-    form.addEventListener("submit", async (e) => {
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const text = input.value.trim();
+      send(input.value.trim());
+    });
+
+    async function send(text, { label } = {}) {
       if (!text || sending || chatLocked) return;
       sending = true;
       sync();
@@ -819,31 +838,24 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
           if (res?.created_keeper) {
             bus?.emit("keeper:created", res.created_keeper);
           }
-        } else if (tab === "tell") {
-          const res = await api.tell(keeper.id, text);
-          setInFlight(false);
-          ensureThinking(form, false);
-          pushHistory("user", text);
-          say(res?.reply ?? "...", { md: true });
-          input.value = "";
-          // Unconscious tells are conversational: she listens, no book is
-          // written, so there is nothing to count or announce.
-          if (res?.book) {
-            const rec = state?.keepers?.find((a) => a.id === keeper.id);
-            if (rec) rec.book_count = (rec.book_count ?? 0) + 1;
-            bus?.emit("book:created", { keeperId: keeper.id, book: res.book });
-          }
-          if (res?.session) {
-            session = { ...res.session };
-            renderSession();
-          }
         } else {
-          const res = await api.ask(keeper.id, text);
+          const res = await api.say(keeper.id, text);
           setInFlight(false);
           ensureThinking(form, false);
-          pushHistory("user", text);
-          renderAskResult(keeper, res, text);
-          say(res?.answer ?? "", { md: true });
+          pushHistory("user", label ?? text);
+          if (res?.kind === "ask") {
+            renderAskResult(keeper, res, text);
+            say(res?.answer ?? "", { md: true });
+          } else {
+            say(res?.reply ?? "...", { md: true });
+            // Unconscious tells are conversational: she listens, no book is
+            // written, so there is nothing to count or announce.
+            if (res?.book) {
+              const rec = state?.keepers?.find((a) => a.id === keeper.id);
+              if (rec) rec.book_count = (rec.book_count ?? 0) + 1;
+              bus?.emit("book:created", { keeperId: keeper.id, book: res.book });
+            }
+          }
           input.value = "";
           if (res?.session) {
             session = { ...res.session };
@@ -856,16 +868,14 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
         if (err?.code === "NEEDS_SLEEP") showNeedsSleep();
         else if (err?.code === "LIBRARY_FULL") showLibraryFull();
         else if (keeper.monument) toastError(err?.message || "the island did not answer");
-        else if (tab === "tell") toastError(err?.message || "she could not write that down");
-        else toastError(err?.message || "she could not find an answer");
+        else toastError(err?.message || "she could not answer that");
       } finally {
         sending = false;
         sync();
       }
-    });
+    }
 
-    composer = { form, input, micBtn, spkBtn, sync, setTab };
-    setTab("tell");
+    composer = { form, input, micBtn, spkBtn, attachBtn, sync };
     sync();
     return form;
   }
@@ -876,7 +886,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     close();
     const keeper = keeperFor(keeperId);
     const isMonument = keeper.monument === true;
-    tabSelect = null; // a fresh panel wires its own tabs (the main keeper has none)
     levelEl = meterEl = meterFill = null; // rebuilt per panel; absent for the main keeper
     currentId = keeperId;
     keeperName = keeper.name || keeper.id;
@@ -951,46 +960,17 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     sleepRow.append(sleepNote, sleepBtn);
     content.appendChild(sleepRow);
 
-    // Tabs flip what the composer's send means (the main keeper has one voice).
-    if (!isMonument) {
-    const tabs = el("div", "holo-tabs");
-    tabs.setAttribute("role", "tablist");
-    const tabDefs = ["Tell", "Ask"];
-    const tabBtns = tabDefs.map((name, i) => {
-      const btn = el("button", "holo-tab", name);
-      btn.type = "button";
-      btn.setAttribute("role", "tab");
-      btn.addEventListener("click", () => select(i));
-      tabs.appendChild(btn);
-      return btn;
-    });
-    content.appendChild(tabs);
-
     // Unconscious keepers listen but keep no books of what you tell them.
-    let whisper = null;
     if (keeper.kind === "unconscious") {
-      whisper = el(
+      content.appendChild(el(
         "p",
         "mk-dialog-whisper",
         "she listens, but keeps no books of what you tell her. her books are born from dreaming.",
-      );
-      content.appendChild(whisper);
-    }
-
-    function select(index) {
-      tabBtns.forEach((btn, i) => {
-        btn.setAttribute("aria-selected", String(i === index));
-        btn.classList.toggle("holo-tab--active", i === index);
-      });
-      composer?.setTab(index === 0 ? "tell" : "ask");
-      if (whisper) whisper.style.display = index === 0 ? "" : "none";
-    }
-    tabSelect = select;
+      ));
     }
 
     // The composer, pinned to the bottom of the panel.
     content.appendChild(buildComposer(keeper));
-    tabSelect?.(0);
 
     holo = createHoloPanel({
       title: keeper.name || keeper.id,

@@ -227,6 +227,7 @@ export function createApi({
     listKeepers: () => request("/keepers").then((list) => (list ?? []).map(normKeeper)),
     getKeeper: (keeperId) => request(`/keepers/${id(keeperId)}`).then(normKeeper),
     deleteKeeper: (keeperId) => request(`/keepers/${id(keeperId)}`, { method: "DELETE" }),
+    say: (keeperId, text) => request(`/keepers/${id(keeperId)}/say`, { method: "POST", body: { text } }),
     tell: (keeperId, text) => request(`/keepers/${id(keeperId)}/tell`, { method: "POST", body: { text } }),
     ask: (keeperId, question) => request(`/keepers/${id(keeperId)}/ask`, { method: "POST", body: { question } }),
     getChatter: (keeperId) => request(`/keepers/${id(keeperId)}/chatter`),

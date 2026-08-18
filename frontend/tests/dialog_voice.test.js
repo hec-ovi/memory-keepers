@@ -91,7 +91,7 @@ describe("push-to-talk", () => {
     let told = null;
     server.use(
       http.post(`${BASE}/voice/stt`, () => HttpResponse.json({ text: "I flew over a black ocean" })),
-      http.post(`${BASE}/keepers/dreams/tell`, async ({ request }) => {
+      http.post(`${BASE}/keepers/dreams/say`, async ({ request }) => {
         told = await request.json();
         return HttpResponse.json({ reply: "I wrote it down." });
       }),
@@ -114,13 +114,13 @@ describe("push-to-talk", () => {
     expect(micButton().getAttribute("aria-pressed")).toBe("false");
     await screen.findByText("I wrote it down.");
     expect(told).toEqual({ text: "I flew over a black ocean" });
-    expect(screen.getByRole("textbox", { name: /tell/i }).value).toBe("");
+    expect(screen.getByRole("textbox", { name: /speak to/i }).value).toBe("");
   });
 
   it("T aimed at the composer input types instead of recording", async () => {
     const user = userEvent.setup();
     bus.emit("keeper:selected", { keeperId: "dreams" });
-    const input = screen.getByRole("textbox", { name: /tell/i });
+    const input = screen.getByRole("textbox", { name: /speak to/i });
     await user.click(input);
     await user.keyboard("t");
     expect(input.value).toBe("t");
@@ -132,7 +132,7 @@ describe("push-to-talk", () => {
     const user = userEvent.setup();
     server.use(
       http.post(`${BASE}/voice/stt`, () => HttpResponse.json({ text: "hello from the mic" })),
-      http.post(`${BASE}/keepers/dreams/tell`, () => HttpResponse.json({ reply: "heard you." })),
+      http.post(`${BASE}/keepers/dreams/say`, () => HttpResponse.json({ reply: "heard you." })),
     );
     const voiceStates = [];
     bus.on("voice:state", (p) => voiceStates.push(p.mode));
@@ -194,7 +194,7 @@ describe("push-to-talk", () => {
     await user.keyboard("{/t}");
     await screen.findByText(/no words came through/i);
     // nothing landed in the composer, no tell left the panel (MSW would error)
-    expect(screen.getByRole("textbox", { name: /tell/i }).value).toBe("");
+    expect(screen.getByRole("textbox", { name: /speak to/i }).value).toBe("");
   });
 });
 
@@ -203,7 +203,7 @@ describe("spoken replies", () => {
     const user = userEvent.setup();
     let ttsBody = null;
     server.use(
-      http.post(`${BASE}/keepers/dreams/tell`, () => HttpResponse.json({ reply: "I wrote it down." })),
+      http.post(`${BASE}/keepers/dreams/say`, () => HttpResponse.json({ reply: "I wrote it down." })),
       http.post(`${BASE}/voice/tts`, async ({ request }) => {
         ttsBody = await request.json();
         return new HttpResponse(new Uint8Array([1, 2, 3]).buffer, {
@@ -214,7 +214,7 @@ describe("spoken replies", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     await user.click(speakerToggle());
 
-    await user.type(screen.getByRole("textbox", { name: /tell/i }), "remember the rain{Enter}");
+    await user.type(screen.getByRole("textbox", { name: /speak to/i }), "remember the rain{Enter}");
     await screen.findByText("I wrote it down.");
     await waitFor(() => expect(ttsBody).toEqual({ text: "I wrote it down.", kind: "light" }));
     await waitFor(() => expect(playSpy).toHaveBeenCalled());
@@ -225,7 +225,7 @@ describe("spoken replies", () => {
     const user = userEvent.setup();
     const kinds = [];
     server.use(
-      http.post(`${BASE}/keepers/still-water/tell`, () =>
+      http.post(`${BASE}/keepers/still-water/say`, () =>
         HttpResponse.json({ reply: "the water hears." }),
       ),
       http.post(`${BASE}/monument`, () => HttpResponse.json({ reply: "the island answers." })),
@@ -238,7 +238,7 @@ describe("spoken replies", () => {
     );
     bus.emit("keeper:selected", { keeperId: "still-water" });
     await user.click(speakerToggle());
-    await user.type(screen.getByRole("textbox", { name: /tell the still water/i }), "hello{Enter}");
+    await user.type(screen.getByRole("textbox", { name: /speak to the still water/i }), "hello{Enter}");
     await screen.findByText("the water hears.");
     await waitFor(() => expect(kinds).toEqual(["dark"]));
 
@@ -253,7 +253,7 @@ describe("spoken replies", () => {
     const user = userEvent.setup();
     let sends = 0;
     server.use(
-      http.post(`${BASE}/keepers/dreams/tell`, () =>
+      http.post(`${BASE}/keepers/dreams/say`, () =>
         HttpResponse.json({ reply: ++sends === 1 ? "first reply." : "second reply." }),
       ),
       http.post(`${BASE}/voice/tts`, () =>
@@ -266,7 +266,7 @@ describe("spoken replies", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     await user.click(speakerToggle());
 
-    const input = screen.getByRole("textbox", { name: /tell/i });
+    const input = screen.getByRole("textbox", { name: /speak to/i });
     await user.type(input, "one{Enter}");
     await screen.findByText("first reply.");
     await screen.findByText(/her voice could not reach you/i);

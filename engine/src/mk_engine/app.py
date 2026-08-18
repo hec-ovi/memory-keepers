@@ -144,6 +144,17 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
         return {"deleted": True}
 
     # -- chat --------------------------------------------------------------
+    @app.post("/keepers/{kid}/say")
+    async def say(kid: str, body: dict, x_world: str | None = Header(default=None)):
+        world = world_of(x_world)
+        text = str(body.get("text", "")).strip()
+        if not text:
+            raise ApiError("VALIDATION", "text is required")
+        gate_chat(world, kid)
+        out = await agents_api.keeper_say(world, kid, text)
+        await check_tired(world, kid)
+        return out | {"session": keeper_payload(world, kid)["session"]}
+
     @app.post("/keepers/{kid}/tell")
     async def tell(kid: str, body: dict, x_world: str | None = Header(default=None)):
         world = world_of(x_world)

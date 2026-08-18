@@ -51,5 +51,19 @@ def harvest_constraints(text: str) -> list[str]:
             if s.strip() and CONSTRAINT_RE.search(s)]
 
 
+ASK_OPENERS = frozenset(
+    "what when where who whom whose why how which did do does can could would "
+    "should is are was were am will have has had remind tell show".split())
+
+
+def route_by_wording(text: str) -> str:
+    """Deterministic tell/ask routing when no model is reachable."""
+    t = text.strip().lower()
+    if t.endswith("?") or "?" in t.split("\n", 1)[0]:
+        return "ask"
+    first = re.split(r"[\s,]", t, maxsplit=1)[0]
+    return "ask" if first in ASK_OPENERS else "tell"
+
+
 def dated_citation(row: dict) -> str:
     return f"On {row['date']} you told me: {row['one_liner']}"

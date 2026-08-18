@@ -16,6 +16,11 @@ from google.genai import types
 # Keep identical to mk_agents.fallbacks.STOPWORDS (models cannot import from agents).
 STOPWORDS = {"the", "and", "that", "with", "about", "this", "from", "have", "what",
              "when", "where", "there", "were", "will", "your", "into", "just", "like"}
+# Keep identical to mk_agents.fallbacks.ASK_OPENERS (models cannot import
+# from agents); the fake router must match the real fallback.
+ASK_OPENERS = frozenset(
+    "what when where who whom whose why how which did do does can could "
+    "would should is are was were am will have has had remind tell show".split())
 SLUG_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}-[a-z0-9-]+\b")
 ENTITY_RE = re.compile(r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b")
 YOUTUBE_RE = re.compile(r"https?://\S*(?:youtube\.com|youtu\.be)/\S+")
@@ -129,6 +134,13 @@ class FakeLlm(BaseLlm):
             if detail:
                 return f"\n\nFrom the lookup, kept in the margin: {detail[:400]}"
         return ""
+
+    def _say_route(self, req, system) -> types.Content:
+        t = self._last_user_text(req).strip().lower()
+        first = re.split(r"[\s,]", t, maxsplit=1)[0] if t else ""
+        ask = t.endswith("?") or "?" in t.split("\n", 1)[0] or first in ASK_OPENERS
+        return types.Content(role="model", parts=[
+            types.Part(text=json.dumps({"kind": "ask" if ask else "tell"}))])
 
     def _keeper_tell(self, req, system) -> types.Content:
         text = self._last_user_text(req)

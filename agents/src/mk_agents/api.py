@@ -12,7 +12,8 @@ from mk_models import ModelGateway
 
 from . import chatter, dates
 from .fallbacks import (STOPWORDS, dated_citation, extract_book_fields,
-                        first_sentence, harvest_constraints, parse_json)
+                        first_sentence, harvest_constraints, parse_json,
+                        route_by_wording)
 from .prompting import index_block, prompt, session_block
 from .runtime import build_agent, run_agent
 
@@ -89,6 +90,29 @@ class AgentsApi:
         return read_book
 
     # -- keeper chat --------------------------------------------------------
+    async def keeper_say(self, world: str, kid: str, text: str) -> dict:
+        """One door for both flows: the model reads the message and routes it
+        to tell (keep a memory) or ask (answer from the shelves)."""
+        kind = await self._route_say(text)
+        if kind == "ask":
+            out = await self.keeper_ask(world, kid, text)
+        else:
+            out = await self.keeper_tell(world, kid, text)
+        return out | {"kind": kind}
+
+    async def _route_say(self, text: str) -> str:
+        try:
+            raw, _ = await run_agent(
+                build_agent("say_route", self.gateway.model_for("chat"),
+                            prompt("say_route"), []),
+                text)
+            kind = (parse_json(raw) or {}).get("kind")
+            if kind in ("tell", "ask"):
+                return kind
+        except Exception:
+            log.exception("say router failed, falling back to wording")
+        return route_by_wording(text)
+
     async def keeper_tell(self, world: str, kid: str, text: str) -> dict:
         keeper = self.library.get_keeper(world, kid)
         session = self.library.session_read(world, kid)
@@ -167,7 +191,9 @@ class AgentsApi:
             used = [s for s in data["used_slugs"] if s in set(opened)]
             grounded = bool(used)
             answer = str(data.get("answer") or "").strip()
-            followup = bool(data.get("needs_followup")) or not grounded
+            # The model owns needs_followup: an ungrounded answer can still be
+            # complete (a question about her, not about a memory).
+            followup = bool(data.get("needs_followup"))
         if not answer:
             if shortlist:
                 used, grounded, followup = [shortlist[0]["slug"]], True, False

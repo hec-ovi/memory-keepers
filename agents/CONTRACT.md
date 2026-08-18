@@ -14,6 +14,7 @@ Class `AgentsApi(library, gateway, lookups=None)`; `lookups` is a `LookupsApi`-s
 
 | method | in | out |
 |---|---|---|
+| `keeper_say(world, kid, text)` async | user message | routes the message with one model call (`say_route` prompt; wording fallback when the model fails) and returns the tell or ask result plus `kind: "tell"\|"ask"` |
 | `keeper_tell(world, kid, text)` async | user message | `{reply, book?, book_grown?}`; a follow-up naming an existing book grows it (`extends_slug` from the model, validated against her shelf, appended as a dated section) and returns `book_grown` instead of `book`; the keeper authors the book's full body from the told memory (markdown, sized by the material; the raw text is the fallback body); dark keepers reply in archetype voice, never write; `LIBRARY_FULL` raises after the turns are still recorded |
 | `keeper_ask(world, kid, question)` async | question | `{answer, sources, grounded, followup}` |
 | `keeper_chatter(world, kid)` | | one bubble line (< 90 chars): deterministic per-keeper pools, time-bucketed rotation, no model, no writes |
@@ -23,7 +24,7 @@ Class `AgentsApi(library, gateway, lookups=None)`; `lookups` is a `LookupsApi`-s
 
 ## Invariants
 
-- Grounding in `keeper_ask` is validated outside the model: `used_slugs` are filtered to books the agent actually opened via `read_book`; nothing left means `grounded: false` plus a follow-up. A memory is never invented.
+- Grounding in `keeper_ask` is validated outside the model: `used_slugs` are filtered to books the agent actually opened via `read_book`; nothing left means `grounded: false`. The model owns `followup`: an ungrounded answer with `followup: false` is a complete answer about the keeper herself, never an invented memory.
 - Relative dates in questions resolve by rules (`dates.py`) and bias the shortlist; no model involved.
 - Every tell/ask appends both turns to the keeper's session, harvests imperative constraint sentences verbatim, and meters reported token usage (estimate fallback).
 - Every model call goes through `gateway.model_for(role)`; roles used: `chat`, `dream`.
