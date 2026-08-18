@@ -5,9 +5,11 @@
 // Recent exchanges collapse into a small scrollback at the top.
 //
 // Layout: the panel is a flex column with the COMPOSER PINNED TO THE BOTTOM.
-// One composer serves both tabs (Tell / Ask select what a send means): a pill
-// input whose right end merges into the round speaker toggle and mic button;
-// Enter sends.
+// ONE input serves the whole conversation (the model routes each send to tell
+// or ask via api.say): a pill whose right end merges into the round mic
+// button, with the attach (+) button outside the pill; Enter sends. The chat
+// scrollback is a framed block at the top. The speaker toggle lives in the
+// panel header.
 //
 // Chat grounding: an ask reply that is grounded in books renders full-width
 // clickable book links under the reply (spine-colored bar + full title, glow
@@ -40,12 +42,12 @@
 // is inert (body.ui-recording): no click or Esc can interrupt a live take.
 // Stopping sends the clip to api.stt and the transcription goes through the
 // exact same send path as a typed message.
-// The round speaker button in the composer toggles spoken replies: when ON
-// each completed reply is fetched from api.tts (monument panel -> "monument",
-// unconscious keeper -> "dark", else "light") and played from a Blob object
-// URL (revoked after playback); it glows while she speaks. VOICE_UNAVAILABLE
-// or a denied microphone toasts once and rests the mic for the session; a TTS
-// failure never breaks the dialog.
+// The header speaker button toggles spoken replies: when ON each completed
+// reply is fetched from api.tts (monument panel -> "monument", unconscious
+// keeper -> "dark", else "light") and played from a Blob object URL (revoked
+// after playback); it glows while she speaks. VOICE_UNAVAILABLE or a denied
+// microphone toasts once and rests the mic for the session; a TTS failure
+// never breaks the dialog.
 //
 //   const dialog = createDialog({ root, state, bus, api, toasts });
 //   dialog.open("dreams"); dialog.close(); dialog.dispose();
@@ -81,8 +83,11 @@ const CSS = `
 .mk-dialog-inner{flex:1;min-height:0;display:flex;flex-direction:column;}
 .mk-dialog-chips{margin-bottom:8px;}
 .mk-dialog-join{display:block;width:100%;margin:2px 0 10px;}
-/* scrollback: newest at the bottom (autoscrolled), older rows scroll away */
-.mk-dialog-hist{max-height:16vh;overflow-y:auto;margin-bottom:8px;}
+/* scrollback: a framed chat block, newest at the bottom (autoscrolled),
+   older rows scroll away behind a always-visible thin scrollbar */
+.mk-dialog-hist{max-height:22vh;overflow-y:scroll;margin-bottom:8px;padding:4px;border:1px solid var(--holo-line,rgba(255,166,64,.42));border-radius:4px;background:rgba(0,0,0,.35);scrollbar-width:thin;scrollbar-color:var(--holo-amber-dim,rgba(255,166,64,.55)) transparent;}
+.mk-dialog-hist::-webkit-scrollbar{width:6px;}
+.mk-dialog-hist::-webkit-scrollbar-thumb{background:var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:3px;}
 .mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;}
 .mk-dialog-hist-who{color:var(--holo-cyan,#3fe0ff);margin-right:6px;text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;}
 .mk-dialog-hist-row-keeper{color:var(--holo-amber-hi,#ffd9a0);}
@@ -95,8 +100,9 @@ const CSS = `
 .mk-dialog-say p:first-child{margin-top:0;}
 .mk-dialog-say p:last-child{margin-bottom:0;}
 
-/* composer: pill input whose right end merges into the circular mic button */
-.mk-dialog-io{position:relative;display:flex;align-items:center;gap:4px;margin-top:auto;border:1px solid var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:999px;background:rgba(10,5,2,.75);padding:3px 3px 3px 14px;}
+/* composer row: the pill (input + mic) with the attach button outside it */
+.mk-dialog-composer{display:flex;align-items:center;gap:6px;margin-top:auto;}
+.mk-dialog-io{position:relative;flex:1;min-width:0;display:flex;align-items:center;gap:4px;border:1px solid var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:999px;background:rgba(10,5,2,.75);padding:3px 3px 3px 14px;}
 .mk-dialog-io.holo-thinking{border-radius:999px;}
 .mk-dialog-io.holo-thinking::before,.mk-dialog-io.holo-thinking::after{border-radius:999px;}
 .mk-dialog-field{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--holo-amber-hi,#ffd9a0);caret-color:var(--holo-cyan,#3fe0ff);font-family:var(--holo-font,inherit);font-size:.92rem;letter-spacing:.02em;padding:8px 0;}
@@ -104,6 +110,9 @@ const CSS = `
 .mk-dialog-field:disabled{opacity:.5;}
 .mk-dialog-mic{width:38px;height:38px;min-width:38px;border-radius:50%;padding:0;font-size:.95rem;margin:-1px;}
 .mk-dialog-mic[aria-pressed="true"]{background:var(--holo-cyan,#3fe0ff);border-color:transparent;color:#03272e;box-shadow:0 0 14px rgba(63,224,255,.6);}
+/* header speaker toggle: spoken replies on/off, glows while she speaks */
+.mk-dialog-spk{margin-left:auto;width:26px;height:26px;min-width:26px;border-radius:50%;padding:0;font-size:.72rem;}
+.mk-dialog-spk[aria-pressed="true"]{background:var(--holo-cyan,#3fe0ff);border-color:transparent;color:#03272e;box-shadow:0 0 10px rgba(63,224,255,.6);}
 .mk-dialog-spk--speaking{box-shadow:0 0 14px rgba(63,224,255,.6);animation:mk-dialog-breathe 1.1s ease-in-out infinite;}
 
 /* while the mic records, everything outside the panel is inert */
@@ -262,7 +271,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let sleepNote = null;
   let sleepBtn = null;
   let chatLocked = false;
-  let composer = null; // { form, input, micBtn, spkBtn, attachBtn, sync }
+  let composer = null; // { form, input, micBtn, attachBtn, sync }
+  let spkBtn = null; // header speaker toggle (spoken replies)
 
   // keepers currently dreaming; polling continues even if the panel closes
   const sleepingIds = new Set();
@@ -318,7 +328,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     lastVoiceMode = mode;
     bus?.emit("voice:state", { keeperId: currentId, mode });
     if (statusEl) statusEl.style.display = mode === "listening" && inFlight ? "" : "none";
-    composer?.spkBtn?.classList.toggle("mk-dialog-spk--speaking", mode === "speaking" && ttsOn);
+    spkBtn?.classList.toggle("mk-dialog-spk--speaking", mode === "speaking" && ttsOn);
   }
 
   function cancelTyping() {
@@ -670,6 +680,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     sayEl = groundingBox = noteBox = histBox = statusEl = null;
     levelEl = meterEl = meterFill = sleepRow = sleepNote = sleepBtn = null;
     composer = null;
+    spkBtn = null;
     bus?.emit("ui:close", { panel: "dialog" });
   }
 
@@ -729,10 +740,11 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     bus?.emit("memory:used", { keeperId: keeper.id, slugs: sources.map((s) => s.slug) });
   }
 
-  // One pill input for the whole conversation, merging into the round attach,
-  // speaker and mic buttons. Enter sends (native form submission); the model
-  // routes each send to tell or ask.
+  // One pill input for the whole conversation, its right end merging into the
+  // round mic button; the attach (+) button sits outside the pill. Enter sends
+  // (native form submission); the model routes each send to tell or ask.
   function buildComposer(keeper) {
+    const row = el("div", "mk-dialog-composer");
     const form = doc.createElement("form");
     form.className = "mk-dialog-io";
 
@@ -746,7 +758,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     fileInput.accept = ".md,.txt,text/markdown,text/plain";
     fileInput.style.display = "none";
     fileInput.setAttribute("aria-hidden", "true");
-    const attachBtn = el("button", "holo-btn mk-dialog-mic", "+");
+    const attachBtn = el("button", "holo-btn mk-dialog-mic mk-dialog-attach", "+");
     attachBtn.type = "button";
     attachBtn.setAttribute("aria-label", "attach a memory file");
     attachBtn.addEventListener("click", () => fileInput.click());
@@ -770,19 +782,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
            { label: `[file] ${file.name}` });
     });
 
-    // Speaker toggle: spoken replies on/off; glows while she speaks.
-    const spkBtn = el("button", "holo-btn mk-dialog-mic mk-dialog-spk", "🔊");
-    spkBtn.type = "button";
-    spkBtn.setAttribute("aria-label", "toggle voice replies");
-    spkBtn.setAttribute("aria-pressed", "false");
-    spkBtn.addEventListener("click", () => {
-      ttsOn = !ttsOn;
-      if (!ttsOn) stopPlayback();
-      spkBtn.setAttribute("aria-pressed", String(ttsOn));
-      spkBtn.classList.toggle("mk-dialog-spk--speaking", false);
-      bus?.emit("voice:tts", { keeperId: keeper.id, on: ttsOn });
-    });
-
     // The hold-T twin as a toggle: click starts the same recording, click stops.
     const micBtn = el("button", "holo-btn mk-dialog-mic", "🎙");
     micBtn.type = "button";
@@ -793,7 +792,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       else startRecording("pointer");
     });
 
-    form.append(input, fileInput, attachBtn, spkBtn, micBtn);
+    form.append(input, micBtn);
+    row.append(form, fileInput, attachBtn);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -875,9 +875,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       }
     }
 
-    composer = { form, input, micBtn, spkBtn, attachBtn, sync };
+    composer = { form, input, micBtn, attachBtn, sync };
     sync();
-    return form;
+    return row;
   }
 
   function open(keeperId) {
@@ -1000,6 +1000,24 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       meterEl.appendChild(meterFill);
       sess.append(levelEl, meterEl);
       head.insertBefore(sess, head.querySelector(".holo-close"));
+    }
+
+    // Header speaker toggle: spoken replies on/off, right before the ✕.
+    const headEl = holo.el.querySelector(".holo-panel__head");
+    if (headEl) {
+      spkBtn = el("button", "holo-btn mk-dialog-spk", "🔊");
+      spkBtn.type = "button";
+      spkBtn.setAttribute("aria-label", "toggle voice replies");
+      spkBtn.setAttribute("aria-pressed", "false");
+      const kidForTts = keeper.id;
+      spkBtn.addEventListener("click", () => {
+        ttsOn = !ttsOn;
+        if (!ttsOn) stopPlayback();
+        spkBtn.setAttribute("aria-pressed", String(ttsOn));
+        spkBtn.classList.toggle("mk-dialog-spk--speaking", false);
+        bus?.emit("voice:tts", { keeperId: kidForTts, on: ttsOn });
+      });
+      headEl.insertBefore(spkBtn, headEl.querySelector(".holo-close"));
     }
     renderSession();
 

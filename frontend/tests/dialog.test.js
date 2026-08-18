@@ -68,31 +68,35 @@ describe("createDialog", () => {
     expect(closed).not.toHaveBeenCalled();
   });
 
-  it("composer: pill pinned to the panel bottom with the mic merged into its right end", () => {
+  it("composer: pill pinned to the panel bottom, mic inside its right end, attach outside", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     const inner = root.querySelector(".mk-dialog-inner");
+    const row = root.querySelector(".mk-dialog-composer");
     const form = root.querySelector("form.mk-dialog-io");
-    // bottom-pinned: the composer is the last block of the flex column
-    expect(inner.lastElementChild).toBe(form);
-    // the input and the mic live INSIDE the pill; Enter sends
+    // bottom-pinned: the composer row is the last block of the flex column
+    expect(inner.lastElementChild).toBe(row);
+    // ONLY the input and the mic live inside the pill; Enter sends
     const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
     expect(input.closest("form")).toBe(form);
     const mic = screen.getByRole("button", { name: /toggle talking/i });
     expect(mic.closest("form")).toBe(form);
-    expect(mic.classList.contains("mk-dialog-mic")).toBe(true);
-    // one continuous shape: the circular mic caps the pill's right end
-    expect(form.lastElementChild).toBe(mic);
+    expect(form.lastElementChild).toBe(mic); // the mic caps the pill's right end
+    // the attach button sits OUTSIDE the pill, at the row's right
+    const attach = screen.getByRole("button", { name: /attach a memory file/i });
+    expect(attach.closest("form")).toBeNull();
+    expect(row.lastElementChild).toBe(attach);
   });
 
-  it("one input serves the whole conversation: no tabs, attach + speaker + mic in the pill", () => {
+  it("one input serves the whole conversation: no tabs, the speaker toggle lives in the header", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     expect(screen.queryByRole("tab")).toBeNull();
     const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
     expect(input.placeholder).toBe("tell her a memory, or ask her anything...");
-    const form = input.closest("form");
-    expect(screen.getByRole("button", { name: /attach a memory file/i }).closest("form")).toBe(form);
-    expect(screen.getByRole("button", { name: /toggle voice replies/i }).closest("form")).toBe(form);
-    expect(screen.getByRole("button", { name: /toggle talking/i }).closest("form")).toBe(form);
+    const spk = screen.getByRole("button", { name: /toggle voice replies/i });
+    expect(spk.closest(".holo-panel__head")).not.toBeNull();
+    // the chat scrollback reads as its own framed block
+    const hist = root.querySelector(".mk-dialog-hist");
+    expect(hist.getAttribute("aria-label")).toBe("recent exchanges");
   });
 
   it("tell flow: typing enables submit, in-flight shows UNDERSTANDING, reply types out while SPEAKING", async () => {
