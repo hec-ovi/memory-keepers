@@ -52,8 +52,8 @@ describe("createDialog", () => {
     const panel = root.querySelector(".mk-dialog");
     expect(panel.classList.contains("holo-panel")).toBe(true);
     expect(panel.style.getPropertyValue("--mk-dialog-accent")).toBe("#7c4a6b");
-    // quiet until something happens
-    expect(screen.getByText(/understanding/i).style.display).toBe("none");
+    // the chat block is present and empty until something happens
+    expect(root.querySelector(".mk-dialog-hist").children.length).toBe(0);
   });
 
   it("keeper:deselected leaves the panel open: clicking elsewhere never closes it", () => {
@@ -99,7 +99,7 @@ describe("createDialog", () => {
     expect(hist.getAttribute("aria-label")).toBe("recent exchanges");
   });
 
-  it("tell flow: typing enables submit, in-flight shows UNDERSTANDING, reply types out while SPEAKING", async () => {
+  it("tell flow: typing enables submit, reply types out into the chat while SPEAKING", async () => {
     const user = userEvent.setup();
     const gate = deferred();
     server.use(
@@ -122,16 +122,13 @@ describe("createDialog", () => {
     const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
     await user.type(input, "I flew over a black ocean");
     await user.keyboard("{Enter}");
-    // in flight: the breathing status line
+    // in flight: the voice mode listens and the pill wears the thinking border
     expect(voiceStates[voiceStates.length - 1]).toBe("listening");
-    const status = screen.getByText(/understanding/i);
-    expect(status.style.display).not.toBe("none");
 
     gate.resolve();
     await screen.findByText("I wrote it down."); // typed itself out
     expect(voiceStates[voiceStates.length - 1]).toBe("speaking");
     expect(screen.getByText("I flew over a black ocean")).toBeTruthy(); // scrollback
-    expect(screen.getByText(/understanding/i).style.display).toBe("none");
     expect(input.value).toBe("");
     expect(created).toHaveBeenCalledWith({
       keeperId: "dreams",
@@ -178,7 +175,6 @@ describe("createDialog", () => {
     await screen.findByText("the harness exploded"); // toast
     expect(input.value).toBe("remember this");
     await waitFor(() => expect(voiceStates[voiceStates.length - 1]).toBe("idle"));
-    expect(screen.getByText(/understanding/i).style.display).toBe("none");
     expect(state.keepers[0].book_count).toBe(2); // unchanged
   });
 
@@ -411,13 +407,13 @@ describe("createDialog", () => {
     expect(
       rows[0].querySelector(".mk-dialog-spine").style.getPropertyValue("--mk-book-spine"),
     ).toBe(spineColorFromTags(["flying", "ocean"]));
-    // the links sit UNDER the reply text, inside the reply area
-    const reply = root.querySelector(".mk-dialog-reply");
-    const grounding = root.querySelector(".mk-dialog-grounding");
-    const say = root.querySelector(".mk-dialog-say");
-    expect(reply.contains(grounding)).toBe(true);
-    expect(reply.contains(say)).toBe(true);
-    expect(say.compareDocumentPosition(grounding) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // the links sit inside the chat block, attached under her reply text
+    const hist = root.querySelector(".mk-dialog-hist");
+    expect(hist.contains(box)).toBe(true);
+    const replyRow = box.closest(".mk-dialog-hist-row-keeper");
+    expect(replyRow).not.toBeNull();
+    await screen.findByText("You dreamt of water."); // her text, same row
+    expect(replyRow.textContent).toContain("You dreamt of water.");
 
     // clicking a book row opens the reader
     await user.click(rows[0]);
@@ -469,9 +465,10 @@ describe("createDialog", () => {
     await user.keyboard("{Enter}");
 
     await screen.findByText(/she does not remember this/i);
-    // the follow-up question shows inside the hint
+    // her follow-up question is the typed reply in the same chat row
+    await screen.findByText("When did that concert happen?");
     const hint = root.querySelector(".mk-dialog-nomem");
-    expect(hint.textContent).toContain("When did that concert happen?");
+    expect(hint.closest(".mk-dialog-hist-row-keeper")).not.toBeNull();
     expect(screen.queryByLabelText("consulted books")).toBeNull();
     expect(used).not.toHaveBeenCalled();
 

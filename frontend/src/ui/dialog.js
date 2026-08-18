@@ -1,8 +1,7 @@
-// Holo comm panel for the selected keeper. The reply is the hero: it types
-// itself out in amber and owns the panel's middle. While a Tell/Ask request
-// is in flight an "understanding..." status breathes above it and the
-// composer pill wears the kit's spinning "thinking" border (holo-thinking).
-// Recent exchanges collapse into a small scrollback at the top.
+// Holo comm panel for the selected keeper. The conversation is one framed
+// chat block: your rows and hers, her replies typing themselves out in amber
+// with their book links attached. While a request is in flight the composer
+// pill wears the kit's spinning "thinking" border (holo-thinking).
 //
 // Layout: the panel is a flex column with the COMPOSER PINNED TO THE BOTTOM.
 // ONE input serves the whole conversation (the model routes each send to tell
@@ -91,14 +90,10 @@ const CSS = `
 .mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;}
 .mk-dialog-hist-who{color:var(--holo-cyan,#3fe0ff);margin-right:6px;text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;}
 .mk-dialog-hist-row-keeper{color:var(--holo-amber-hi,#ffd9a0);}
-.mk-dialog-status{margin:4px 0 8px;text-align:center;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);animation:mk-dialog-breathe 1.1s ease-in-out infinite;}
 @keyframes mk-dialog-breathe{0%,100%{opacity:.9;}50%{opacity:.35;}}
-
-/* reply area: the typed reply full width, consulted-book links beneath it */
-.mk-dialog-reply{display:flex;flex-direction:column;gap:6px;min-height:0;overflow-y:auto;}
-.mk-dialog-say{flex:1;min-width:0;min-height:1.2em;font-size:.92rem;line-height:1.45;color:var(--holo-amber-hi,#ffd9a0);}
-.mk-dialog-say p:first-child{margin-top:0;}
-.mk-dialog-say p:last-child{margin-bottom:0;}
+.mk-dialog-hist-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.mk-dialog-hist-body p:first-child{margin-top:0;}
+.mk-dialog-hist-body p:last-child{margin-bottom:0;}
 
 /* composer row: the pill (input + mic) with the attach button outside it */
 .mk-dialog-composer{display:flex;align-items:center;gap:6px;margin-top:auto;}
@@ -252,12 +247,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let typeTimer = null;
   let holdTimer = null;
   let lastVoiceMode = null;
-  let lastReply = null; // { text } shown in the say area, archived on next send
-  let sayEl = null;
-  let groundingBox = null; // under the reply: the consulted-book links
-  let noteBox = null; // full-width: the "she does not remember" hint
   let histBox = null;
-  let statusEl = null;
   let keeperName = "";
 
   // session/sleep state for the open panel
@@ -327,7 +317,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     if (mode === lastVoiceMode) return;
     lastVoiceMode = mode;
     bus?.emit("voice:state", { keeperId: currentId, mode });
-    if (statusEl) statusEl.style.display = mode === "listening" && inFlight ? "" : "none";
     spkBtn?.classList.toggle("mk-dialog-spk--speaking", mode === "speaking" && ttsOn);
   }
 
@@ -340,28 +329,29 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     holdActive = false;
   }
 
-  // Types `text` into the say area; markdown is swapped in once complete so
-  // the final render keeps its formatting.
+  // Types `text` into a fresh keeper chat row; markdown is swapped in once
+  // complete so the final render keeps its formatting. Returns the row's
+  // body so extras (book links, hints) can attach under the text.
   function say(text, { md = false } = {}) {
     cancelTyping();
-    lastReply = { text };
     speakReply(text);
     typingActive = true;
     syncVoice();
-    sayEl.textContent = "";
+    const { span, body } = pushHistory("keeper", "");
     const step = typingStep(text.length);
     let idx = 0;
     const tick = () => {
       idx = Math.min(text.length, idx + step);
-      sayEl.textContent = text.slice(0, idx);
+      span.textContent = text.slice(0, idx);
+      if (histBox) histBox.scrollTop = histBox.scrollHeight;
       if (idx >= text.length) {
         typeTimer = null;
         if (md) {
-          sayEl.textContent = "";
-          renderMd(sayEl, text);
+          span.textContent = "";
+          renderMd(span, text);
         }
         typingActive = false;
-        holdActive = true; // the viz keeps pulsing a beat after the last word
+        holdActive = true; // she keeps glowing a beat after the last word
         syncVoice();
         holdTimer = win.setTimeout(() => {
           holdTimer = null;
@@ -373,32 +363,29 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       typeTimer = win.setTimeout(tick, 14);
     };
     typeTimer = win.setTimeout(tick, 14);
+    return body;
   }
 
-  // The previous reply collapses into the scrollback when a new send starts.
-  function archiveSay() {
-    if (lastReply?.text) pushHistory("keeper", lastReply.text);
-    lastReply = null;
-    if (sayEl) sayEl.textContent = "";
-    if (groundingBox) groundingBox.textContent = "";
-    if (noteBox) noteBox.textContent = "";
-  }
-
-  // Only user rows carry a label; the keeper's rows speak through color alone.
+  // One chat row. Only user rows carry a label; the keeper's rows speak
+  // through color alone. Returns { row, body, span } so the keeper's reply
+  // can type into span and attach extras into body.
   function pushHistory(kind, text) {
-    if (!histBox) return;
+    if (!histBox) return { row: null, body: null, span: null };
     const row = el("div", `mk-dialog-hist-row mk-dialog-hist-row-${kind} holo-row`);
     if (kind === "user") row.appendChild(el("span", "mk-dialog-hist-who", "you"));
-    row.appendChild(el("span", null, text));
+    const body = el("div", "mk-dialog-hist-body");
+    const span = el("span", null, text);
+    body.appendChild(span);
+    row.appendChild(body);
     histBox.appendChild(row);
     while (histBox.children.length > 12) histBox.firstChild.remove();
     histBox.scrollTop = histBox.scrollHeight;
+    return { row, body, span };
   }
 
   function setInFlight(on) {
     inFlight = on;
     syncVoice();
-    if (statusEl) statusEl.style.display = on ? "" : "none";
   }
 
   // --- push-to-talk (hold T or hold the mic button) ---------------------------
@@ -668,7 +655,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     holo = null;
     currentId = null;
     lastVoiceMode = null;
-    lastReply = null;
     inFlight = false;
     ttsOn = false;
     voiceDisabled = false;
@@ -677,7 +663,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     chatLocked = false;
     session = null;
     libraryFull = false;
-    sayEl = groundingBox = noteBox = histBox = statusEl = null;
+    histBox = null;
     levelEl = meterEl = meterFill = sleepRow = sleepNote = sleepBtn = null;
     composer = null;
     spkBtn = null;
@@ -693,24 +679,22 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     composer.input.focus();
   }
 
-  // Grounded ask reply: full-width clickable book links under the reply, one
-  // spine-colored bar + full title per source, glow staggered (lead book
-  // strongest). Ungrounded + followup: the "she does not remember this" hint.
-  function renderAskResult(keeper, res, question) {
-    if (!groundingBox || !noteBox) return;
-    groundingBox.textContent = "";
-    noteBox.textContent = "";
+  // Grounded ask reply: clickable book links attached under the reply text
+  // inside its chat row, one spine-colored bar + full title per source, glow
+  // staggered (lead book strongest). Ungrounded + followup: the "she does not
+  // remember this" hint attaches instead (her follow-up is the typed text).
+  function renderAskResult(keeper, res, question, replyBody) {
+    if (!replyBody) return;
     if (res?.grounded === false && res?.followup === true) {
       const hint = el("div", "mk-dialog-nomem");
       hint.appendChild(el("p", "mk-dialog-nomem-title", "she does not remember this"));
-      if (res?.answer) hint.appendChild(el("p", "mk-dialog-nomem-q", res.answer));
       if (keeper.kind !== "unconscious") {
         const save = el("button", "holo-btn", "Save this as a memory");
         save.type = "button";
         save.addEventListener("click", () => prefillMemory(question));
         hint.appendChild(save);
       }
-      noteBox.appendChild(hint);
+      replyBody.appendChild(hint);
       return;
     }
     const sources = res?.sources ?? [];
@@ -736,7 +720,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     });
 
     box.appendChild(list);
-    groundingBox.appendChild(box);
+    replyBody.appendChild(box);
+    if (histBox) histBox.scrollTop = histBox.scrollHeight;
     bus?.emit("memory:used", { keeperId: keeper.id, slugs: sources.map((s) => s.slug) });
   }
 
@@ -824,7 +809,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       if (!text || sending || chatLocked) return;
       sending = true;
       sync();
-      archiveSay();
       setInFlight(true);
       ensureThinking(form, true);
       try {
@@ -844,8 +828,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
           ensureThinking(form, false);
           pushHistory("user", label ?? text);
           if (res?.kind === "ask") {
-            renderAskResult(keeper, res, text);
-            say(res?.answer ?? "", { md: true });
+            const replyBody = say(res?.answer ?? "", { md: true });
+            renderAskResult(keeper, res, text, replyBody);
           } else {
             say(res?.reply ?? "...", { md: true });
             // Unconscious tells are conversational: she listens, no book is
@@ -925,22 +909,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     histBox.setAttribute("aria-label", "recent exchanges");
     content.appendChild(histBox);
 
-    statusEl = el("p", "mk-dialog-status", "understanding...");
-    statusEl.setAttribute("role", "status");
-    statusEl.style.display = "none";
-    content.appendChild(statusEl);
-
-    // The "she does not remember" hint lands here, full width.
-    noteBox = el("div");
-    content.appendChild(noteBox);
-
-    // Reply area: the typed reply, consulted-book links beneath it.
-    const replyRow = el("div", "mk-dialog-reply");
-    groundingBox = el("div", "mk-dialog-grounding");
-    sayEl = el("div", "mk-dialog-say");
-    sayEl.setAttribute("aria-live", "polite");
-    replyRow.append(sayEl, groundingBox);
-    content.appendChild(replyRow);
 
     // Sleep prompt: status line + Send to sleep, shown when she tires (or her
     // library is full), right above the composer.
