@@ -40,8 +40,6 @@ import {
   DOZE,
   nextDozeState,
   runDozeTimeline,
-  enqueueRemember,
-  nextRemember,
 } from "../src/render/scene_interior.js";
 import * as THREE from "three";
 import { dreamsKeeper, flyingBook, tideBook } from "./ui_fixtures.js";
@@ -338,43 +336,6 @@ describe("doze machine (interior sleep variant)", () => {
     expect(nextDozeState("settling", "sleep")).toBe("settling");
     expect(nextDozeState("nonsense", "sleep")).toBe("nonsense");
     expect(DOZE.initial).toBe("awake");
-  });
-});
-
-describe("remember queue (memory:used fetch logic)", () => {
-  it("enqueues only the FIRST used slug of an event", () => {
-    expect(enqueueRemember([], ["a", "b", "c"])).toEqual(["a"]);
-    expect(enqueueRemember([], "solo")).toEqual(["solo"]);
-  });
-
-  it("skips empty/garbage slug lists without touching the queue", () => {
-    expect(enqueueRemember(["x"], [])).toEqual(["x"]);
-    expect(enqueueRemember(["x"], [null, "", 42])).toEqual(["x"]);
-    expect(enqueueRemember(["x"], undefined)).toEqual(["x"]);
-  });
-
-  it("dedupes: re-remembering a queued book moves it to the back", () => {
-    expect(enqueueRemember(["a", "b"], ["a"])).toEqual(["b", "a"]);
-    expect(enqueueRemember(["a"], ["a"])).toEqual(["a"]);
-  });
-
-  it("is bounded: keeps only the most recent `limit` slugs", () => {
-    expect(enqueueRemember(["a", "b", "c"], ["d"], { limit: 3 })).toEqual(["b", "c", "d"]);
-    expect(enqueueRemember([], ["a"], { limit: 1 })).toEqual(["a"]);
-    expect(enqueueRemember(["a"], ["b"], { limit: 1 })).toEqual(["b"]);
-  });
-
-  it("nextRemember pops in order, but never while busy", () => {
-    expect(nextRemember(["a", "b"], false)).toEqual({ slug: "a", queue: ["b"] });
-    expect(nextRemember(["a", "b"], true)).toEqual({ slug: null, queue: ["a", "b"] });
-    expect(nextRemember([], false)).toEqual({ slug: null, queue: [] });
-  });
-
-  it("never mutates its inputs (pure)", () => {
-    const q = ["a", "b"];
-    enqueueRemember(q, ["c"]);
-    nextRemember(q, false);
-    expect(q).toEqual(["a", "b"]);
   });
 });
 
@@ -808,6 +769,17 @@ describe("createInteriorScene (headless, no WebGL)", () => {
     scene.dispose();
   });
 
+  it("Sit beside her opens the conversation: chairs view emits keeper:selected", async () => {
+    const { scene, bus } = makeScene();
+    await flush();
+    const selected = vi.fn();
+    bus.on("keeper:selected", selected);
+    bus.emit("interior:view", { view: "chairs" });
+    expect(selected).toHaveBeenCalledWith({ keeperId: "dreams" });
+    expect(scene.viewTarget()).toBe("chairs");
+    scene.dispose();
+  });
+
   it("Back to Keeper in the settled main view gently re-frames on her (no view change)", async () => {
     const { scene, bus } = makeScene();
     await flush();
@@ -996,73 +968,6 @@ describe("createInteriorScene (headless, no WebGL)", () => {
     }
   });
 
-  it("memory:used fetches the FIRST used book physically, without the reader", async () => {
-    const { scene, bus } = makeScene();
-    await flush();
-    const opened = vi.fn();
-    bus.on("book:open", opened);
-    const slug = flyingBook().slug;
-    const mesh = spineMeshes(scene).find((m) => m.userData.slug === slug);
-    const base = mesh.position.clone();
-
-    bus.emit("memory:used", { keeperId: "dreams", slugs: [slug, tideBook().slug] });
-    scene.update(0.05); // the queue drains on the next frame
-    expect(scene.keeperState()).toBe("hopOff");
-
-    // she walks over, pulls it out and holds it with a soft glow
-    advanceUntil(scene, () => scene.keeperState() === "waiting");
-    expect(mesh.position.distanceTo(base)).toBeGreaterThan(0.3); // pulled out
-    const spineMat = mesh.material.find((m) => m.map);
-    scene.update(0.05);
-    expect(spineMat.emissiveIntensity).toBeGreaterThan(0); // the soft glow
-
-    // then reshelves it and returns to her chair on her own; NO reader
-    advanceUntil(scene, () => scene.keeperState() === "sitting");
-    advanceUntil(scene, () => mesh.position.distanceTo(base) < 0.01, 5);
-    expect(mesh.scale.x).toBeCloseTo(1);
-    expect(spineMat.emissiveIntensity).toBe(0); // glow off once reshelved
-    expect(opened).not.toHaveBeenCalled();
-    scene.dispose();
-  });
-
-  it("memory:used for another keeper, unknown slugs, or garbage is skipped gracefully", async () => {
-    const { scene, bus } = makeScene();
-    await flush();
-    bus.emit("memory:used", { keeperId: "meetings", slugs: [flyingBook().slug] });
-    bus.emit("memory:used", { keeperId: "dreams", slugs: ["no-such-book"] });
-    bus.emit("memory:used", { keeperId: "dreams", slugs: [] });
-    bus.emit("memory:used", null);
-    advance(scene, 1);
-    expect(scene.keeperState()).toBe("sitting"); // she never got up
-    expect(scene.rememberPending()).toBe(0);
-    scene.dispose();
-  });
-
-  it("memory:used during a reader flow queues and drains after reader:closed", async () => {
-    const { scene, bus } = makeScene();
-    await flush();
-    const opened = vi.fn();
-    bus.on("book:open", opened);
-
-    scene.pick(flyingBook().slug); // the user's own reader flow
-    advanceUntil(scene, () => scene.keeperState() === "waiting");
-    expect(opened).toHaveBeenCalledTimes(1);
-
-    bus.emit("memory:used", { keeperId: "dreams", slugs: [tideBook().slug] });
-    advance(scene, 2);
-    expect(scene.keeperState()).toBe("waiting"); // still held for the reader
-    expect(scene.rememberPending()).toBe(1); // queued, not skipped
-
-    bus.emit("reader:closed");
-    advanceUntil(scene, () => scene.keeperState() === "sitting");
-    // the queued silent fetch now runs: she gets up again on her own
-    advanceUntil(scene, () => scene.keeperState() !== "sitting", 5);
-    advanceUntil(scene, () => scene.keeperState() === "sitting");
-    expect(scene.rememberPending()).toBe(0);
-    expect(opened).toHaveBeenCalledTimes(1); // the silent fetch never opened it
-    scene.dispose();
-  });
-
   it("keeper:sleep makes her doze on the chair until keeper:rested (eyes shut, Zzz)", async () => {
     const { scene, bus } = makeScene();
     await flush();
@@ -1087,25 +992,6 @@ describe("createInteriorScene (headless, no WebGL)", () => {
     scene.dispose();
   });
 
-  it("keeper:sleep mid memory-fetch sends her home to doze; rested wakes her", async () => {
-    const { scene, bus } = makeScene();
-    await flush();
-    const opened = vi.fn();
-    bus.on("book:open", opened);
-    bus.emit("memory:used", { keeperId: "dreams", slugs: [flyingBook().slug] });
-    advanceUntil(scene, () => scene.keeperState() === "walkToShelf");
-
-    bus.emit("keeper:sleep", { keeperId: "dreams" });
-    expect(scene.dozeState()).toBe("settling");
-    advanceUntil(scene, () => scene.dozeState() === "dozing");
-    expect(scene.keeperState()).toBe("sitting");
-    expect(opened).not.toHaveBeenCalled(); // the fetch aborted silently
-
-    bus.emit("keeper:rested", { keeperId: "dreams" });
-    expect(scene.dozeState()).toBe("awake");
-    scene.dispose();
-  });
-
   it("a pick while she dozes opens the reader without waking her", async () => {
     const { scene, bus } = makeScene();
     await flush();
@@ -1122,27 +1008,6 @@ describe("createInteriorScene (headless, no WebGL)", () => {
     bus.emit("reader:closed");
     advance(scene, 1);
     expect(scene.dozeState()).toBe("dozing"); // still napping
-    scene.dispose();
-  });
-
-  it("memory:used while dozing queues and plays after she wakes", async () => {
-    const { scene, bus } = makeScene();
-    await flush();
-    const opened = vi.fn();
-    bus.on("book:open", opened);
-    bus.emit("keeper:sleep", { keeperId: "dreams" });
-    advanceUntil(scene, () => scene.dozeState() === "dozing");
-
-    bus.emit("memory:used", { keeperId: "dreams", slugs: [tideBook().slug] });
-    advance(scene, 2);
-    expect(scene.keeperState()).toBe("sitting"); // not while she sleeps
-    expect(scene.rememberPending()).toBe(1);
-
-    bus.emit("keeper:rested", { keeperId: "dreams" });
-    advanceUntil(scene, () => scene.keeperState() !== "sitting", 5); // now she fetches
-    advanceUntil(scene, () => scene.keeperState() === "sitting");
-    expect(scene.rememberPending()).toBe(0);
-    expect(opened).not.toHaveBeenCalled();
     scene.dispose();
   });
 

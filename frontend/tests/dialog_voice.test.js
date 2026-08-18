@@ -45,7 +45,6 @@ class FakeMediaRecorder {
 
 let root, bus, state, toasts, dialog, getUserMedia, tracks, playSpy;
 
-const vizMode = () => root.querySelector(".holo-voice")?.dataset.mode;
 const micButton = () => screen.getByRole("button", { name: /toggle talking/i });
 const speakerToggle = () => screen.getByRole("button", { name: /toggle voice replies/i });
 
@@ -87,7 +86,7 @@ afterEach(() => {
 });
 
 describe("push-to-talk", () => {
-  it("hold T records (listening viz, voice:mic) and sends the transcription like a typed message", async () => {
+  it("hold T records (listening voice mode, voice:mic) and sends the transcription like a typed message", async () => {
     const user = userEvent.setup();
     let told = null;
     server.use(
@@ -98,13 +97,15 @@ describe("push-to-talk", () => {
       }),
     );
     const mic = vi.fn();
+    const voiceStates = [];
     bus.on("voice:mic", mic);
+    bus.on("voice:state", (p) => voiceStates.push(p.mode));
     bus.emit("keeper:selected", { keeperId: "dreams" });
 
     await user.keyboard("{t>}");
     expect(mic).toHaveBeenCalledWith({ keeperId: "dreams", on: true });
     expect(micButton().getAttribute("aria-pressed")).toBe("true");
-    expect(vizMode()).toBe("listening");
+    expect(voiceStates[voiceStates.length - 1]).toBe("listening");
     await waitFor(() => expect(FakeMediaRecorder.instances).toHaveLength(1));
     expect(FakeMediaRecorder.instances[0].mimeType).toBe("audio/webm;codecs=opus");
 
@@ -133,12 +134,14 @@ describe("push-to-talk", () => {
       http.post(`${BASE}/voice/stt`, () => HttpResponse.json({ text: "hello from the mic" })),
       http.post(`${BASE}/keepers/dreams/tell`, () => HttpResponse.json({ reply: "heard you." })),
     );
+    const voiceStates = [];
+    bus.on("voice:state", (p) => voiceStates.push(p.mode));
     bus.emit("keeper:selected", { keeperId: "dreams" });
     const micBtn = micButton();
 
     await user.click(micBtn);
     expect(micBtn.getAttribute("aria-pressed")).toBe("true");
-    expect(vizMode()).toBe("listening");
+    expect(voiceStates[voiceStates.length - 1]).toBe("listening");
     expect(document.body.classList.contains("ui-recording")).toBe(true);
     await waitFor(() => expect(FakeMediaRecorder.instances).toHaveLength(1));
 

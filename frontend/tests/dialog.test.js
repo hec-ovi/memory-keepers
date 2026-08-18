@@ -11,8 +11,6 @@ import {
   MONUMENT_ID,
   restTone,
   bookSpineColor,
-  BOOKS_VISIBLE,
-  BOOK_ROW_PX,
 } from "../src/ui/dialog.js";
 import { spineColorFromTags } from "../src/render/scene_interior.js";
 import { BASE, dreamsKeeper, unconsciousKeeper, makeState, deferred } from "./ui_fixtures.js";
@@ -22,7 +20,6 @@ const noSleep = () => Promise.resolve();
 
 let root, bus, state, toasts, dialog;
 
-const vizMode = () => root.querySelector(".holo-voice")?.dataset.mode;
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterAll(() => server.close());
@@ -48,15 +45,15 @@ afterEach(() => {
 });
 
 describe("createDialog", () => {
-  it("opens on keeper:selected as a holo comm panel with name, accent and idle viz; the topic chip stays off when the name already says it", () => {
+  it("opens on keeper:selected as a holo comm panel with name and accent; the topic chip stays off when the name already says it", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     expect(screen.getByRole("heading", { name: "Keeper of Dreams" })).toBeTruthy();
     expect(screen.queryByText("dreams")).toBeNull();
     const panel = root.querySelector(".mk-dialog");
     expect(panel.classList.contains("holo-panel")).toBe(true);
     expect(panel.style.getPropertyValue("--mk-dialog-accent")).toBe("#7c4a6b");
-    // the hero element is the voice visualizer, idle until something happens
-    expect(vizMode()).toBe("idle");
+    // quiet until something happens
+    expect(screen.getByText(/understanding/i).style.display).toBe("none");
   });
 
   it("keeper:deselected leaves the panel open: clicking elsewhere never closes it", () => {
@@ -99,7 +96,7 @@ describe("createDialog", () => {
     expect(input.getAttribute("aria-label")).toBe("tell Keeper of Dreams");
   });
 
-  it("tell flow: typing enables submit, in-flight shows LISTENING, reply types out while SPEAKING", async () => {
+  it("tell flow: typing enables submit, in-flight shows UNDERSTANDING, reply types out while SPEAKING", async () => {
     const user = userEvent.setup();
     const gate = deferred();
     server.use(
@@ -122,16 +119,16 @@ describe("createDialog", () => {
     const input = screen.getByRole("textbox", { name: /tell keeper of dreams/i });
     await user.type(input, "I flew over a black ocean");
     await user.keyboard("{Enter}");
-    // in flight: cyan listening strands + status line
-    expect(vizMode()).toBe("listening");
-    const status = screen.getByText(/listening/i);
+    // in flight: the breathing status line
+    expect(voiceStates[voiceStates.length - 1]).toBe("listening");
+    const status = screen.getByText(/understanding/i);
     expect(status.style.display).not.toBe("none");
 
     gate.resolve();
     await screen.findByText("I wrote it down."); // typed itself out
-    expect(vizMode()).toBe("speaking"); // purple/blue strands while she speaks
+    expect(voiceStates[voiceStates.length - 1]).toBe("speaking");
     expect(screen.getByText("I flew over a black ocean")).toBeTruthy(); // scrollback
-    expect(screen.getByText(/listening/i).style.display).toBe("none");
+    expect(screen.getByText(/understanding/i).style.display).toBe("none");
     expect(input.value).toBe("");
     expect(created).toHaveBeenCalledWith({
       keeperId: "dreams",
@@ -140,9 +137,8 @@ describe("createDialog", () => {
     expect(state.keepers[0].book_count).toBe(3); // bumped from 2
     expect(voiceStates).toContain("listening");
     expect(voiceStates).toContain("speaking");
-    // after the speaking beat the viz settles back to idle
-    await waitFor(() => expect(vizMode()).toBe("idle"), { timeout: 2500 });
-    expect(voiceStates[voiceStates.length - 1]).toBe("idle");
+    // after the speaking beat the voice mode settles back to idle
+    await waitFor(() => expect(voiceStates[voiceStates.length - 1]).toBe("idle"), { timeout: 2500 });
   });
 
   it("Enter inside the pill sends too", async () => {
@@ -159,7 +155,7 @@ describe("createDialog", () => {
     expect(input.value).toBe("");
   });
 
-  it("tell failure: toast shown, input preserved, submit re-enabled, viz back to idle", async () => {
+  it("tell failure: toast shown, input preserved, submit re-enabled, voice back to idle", async () => {
     const user = userEvent.setup();
     server.use(
       http.post(`${BASE}/keepers/dreams/tell`, () =>
@@ -169,6 +165,8 @@ describe("createDialog", () => {
         ),
       ),
     );
+    const voiceStates = [];
+    bus.on("voice:state", (p) => voiceStates.push(p.mode));
     bus.emit("keeper:selected", { keeperId: "dreams" });
     const input = screen.getByRole("textbox", { name: /tell/i });
     await user.type(input, "remember this");
@@ -176,8 +174,8 @@ describe("createDialog", () => {
 
     await screen.findByText("the harness exploded"); // toast
     expect(input.value).toBe("remember this");
-    await waitFor(() => expect(vizMode()).toBe("idle"));
-    expect(screen.getByText(/listening/i).style.display).toBe("none");
+    await waitFor(() => expect(voiceStates[voiceStates.length - 1]).toBe("idle"));
+    expect(screen.getByText(/understanding/i).style.display).toBe("none");
     expect(state.keepers[0].book_count).toBe(2); // unchanged
   });
 
@@ -371,7 +369,7 @@ describe("createDialog", () => {
     expect(form.classList.contains("holo-thinking")).toBe(false);
   });
 
-  it("grounded ask: left-side book list with spine bars + titles, staggered glow, memory:used", async () => {
+  it("grounded ask: clickable book links under the reply, staggered glow, memory:used", async () => {
     const user = userEvent.setup();
     server.use(
       http.post(`${BASE}/keepers/dreams/ask`, () =>
@@ -417,15 +415,13 @@ describe("createDialog", () => {
     expect(
       rows[0].querySelector(".mk-dialog-spine").style.getPropertyValue("--mk-book-spine"),
     ).toBe(spineColorFromTags(["flying", "ocean"]));
-    // the list sits on the LEFT of the reply, inside the reply area
+    // the links sit UNDER the reply text, inside the reply area
     const reply = root.querySelector(".mk-dialog-reply");
     const grounding = root.querySelector(".mk-dialog-grounding");
     const say = root.querySelector(".mk-dialog-say");
     expect(reply.contains(grounding)).toBe(true);
     expect(reply.contains(say)).toBe(true);
-    expect(grounding.compareDocumentPosition(say) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // short lists page nothing: no arrows
-    expect(screen.queryByRole("button", { name: "scroll books down" })).toBeNull();
+    expect(say.compareDocumentPosition(grounding) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     // clicking a book row opens the reader
     await user.click(rows[0]);
@@ -435,9 +431,9 @@ describe("createDialog", () => {
     });
   });
 
-  it("overflowing book list grows up/down arrows that page one book at a time", async () => {
+  it("a long source list renders every book as a link, no paging", async () => {
     const user = userEvent.setup();
-    const sources = Array.from({ length: BOOKS_VISIBLE + 2 }, (_, i) => ({
+    const sources = Array.from({ length: 6 }, (_, i) => ({
       slug: `book-${i}`,
       title: `Book ${i}`,
       tags: [`tag-${i}`],
@@ -453,34 +449,8 @@ describe("createDialog", () => {
     await user.keyboard("{Enter}");
 
     const box = await screen.findByLabelText("consulted books");
-    expect(box.querySelectorAll(".mk-dialog-book")).toHaveLength(BOOKS_VISIBLE + 2);
-    const list = box.querySelector(".mk-dialog-booklist");
-    expect(list.style.maxHeight).toBe(`${BOOKS_VISIBLE * BOOK_ROW_PX}px`);
-
-    const up = screen.getByRole("button", { name: "scroll books up" });
-    const down = screen.getByRole("button", { name: "scroll books down" });
-    expect(up.disabled).toBe(true); // already at the top
-    expect(down.disabled).toBe(false);
-    expect(list.dataset.offset).toBe("0");
-
-    await user.click(down); // one item per step
-    expect(list.dataset.offset).toBe("1");
-    expect(list.scrollTop).toBe(BOOK_ROW_PX);
-    expect(up.disabled).toBe(false);
-
-    await user.click(down); // reaches the end (2 overflow items)
-    expect(list.dataset.offset).toBe("2");
-    expect(down.disabled).toBe(true);
-
-    await user.click(up);
-    expect(list.dataset.offset).toBe("1");
-    expect(list.scrollTop).toBe(BOOK_ROW_PX);
-
-    // keyboard accessible: arrows are real buttons, Enter activates them
-    up.focus();
-    await user.keyboard("{Enter}");
-    expect(list.dataset.offset).toBe("0");
-    expect(up.disabled).toBe(true);
+    expect(box.querySelectorAll(".mk-dialog-book")).toHaveLength(6);
+    expect(screen.queryByRole("button", { name: /scroll books/ })).toBeNull();
   });
 
   it("ungrounded ask with followup: no-memory hint + save shortcut pre-fills the Tell tab", async () => {

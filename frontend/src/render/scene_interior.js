@@ -30,13 +30,6 @@
 //   listens "book:created" / "book:destroyed"  -> add / remove the book mesh
 //   listens "interior:view" { view }           -> switch view (the holo buttons
 //                                                 in ui/interior_views.js emit it)
-//   listens "memory:used"  { keeperId, slugs }   -> she physically fetches the
-//                                                 FIRST used book (silent fetch:
-//                                                 pull out, hold with a soft
-//                                                 glow, reshelve; the reader
-//                                                 never opens, the chat already
-//                                                 shows the answer). A running
-//                                                 fetch/reader flow queues it.
 //   listens "keeper:sleep"   { keeperId }          -> she returns to her chair and
 //                                                 dozes (eyes closed, slow
 //                                                 breathing, Zzz) until
@@ -81,7 +74,7 @@
 // scaleSpineSpec, nextKeeperState, runKeeperTimeline, hopArc, labelPlacement,
 // createViewMachine, viewRequest, viewStep, viewIsTweening, pickAction,
 // projectedSizePx, shelfFontRatio, shelfLabelSizing, shelfViewFraming, DOZE,
-// nextDozeState, runDozeTimeline, enqueueRemember, nextRemember, plus the
+// nextDozeState, runDozeTimeline, plus the
 // chair/camera constants CHAIR_POS, CHAIR_ANGLE, SECOND_CHAIR, CHAIRS_POSE.
 
 import * as THREE from "three";
@@ -259,7 +252,7 @@ export function runKeeperTimeline(events = [], machine = SIT_FETCH) {
 }
 
 // The doze machine (interior sleep variant, round 5). On "keeper:sleep" she
-// settles: any silent fetch aborts, and once the sit/fetch machine is back
+// settles: once the sit/fetch machine is back
 // on "sitting" she dozes (eyes closed, slow breathing) until "keeper:rested".
 // "rested" while still settling wakes her without ever dozing.
 export const DOZE = Object.freeze({
@@ -282,28 +275,6 @@ export function runDozeTimeline(events = [], machine = DOZE) {
     states.push(nextDozeState(states[states.length - 1], event, machine));
   }
   return states;
-}
-
-// "memory:used" fetch queue (pure). Only the FIRST used slug of an event is
-// fetched; while a fetch/reader flow is running the slug queues (bounded,
-// deduped: re-remembering a queued book moves it to the back instead of
-// fetching it twice). Both helpers return new arrays.
-export function enqueueRemember(queue = [], slugs, { limit = 3 } = {}) {
-  const first =
-    (Array.isArray(slugs) ? slugs : [slugs])
-      .map((s) => (typeof s === "string" ? s.trim() : ""))
-      .find(Boolean) ?? null;
-  if (!first) return queue.slice(-limit);
-  const q = queue.filter((s) => s !== first);
-  q.push(first);
-  return q.slice(-limit);
-}
-
-// Pops the next remembered slug unless the keeper is busy (mid-fetch, reader
-// open, dozing). Returns { slug: string|null, queue }.
-export function nextRemember(queue = [], busy = false) {
-  if (busy || queue.length === 0) return { slug: null, queue };
-  return { slug: queue[0], queue: queue.slice(1) };
 }
 
 // Parabolic hop between two points; u in [0,1]. Endpoints are exact, the
@@ -770,8 +741,6 @@ const GRAB_SECONDS = 0.9;
 const RETURN_SECONDS = 0.8;
 const HOVER_SLIDE = 0.09; // how far a hovered book slides out
 const FLOAT_POS = new THREE.Vector3(0, 1.62, 1.4);
-const SILENT_HOLD_S = 1.4; // "memory:used": how long she holds the book
-const SILENT_GLOW_COLOR = 0xffc98a; // the held book's soft glow
 
 const STYLE_ID = "mk-interior-style";
 const CSS = `
@@ -1610,8 +1579,6 @@ export function createInteriorScene(ctx = {}) {
     state: SIT_FETCH.initial,
     t: 0,
     entry: null, // book being fetched
-    silent: false, // "memory:used" fetch: hold + glow + reshelve, no reader
-    holdT: 0, // silent hold clock
     floatTo: new THREE.Vector3().copy(FLOAT_POS), // where the grabbed book floats
     floatScale: 1.6, // how big it grows on the way
     walkTarget: new THREE.Vector3(),
@@ -1623,14 +1590,6 @@ export function createInteriorScene(ctx = {}) {
   const bookTweens = []; // { entry, from, t } books flying back to the shelf
   let sitK = 1; // 0 standing .. 1 squished into the cushion
   let doze = DOZE.initial; // awake | settling | dozing (see DOZE)
-  let rememberQueue = []; // queued "memory:used" slugs (enqueueRemember)
-
-  function setSilentGlow(on) {
-    const mat = fetching.entry?.spineMat;
-    if (!mat?.emissive) return;
-    if (on) mat.emissive.setHex(SILENT_GLOW_COLOR);
-    mat.emissiveIntensity = on ? 0.35 : 0;
-  }
 
   // Settling -> dozing once she is back on her chair with nothing open.
   function syncDoze() {
@@ -1654,19 +1613,8 @@ export function createInteriorScene(ctx = {}) {
       keeperHandle?.setWalking?.(false);
       if (fetching.entry) {
         fetching.bookFrom.copy(fetching.entry.mesh.position);
-        if (fetching.silent) {
-          // Held between her and the shelf at chest height: a private beat,
-          // not the reader's center-stage float.
-          fetching.floatTo.set(
-            fetching.entry.base.x + fetching.entry.inward * 0.7,
-            1.25,
-            Math.max(-ROOM_HALF + 0.6, Math.min(ROOM_HALF - 0.6, fetching.entry.base.z)),
-          );
-          fetching.floatScale = 1.25;
-        } else {
-          fetching.floatTo.copy(FLOAT_POS);
-          fetching.floatScale = 1.6;
-        }
+        fetching.floatTo.copy(FLOAT_POS);
+        fetching.floatScale = 1.6;
       }
     } else if (next === "walkToChair") {
       keeperHandle?.setWalking?.(true);
@@ -1719,21 +1667,7 @@ export function createInteriorScene(ctx = {}) {
       return;
     }
     if (fetching.entry === entry && (fetching.state === "grabbing" || fetching.state === "waiting")) {
-      if (!fetching.silent) return; // already fetching / holding this one
-      // A user pick upgrades the silent memory-hold into the reader flow.
-      setSilentGlow(false);
-      fetching.silent = false;
-      leaveForReader();
-      if (fetching.state === "waiting") {
-        readerOpen = true;
-        bus?.emit("book:open", { keeperId, slug: fetching.entry.slug });
-      } // grabbing: the (now non-silent) grab completion opens the reader
-      return;
-    }
-    if (fetching.silent) {
-      // Retargeting away from a silent memory fetch: drop its glow and flag.
-      setSilentGlow(false);
-      fetching.silent = false;
+      return; // already fetching this one
     }
     leaveForReader();
     if (fetching.state === "hopOff" || fetching.state === "hopOn") {
@@ -1741,18 +1675,6 @@ export function createInteriorScene(ctx = {}) {
       return;
     }
     if (fetching.entry && fetching.entry !== entry) returnFloatingBook();
-    fetching.entry = entry;
-    fetching.walkTarget.copy(shelfTargetFor(entry));
-    applyEvent("pick");
-  }
-
-  // "memory:used": the physical fetch without the reader. Only called when
-  // she is free (nextRemember gates on busy), so no retarget handling here.
-  function startRemember(slug) {
-    const entry = books.find((b) => b.slug === slug);
-    if (!entry) return; // not on a shelf (still loading / destroyed): skip
-    fetching.silent = true;
-    fetching.holdT = 0;
     fetching.entry = entry;
     fetching.walkTarget.copy(shelfTargetFor(entry));
     applyEvent("pick");
@@ -1957,6 +1879,9 @@ export function createInteriorScene(ctx = {}) {
       startReframe();
       return;
     }
+    // Sitting beside her is starting a conversation: the talk panel opens
+    // with the view (dialog.open is idempotent when it is already hers).
+    if (p.view === "chairs") bus?.emit("keeper:selected", { keeperId });
     requestView(p.view);
   });
   on("book:created", (p) => {
@@ -1965,24 +1890,10 @@ export function createInteriorScene(ctx = {}) {
   on("book:destroyed", (p) => {
     if (p?.keeperId === keeperId) removeBookMesh(p.slug);
   });
-  on("memory:used", (p) => {
-    if (p?.keeperId !== keeperId) return;
-    rememberQueue = enqueueRemember(rememberQueue, p.slugs);
-  });
   on("keeper:sleep", (p) => {
     if (p?.keeperId !== keeperId) return;
     doze = nextDozeState(doze, "sleep");
     if (doze !== "settling") return;
-    if (fetching.silent) {
-      // Abort a running memory fetch so she can head back to her chair.
-      setSilentGlow(false);
-      fetching.silent = false;
-      fetching.pendingSlug = null;
-      applyEvent("abort");
-      // Mid-hop, "abort" has no transition: clear the entry so the grabbing
-      // guard sends her home once the hop lands.
-      if (fetching.state === "hopOff" || fetching.state === "hopOn") fetching.entry = null;
-    }
     // A reader flow in progress settles on its own once the reader closes.
   });
   on("keeper:rested", (p) => {
@@ -2024,25 +1935,11 @@ export function createInteriorScene(ctx = {}) {
     // --- sit/fetch progression ---
     // the fetched book can vanish mid-fetch (destroyed): send her home
     if ((fetching.state === "grabbing" || fetching.state === "waiting") && !fetching.entry) {
-      if (fetching.silent) fetching.silent = false; // its glow died with the mesh
       applyEvent("abort");
     }
 
-    // Doze settles once she is seated; queued "memory:used" fetches drain
-    // only while she is awake, seated and free (queue or skip gracefully).
+    // Doze settles once she is seated.
     syncDoze();
-    if (rememberQueue.length) {
-      const busy =
-        readerOpen ||
-        doze !== "awake" ||
-        fetching.state !== "sitting" ||
-        fetching.pendingSlug !== null;
-      const nxt = nextRemember(rememberQueue, busy);
-      if (nxt.slug) {
-        rememberQueue = nxt.queue;
-        startRemember(nxt.slug);
-      }
-    }
     const st = fetching.state;
     fetching.t += dt;
     if (st === "sitting") {
@@ -2096,29 +1993,12 @@ export function createInteriorScene(ctx = {}) {
       const s = 1 + (fetching.floatScale - 1) * k;
       mesh.scale.set(s, s, s);
       if (u >= 1) {
-        if (fetching.silent) {
-          // "memory:used": no reader; she holds it a moment with a soft glow.
-          fetching.holdT = 0;
-          setSilentGlow(true);
-          applyEvent("opened"); // "waiting" doubles as the silent hold
-        } else {
-          readerOpen = true;
-          bus?.emit("book:open", { keeperId, slug: fetching.entry.slug });
-          applyEvent("opened");
-        }
+        readerOpen = true;
+        bus?.emit("book:open", { keeperId, slug: fetching.entry.slug });
+        applyEvent("opened");
       }
     } else if (st === "waiting" && fetching.entry) {
       fetching.entry.mesh.position.y = fetching.floatTo.y + Math.sin(fetching.t * 3) * 0.03;
-      if (fetching.silent) {
-        fetching.holdT += dt;
-        const mat = fetching.entry.spineMat;
-        if (mat?.emissive) mat.emissiveIntensity = 0.3 + 0.18 * Math.sin(fetching.t * 5);
-        if (fetching.holdT >= SILENT_HOLD_S) {
-          setSilentGlow(false);
-          fetching.silent = false;
-          applyEvent("readerClosed"); // same reshelve + walk-home as the reader flow
-        }
-      }
     } else if (st === "sitting") {
       rig.position.copy(seatPos);
       // settle facing back toward the room
@@ -2270,7 +2150,6 @@ export function createInteriorScene(ctx = {}) {
     pick: startPick,
     keeperState: () => fetching.state,
     dozeState: () => doze,
-    rememberPending: () => rememberQueue.length,
     view: () => machine.current,
     viewTarget: () => machine.target,
     setView: (view, opts) => requestView(view, opts),

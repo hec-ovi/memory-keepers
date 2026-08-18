@@ -172,10 +172,6 @@ button.holo-chip:focus-visible{outline:2px solid var(--holo-cyan);outline-offset
 .holo-input::placeholder{color:rgba(255,182,88,.4);}
 .holo-input:focus-visible{outline:none;border-color:var(--holo-cyan);box-shadow:0 0 12px rgba(63,224,255,.35);}
 
-/* voice visualizer host (canvas is drawn by voice.js) */
-.holo-voice{display:flex;align-items:center;justify-content:center;}
-.holo-voice canvas{display:block;}
-
 /* --- thinking border -------------------------------------------------------- */
 /* Wrap any element in .holo-thinking while work is in flight: a multicolor
    conic-gradient ring (amber/cyan/magenta) sweeps around it with a soft

@@ -1,23 +1,21 @@
-// Holo comm panel for the selected keeper. Not a chatbot window: the hero
-// element is a voice visualizer (ui/holo/voice.js). Idle it breathes faintly;
-// while a Tell/Ask request is in flight it goes cyan LISTENING and the
-// composer pill wears the kit's spinning "thinking" border (holo-thinking);
-// when the reply lands it goes purple/blue SPEAKING while the reply text
-// types itself out beneath in amber. Recent exchanges collapse into a small
-// scrollback that grows upward above the visualizer.
+// Holo comm panel for the selected keeper. The reply is the hero: it types
+// itself out in amber and owns the panel's middle. While a Tell/Ask request
+// is in flight an "understanding..." status breathes above it and the
+// composer pill wears the kit's spinning "thinking" border (holo-thinking).
+// Recent exchanges collapse into a small scrollback at the top.
 //
 // Layout: the panel is a flex column with the COMPOSER PINNED TO THE BOTTOM.
 // One composer serves both tabs (Tell / Ask select what a send means): a pill
-// input whose right end merges into a circular mic button; Enter sends.
+// input whose right end merges into the round speaker toggle and mic button;
+// Enter sends.
 //
-// Chat grounding: an ask reply that is grounded in books renders a vertical
-// book list on the LEFT of the reply (spine-colored bars + titles, glow
+// Chat grounding: an ask reply that is grounded in books renders full-width
+// clickable book links under the reply (spine-colored bar + full title, glow
 // staggered so the first consulted book burns brightest, click opens the
-// reader; up/down arrows page one book at a time when the list overflows) and
-// emits "memory:used" the moment the list appears. An ungrounded reply with a
-// follow-up ({grounded: false, followup: true}) renders instead a "she does
-// not remember this" hint with the follow-up question and a "Save this as a
-// memory" shortcut that pre-fills the Tell tab.
+// reader) and emits "memory:used" the moment they appear. An ungrounded reply
+// with a follow-up ({grounded: false, followup: true}) renders instead a "she
+// does not remember this" hint with the follow-up question and a "Save this
+// as a memory" shortcut that pre-fills the Tell tab.
 //
 // Rest and sleep: the panel header carries a level badge (LV n, amber) and a
 // thin rest meter fed from keeper.session {tokens_used, budget, status} (fill
@@ -42,11 +40,12 @@
 // is inert (body.ui-recording): no click or Esc can interrupt a live take.
 // Stopping sends the clip to api.stt and the transcription goes through the
 // exact same send path as a typed message.
-// The visualizer doubles as the speaker toggle: when ON each completed reply
-// is fetched from api.tts (monument panel -> "monument", unconscious keeper
-// -> "dark", else "light") and played from a Blob object URL (revoked after
-// playback). VOICE_UNAVAILABLE or a denied microphone toasts once and rests
-// the mic for the session; a TTS failure never breaks the dialog.
+// The round speaker button in the composer toggles spoken replies: when ON
+// each completed reply is fetched from api.tts (monument panel -> "monument",
+// unconscious keeper -> "dark", else "light") and played from a Blob object
+// URL (revoked after playback); it glows while she speaks. VOICE_UNAVAILABLE
+// or a denied microphone toasts once and rests the mic for the session; a TTS
+// failure never breaks the dialog.
 //
 //   const dialog = createDialog({ root, state, bus, api, toasts });
 //   dialog.open("dreams"); dialog.close(); dialog.dispose();
@@ -63,7 +62,7 @@
 //   emits   "keeper:rested"    { keeperId }                 sleep job polled to done
 //   emits   "voice:mic"      { keeperId, on }             recording started/stopped
 //   emits   "voice:tts"      { keeperId, on }             speaker toggle (spoken replies)
-//   emits   "voice:state"    { keeperId, mode }           visualizer mode changes
+//   emits   "voice:state"    { keeperId, mode }           voice mode changes
 //                            ("idle" | "listening" | "speaking")
 //   emits   "ui:open" / "ui:close"  { panel: "dialog" }  panel lifecycle; the
 //                            overworld uses them to defer/cancel a deselect
@@ -74,7 +73,6 @@
 import { renderMd } from "./md.js";
 import { config as gameConfig } from "../config.js";
 import { createHoloPanel, ensureHoloStyles, ensureThinking, injectStyle, makeEl } from "./holo/holo.js";
-import { createVoiceViz } from "./holo/voice.js";
 
 const STYLE_ID = "mk-dialog-style";
 const CSS = `
@@ -83,17 +81,16 @@ const CSS = `
 .mk-dialog-inner{flex:1;min-height:0;display:flex;flex-direction:column;}
 .mk-dialog-chips{margin-bottom:8px;}
 .mk-dialog-join{display:block;width:100%;margin:2px 0 10px;}
-/* scrollback grows upward: newest at the bottom, column pinned low */
-.mk-dialog-hist{max-height:16vh;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;justify-content:flex-end;}
+/* scrollback: newest at the bottom (autoscrolled), older rows scroll away */
+.mk-dialog-hist{max-height:16vh;overflow-y:auto;margin-bottom:8px;}
 .mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;}
 .mk-dialog-hist-who{color:var(--holo-cyan,#3fe0ff);margin-right:6px;text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;}
-.mk-dialog-hist-row-keeper .mk-dialog-hist-who{color:var(--holo-amber,#ffb658);}
-.mk-dialog-stage{display:flex;flex-direction:column;align-items:center;gap:6px;margin:4px 0 8px;}
-.mk-dialog-status{margin:0;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);animation:mk-dialog-breathe 1.1s ease-in-out infinite;}
+.mk-dialog-hist-row-keeper{color:var(--holo-amber-hi,#ffd9a0);}
+.mk-dialog-status{margin:4px 0 8px;text-align:center;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);animation:mk-dialog-breathe 1.1s ease-in-out infinite;}
 @keyframes mk-dialog-breathe{0%,100%{opacity:.9;}50%{opacity:.35;}}
 
-/* reply area: consulted books stacked on the LEFT, the typed reply beside them */
-.mk-dialog-reply{display:flex;align-items:flex-start;gap:10px;min-height:0;overflow-y:auto;}
+/* reply area: the typed reply full width, consulted-book links beneath it */
+.mk-dialog-reply{display:flex;flex-direction:column;gap:6px;min-height:0;overflow-y:auto;}
 .mk-dialog-say{flex:1;min-width:0;min-height:1.2em;font-size:.92rem;line-height:1.45;color:var(--holo-amber-hi,#ffd9a0);}
 .mk-dialog-say p:first-child{margin-top:0;}
 .mk-dialog-say p:last-child{margin-bottom:0;}
@@ -107,6 +104,7 @@ const CSS = `
 .mk-dialog-field:disabled{opacity:.5;}
 .mk-dialog-mic{width:38px;height:38px;min-width:38px;border-radius:50%;padding:0;font-size:.95rem;margin:-1px;}
 .mk-dialog-mic[aria-pressed="true"]{background:var(--holo-cyan,#3fe0ff);border-color:transparent;color:#03272e;box-shadow:0 0 14px rgba(63,224,255,.6);}
+.mk-dialog-spk--speaking{box-shadow:0 0 14px rgba(63,224,255,.6);animation:mk-dialog-breathe 1.1s ease-in-out infinite;}
 
 /* while the mic records, everything outside the panel is inert */
 .ui-recording #app{pointer-events:none!important}
@@ -128,17 +126,15 @@ const CSS = `
 .mk-dialog-sleepnote{flex:1;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--holo-amber,#ffb658);animation:mk-dialog-breathe 1.7s ease-in-out infinite;}
 .mk-dialog-sleeprow--red .mk-dialog-sleepnote{color:var(--holo-danger,#ff7a5c);}
 
-/* consulted books: a left-side vertical list, spine bars + titles, staggered glow */
-.mk-dialog-consulted{display:flex;flex-direction:column;gap:2px;width:112px;flex:none;}
-.mk-dialog-booklist{display:flex;flex-direction:column;gap:2px;overflow:hidden;}
-.mk-dialog-book{display:flex;align-items:center;gap:6px;width:100%;height:24px;flex:none;padding:0 4px;background:transparent;border:1px solid transparent;border-radius:3px;color:var(--holo-amber-hi,#ffd9a0);font-size:.7rem;text-align:left;cursor:pointer;animation:mk-dialog-bookglow 1.6s ease-in-out both;}
+/* consulted books: full-width clickable links under the reply, staggered glow */
+.mk-dialog-consulted{display:flex;flex-direction:column;gap:2px;}
+.mk-dialog-booklist{display:flex;flex-direction:column;gap:2px;}
+.mk-dialog-book{display:flex;align-items:center;gap:6px;width:100%;min-height:24px;padding:2px 4px;background:transparent;border:1px solid transparent;border-radius:3px;color:var(--holo-amber-hi,#ffd9a0);font-size:.72rem;text-align:left;cursor:pointer;animation:mk-dialog-bookglow 1.6s ease-in-out both;}
 .mk-dialog-book:hover{border-color:var(--holo-amber-dim,rgba(255,166,64,.55));box-shadow:0 0 12px var(--holo-amber,#ffb658);}
 .mk-dialog-book:focus-visible{outline:2px solid var(--holo-cyan,#3fe0ff);outline-offset:1px;}
 .mk-dialog-spine{width:6px;height:16px;flex:none;border-radius:1px;border:1px solid rgba(0,0,0,.4);background:var(--mk-book-spine,#8a6a4a);}
 .mk-dialog-book--lead .mk-dialog-spine{height:20px;}
-.mk-dialog-booktitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.mk-dialog-bookarrow{width:100%;height:16px;padding:0;font-size:.6rem;line-height:1;background:rgba(255,166,64,.06);border:1px solid var(--holo-amber-dim,rgba(255,166,64,.35));border-radius:3px;color:var(--holo-amber,#ffb658);cursor:pointer;}
-.mk-dialog-bookarrow:disabled{opacity:.35;cursor:not-allowed;}
+.mk-dialog-booktitle{min-width:0;}
 @keyframes mk-dialog-bookglow{0%{box-shadow:none;filter:brightness(.85);}35%{box-shadow:0 0 12px var(--holo-amber,#ffb658);filter:brightness(1.6);}100%{box-shadow:0 0 3px rgba(255,182,88,.3);filter:brightness(1);}}
 @keyframes mk-dialog-bookglow-lead{0%{box-shadow:none;filter:brightness(.85);}35%{box-shadow:0 0 18px var(--holo-amber,#ffb658);filter:brightness(1.9);}100%{box-shadow:0 0 9px rgba(255,182,88,.75);filter:brightness(1.12);}}
 .mk-dialog-book--lead{animation-name:mk-dialog-bookglow-lead;}
@@ -156,11 +152,6 @@ export function typingStep(length, maxTicks = 220) {
 
 // Sleep-job poll cadence (ms); createDialog({ sleepPollMs }) overrides (tests).
 export const SLEEP_POLL_MS = 1500;
-
-// Consulted-book list paging: rows shown before the arrows appear, and the
-// height of one row (the scroll step).
-export const BOOKS_VISIBLE = 4;
-export const BOOK_ROW_PX = 26;
 
 // Rest meter state from an Keeper session {tokens_used, budget, status}.
 // tone: "cyan" (fresh) -> "amber" (getting tired) -> "red" (needs to dream).
@@ -230,7 +221,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   injectStyle(doc, STYLE_ID, CSS);
 
   let holo = null;
-  let viz = null;
   let currentId = null;
   let onKey = null;
   let onKeyUp = null;
@@ -252,10 +242,10 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let holdActive = false;
   let typeTimer = null;
   let holdTimer = null;
-  let lastVizMode = null;
+  let lastVoiceMode = null;
   let lastReply = null; // { text } shown in the say area, archived on next send
   let sayEl = null;
-  let groundingBox = null; // left column: the consulted-book list
+  let groundingBox = null; // under the reply: the consulted-book links
   let noteBox = null; // full-width: the "she does not remember" hint
   let histBox = null;
   let statusEl = null;
@@ -272,7 +262,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let sleepNote = null;
   let sleepBtn = null;
   let chatLocked = false;
-  let composer = null; // { form, input, sync, setTab }
+  let composer = null; // { form, input, micBtn, spkBtn, sync, setTab }
   let tabSelect = null;
 
   // keepers currently dreaming; polling continues even if the panel closes
@@ -316,20 +306,20 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
   // --- voice state ------------------------------------------------------------
 
-  function computedVizMode() {
+  function computedVoiceMode() {
     if (typingActive || holdActive) return "speaking";
     if (inFlight || recording) return "listening";
     return "idle";
   }
 
-  function syncViz() {
-    if (!viz) return;
-    const mode = computedVizMode();
-    if (mode === lastVizMode) return;
-    lastVizMode = mode;
-    viz.setMode(mode);
+  function syncVoice() {
+    if (!holo) return;
+    const mode = computedVoiceMode();
+    if (mode === lastVoiceMode) return;
+    lastVoiceMode = mode;
     bus?.emit("voice:state", { keeperId: currentId, mode });
     if (statusEl) statusEl.style.display = mode === "listening" && inFlight ? "" : "none";
+    composer?.spkBtn?.classList.toggle("mk-dialog-spk--speaking", mode === "speaking" && ttsOn);
   }
 
   function cancelTyping() {
@@ -348,7 +338,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     lastReply = { text };
     speakReply(text);
     typingActive = true;
-    syncViz();
+    syncVoice();
     sayEl.textContent = "";
     const step = typingStep(text.length);
     let idx = 0;
@@ -363,11 +353,11 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
         }
         typingActive = false;
         holdActive = true; // the viz keeps pulsing a beat after the last word
-        syncViz();
+        syncVoice();
         holdTimer = win.setTimeout(() => {
           holdTimer = null;
           holdActive = false;
-          syncViz();
+          syncVoice();
         }, 650);
         return;
       }
@@ -385,10 +375,11 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     if (noteBox) noteBox.textContent = "";
   }
 
+  // Only user rows carry a label; the keeper's rows speak through color alone.
   function pushHistory(kind, text) {
     if (!histBox) return;
     const row = el("div", `mk-dialog-hist-row mk-dialog-hist-row-${kind} holo-row`);
-    row.appendChild(el("span", "mk-dialog-hist-who", kind === "user" ? "you" : keeperName));
+    if (kind === "user") row.appendChild(el("span", "mk-dialog-hist-who", "you"));
     row.appendChild(el("span", null, text));
     histBox.appendChild(row);
     while (histBox.children.length > 12) histBox.firstChild.remove();
@@ -397,7 +388,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
   function setInFlight(on) {
     inFlight = on;
-    syncViz();
+    syncVoice();
     if (statusEl) statusEl.style.display = on ? "" : "none";
   }
 
@@ -436,7 +427,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     doc.body?.classList.add("ui-recording");
     composer?.micBtn?.setAttribute("aria-pressed", "true");
     bus?.emit("voice:mic", { keeperId: currentId, on: true });
-    syncViz();
+    syncVoice();
     let stream;
     try {
       stream = await ensureStream();
@@ -466,7 +457,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     doc.body?.classList.remove("ui-recording");
     composer?.micBtn?.setAttribute("aria-pressed", "false");
     bus?.emit("voice:mic", { keeperId: currentId, on: false });
-    syncViz();
+    syncVoice();
     const rec = recorder;
     recorder = null;
     if (rec && rec.state !== "inactive") {
@@ -664,12 +655,10 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     onKey = null;
     onKeyUp = null;
     cancelTyping();
-    viz?.dispose();
-    viz = null;
     holo.close();
     holo = null;
     currentId = null;
-    lastVizMode = null;
+    lastVoiceMode = null;
     lastReply = null;
     inFlight = false;
     ttsOn = false;
@@ -695,10 +684,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     composer.input.focus();
   }
 
-  // Grounded ask reply: the consulted-book list on the LEFT of the reply, one
-  // spine-colored bar + title per source, glow staggered (lead book
-  // strongest); up/down arrows page one book at a time when it overflows.
-  // Ungrounded + followup: the "she does not remember this" hint instead.
+  // Grounded ask reply: full-width clickable book links under the reply, one
+  // spine-colored bar + full title per source, glow staggered (lead book
+  // strongest). Ungrounded + followup: the "she does not remember this" hint.
   function renderAskResult(keeper, res, question) {
     if (!groundingBox || !noteBox) return;
     groundingBox.textContent = "";
@@ -738,37 +726,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       list.appendChild(row);
     });
 
-    if (sources.length > BOOKS_VISIBLE) {
-      // Overflow: cap the window and page one book per arrow press.
-      list.style.maxHeight = `${BOOKS_VISIBLE * BOOK_ROW_PX}px`;
-      const up = el("button", "mk-dialog-bookarrow", "▲");
-      up.type = "button";
-      up.setAttribute("aria-label", "scroll books up");
-      const down = el("button", "mk-dialog-bookarrow", "▼");
-      down.type = "button";
-      down.setAttribute("aria-label", "scroll books down");
-      const maxOffset = sources.length - BOOKS_VISIBLE;
-      let offset = 0;
-      const apply = () => {
-        list.scrollTop = offset * BOOK_ROW_PX;
-        list.dataset.offset = String(offset);
-        up.disabled = offset <= 0;
-        down.disabled = offset >= maxOffset;
-      };
-      up.addEventListener("click", () => {
-        offset = Math.max(0, offset - 1);
-        apply();
-      });
-      down.addEventListener("click", () => {
-        offset = Math.min(maxOffset, offset + 1);
-        apply();
-      });
-      box.append(up, list, down);
-      apply();
-    } else {
-      box.appendChild(list);
-    }
-
+    box.appendChild(list);
     groundingBox.appendChild(box);
     bus?.emit("memory:used", { keeperId: keeper.id, slugs: sources.map((s) => s.slug) });
   }
@@ -784,6 +742,19 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     input.type = "text";
     input.className = "mk-dialog-field";
 
+    // Speaker toggle: spoken replies on/off; glows while she speaks.
+    const spkBtn = el("button", "holo-btn mk-dialog-mic mk-dialog-spk", "🔊");
+    spkBtn.type = "button";
+    spkBtn.setAttribute("aria-label", "toggle voice replies");
+    spkBtn.setAttribute("aria-pressed", "false");
+    spkBtn.addEventListener("click", () => {
+      ttsOn = !ttsOn;
+      if (!ttsOn) stopPlayback();
+      spkBtn.setAttribute("aria-pressed", String(ttsOn));
+      spkBtn.classList.toggle("mk-dialog-spk--speaking", false);
+      bus?.emit("voice:tts", { keeperId: keeper.id, on: ttsOn });
+    });
+
     // The hold-T twin as a toggle: click starts the same recording, click stops.
     const micBtn = el("button", "holo-btn mk-dialog-mic", "🎙");
     micBtn.type = "button";
@@ -794,7 +765,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       else startRecording("pointer");
     });
 
-    form.append(input, micBtn);
+    form.append(input, spkBtn, micBtn);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -893,7 +864,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       }
     });
 
-    composer = { form, input, micBtn, sync, setTab };
+    composer = { form, input, micBtn, spkBtn, sync, setTab };
     setTab("tell");
     sync();
     return form;
@@ -945,45 +916,21 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     histBox.setAttribute("aria-label", "recent exchanges");
     content.appendChild(histBox);
 
-    // Hero: the voice visualizer with the speaker (voice replies) toggle.
-    const stage = el("div", "mk-dialog-stage");
-    viz = createVoiceViz({ size: 150 });
-    // The visualizer itself is the speaker toggle (no extra button).
-    viz.el.setAttribute("role", "button");
-    viz.el.setAttribute("tabindex", "0");
-    viz.el.setAttribute("aria-label", "toggle voice replies");
-    viz.el.setAttribute("aria-pressed", "false");
-    const toggleTts = () => {
-      ttsOn = !ttsOn;
-      if (!ttsOn) stopPlayback();
-      viz.el.setAttribute("aria-pressed", String(ttsOn));
-      bus?.emit("voice:tts", { keeperId: keeper.id, on: ttsOn });
-    };
-    viz.el.addEventListener("click", toggleTts);
-    viz.el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        toggleTts();
-      }
-    });
-    stage.appendChild(viz.el);
-
-    statusEl = el("p", "mk-dialog-status", "listening...");
+    statusEl = el("p", "mk-dialog-status", "understanding...");
     statusEl.setAttribute("role", "status");
     statusEl.style.display = "none";
-    stage.appendChild(statusEl);
-    content.appendChild(stage);
+    content.appendChild(statusEl);
 
     // The "she does not remember" hint lands here, full width.
     noteBox = el("div");
     content.appendChild(noteBox);
 
-    // Reply area: consulted books on the left, the typed reply beside them.
+    // Reply area: the typed reply, consulted-book links beneath it.
     const replyRow = el("div", "mk-dialog-reply");
     groundingBox = el("div", "mk-dialog-grounding");
     sayEl = el("div", "mk-dialog-say");
     sayEl.setAttribute("aria-live", "polite");
-    replyRow.append(groundingBox, sayEl);
+    replyRow.append(sayEl, groundingBox);
     content.appendChild(replyRow);
 
     // Sleep prompt: status line + Send to sleep, shown when she tires (or her
@@ -1103,7 +1050,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     doc.addEventListener("keyup", onKeyUp, true);
 
     root.appendChild(holo.el);
-    lastVizMode = "idle";
+    lastVoiceMode = "idle";
     bus?.emit("ui:open", { panel: "dialog", keeperId: keeper.id });
   }
 

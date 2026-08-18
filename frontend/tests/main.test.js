@@ -153,13 +153,12 @@ describe("createGame wiring", () => {
     expect(within(uiEl).getByLabelText("talk to Keeper of Dreams")).toBeTruthy();
   });
 
-  it("keeper:selected opens the talk dialog as a holo comm panel with the voice viz", async () => {
+  it("keeper:selected opens the talk dialog as a holo comm panel", async () => {
     const { game, bus, uiEl } = makeGame();
     await game.boot();
     bus.emit("keeper:selected", { keeperId: "dreams" });
     const panel = within(uiEl).getByLabelText("talk to Keeper of Dreams");
     expect(panel.classList.contains("holo-panel")).toBe(true); // holo kit frame
-    expect(panel.querySelector(".holo-voice")).toBeTruthy(); // voice visualizer hero
     expect(document.querySelectorAll("#holo-kit-style")).toHaveLength(1); // kit styles injected once
   });
 

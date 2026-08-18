@@ -77,7 +77,7 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 | `create_keeper:open` | none | ui/hud | ui/create_keeper |
 | `keepers_list:open` | none | ui/hud (View keepers) | ui/keepers_list |
 | `keeper:created` | Keeper object | ui/create_keeper, ui/dialog (monument reply carrying `created_keeper`) | main.js (refreshState), ui/hud |
-| `keeper:selected` | `{ keeperId }` (consumers also accept a bare id) | render/scene_overworld (pick: the keeper herself OR any part of her cottage; the door alone keeps its enter pick), render/scene_interior (hint book, clicking the keeper herself), ui/keepers_list (row click) | main.js (records `state.selectedKeeperId`, so a scene that builds after the emit still sees the selection), ui/dialog (open), render/scene_overworld (select-to-follow: camera tweens to the standard framing and follows her; any user camera input or a deselect exits) |
+| `keeper:selected` | `{ keeperId }` (consumers also accept a bare id) | render/scene_overworld (pick: the keeper herself OR any part of her cottage; the door alone keeps its enter pick), render/scene_interior (hint book, clicking the keeper herself, the "Sit beside her" chairs view), ui/keepers_list (row click) | main.js (records `state.selectedKeeperId`, so a scene that builds after the emit still sees the selection), ui/dialog (open), render/scene_overworld (select-to-follow: camera tweens to the standard framing and follows her; any user camera input or a deselect exits) |
 | `keeper:deselected` | `{ keeperId }` | render/scene_overworld (a true click on nothing pickable while someone is selected, and a monument click while a different keeper is selected; the scene then clears the ring + follow itself) | none in src (the talk panel stays open; only its X closes it) |
 | `keeper:join` | `{ keeperId }` | ui/dialog | render/scene_overworld |
 | `house:enter` | `{ keeperId }` | render/scene_overworld | main.js (setMode interior) |
@@ -85,8 +85,8 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 | `interior:view` | `{ view: "main"\|"chairs"\|"shelf" }` | ui/interior_views (nav cluster; `main` while the main view is settled = the gentle "Back to Keeper" re-frame) | render/scene_interior |
 | `book:created` | `{ keeperId, book }` | ui/dialog (tell reply that carries a book; unconscious tells write none) | main.js, ui/hud, render/scene_interior |
 | `book:destroyed` | `{ keeperId, slug }` | ui/reader (Destroy) | main.js, ui/hud, render/scene_interior |
-| `book:open` | `{ keeperId, slug }` | ui/dialog (consulted book icon), render/scene_interior (fetched book) | ui/reader (open) |
-| `memory:used` | `{ keeperId, slugs }` | ui/dialog (grounded ask reply: the consulted-books row appears) | render/scene_interior (she physically fetches the FIRST used book: pull out, hold with a soft glow, reshelve; no reader), render/scene_overworld (brief sparkle + tiny book sprite over her head) |
+| `book:open` | `{ keeperId, slug }` | ui/dialog (consulted book link), render/scene_interior (fetched book) | ui/reader (open) |
+| `memory:used` | `{ keeperId, slugs }` | ui/dialog (grounded ask reply: the consulted-book links appear) | render/scene_overworld (brief sparkle + tiny book sprite over her head) |
 | `keeper:sleep` | `{ keeperId }` | ui/dialog (Send to sleep, after api.sleep succeeds) | render/scene_overworld (walk home over the street graph + door fade + window dim + dream effect; ambient, no input lock), render/scene_interior (she returns to her chair and dozes: eyes shut, slow breathing, Zzz) |
 | `keeper:rested` | `{ keeperId }` | ui/dialog (sleep job polled to done, after the keeper record refresh) | main.js (refreshState -> state:loaded), render/scene_overworld (dream fades, she re-emerges rested with a sparkle), render/scene_interior (she wakes rested) |
 | `reader:closed` | none | ui/reader (every close) | render/scene_interior |

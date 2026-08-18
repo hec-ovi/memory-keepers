@@ -5,17 +5,13 @@ books, the engine API, or the bus. It renders whatever content element it is
 given and owns all holographic styling. The game side (frontend/src/ui/*.js)
 consumes it; menus/UI iterate here without touching game logic.
 
-The look: amber/orange chrome and type, cyan selection fill, scan lines, a
-shard materialize sequence, and ring (listening) / orb (speaking) voice
-moods. Zero-network at runtime: everything is drawn procedurally
-(canvas + CSS).
+The look: amber/orange chrome and type, cyan selection fill, scan lines, and
+a shard materialize sequence. Zero-network at runtime: everything is drawn
+procedurally (canvas + CSS).
 
 ## Files
 
 - `holo.js`   panel factory + the one injected stylesheet (all holo classes)
-- `voice.js`  voice visualizer: one central crisp speaker icon wrapped by
-              concentric waveform strands (faint idle / cyan listening /
-              purple-blue speaking)
 - `shards.js` internal: wireframe-triangle materialize math + canvas driver
 - `CONTRACT.md` this file
 
@@ -53,19 +49,6 @@ createHoloPanel({ title, content, size, onClose, className })
   follows the pointer clamped to the viewport, stays where it is dropped,
   and wears the `holo-dragged` marker class.
 
-```js
-import { createVoiceViz } from "./holo/voice.js";
-createVoiceViz({ size }) -> { el, setMode(mode), dispose() }
-```
-
-- `size`    CSS px (default 160). `el` is `<div class="holo-voice"
-            data-mode="...">` containing the canvas. The backing store is
-            `size * RENDER_SCALE` (2x) so the icon stays crisp.
-- The picture: ONE central vector speaker icon (driver box, cone, two sound
-  arcs; `speakerGeometry(size)` is the pure shape source) wrapped by
-  `STRAND_COUNT` (6) concentric wavy waveform strands (`strandParams(i)`
-  spreads radius/phase/alpha). Colors follow the mode hue: faint cyan idle,
-  bright cyan listening, purple center fading to blue edges speaking.
 - `setMode("idle" | "listening" | "speaking")` cross-fades (~450 ms) all
   params (alpha, wobble, waves, speed, scale, hue, hueSpread). Unknown modes
   are ignored. `el.dataset.mode` mirrors the current mode (test/style hook).
@@ -97,10 +80,7 @@ Secondary exports (stable, used by hosts/tests):
 document (className and text optional);
 `prefersReducedMotion(win)`; `HOLO_STYLE_ID`; `HOLO_CLASSES`;
 `HOLO_OPEN_MS` = `{ shards: 420, skin: 420, content: 560, total: 820 }`;
-`HOLO_CLOSE_MS` = 350. From voice.js: `VOICE_MODES`, `MODE_PARAMS`,
-`MODE_FADE_MS`, `STRAND_COUNT`, `RENDER_SCALE`, and the pure helpers
-`createVoiceState`, `setVoiceMode`, `modeBlend`, `vizFrame`, `ringRadius`,
-`strandParams`, `speakerGeometry`. From shards.js: `tessellate`,
+`HOLO_CLOSE_MS` = 350. From shards.js: `tessellate`,
 `shardPlan`, `shardState`, `runShards`, `mulberry32`, `SHARD_COLORS`,
 `easeOutCubic`.
 
@@ -143,7 +123,6 @@ One `<style id="holo-kit-style">` per document, injected on first use:
 | `holo-chip` | small amber outlined tag (button.holo-chip is interactive) |
 | `holo-input` | dark field, amber border, cyan caret + focus glow |
 | `holo-thinking` | thinking border: spinning amber/cyan/magenta conic ring + glow around the element (reduced motion: pulse). Toggle via `ensureThinking` |
-| `holo-voice` | voice visualizer host |
 | `holo-dragged` | marker set once a panel has been dragged (no styling of its own; the drag writes inline styles) |
 
 ## Theming variables (override on :root or any ancestor)
@@ -180,7 +159,7 @@ ui/ modules emit `ui:open` / `ui:close` / `voice:*`; see ../CONTRACT.md).
 
 ## How to test
 
-`cd frontend && npx vitest run tests/holo.test.js tests/voice.test.js`
+`cd frontend && npx vitest run tests/holo.test.js`
 Panel lifecycle runs under `vi.useFakeTimers()` (advance past
-`HOLO_OPEN_MS.total`); shard/voice math is pure; canvas is mocked
+`HOLO_OPEN_MS.total`); shard math is pure; canvas is mocked
 (`HTMLCanvasElement.prototype.getContext -> null` or a spy object).
