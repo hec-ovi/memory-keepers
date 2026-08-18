@@ -28,6 +28,10 @@ Privacy first: the same code runs against Gemini on Vertex AI or entirely on you
 - Keeper tools: YouTube and podcast transcripts, song facts (MusicBrainz) and lyrics (LRCLIB), book facts and public-domain texts (Gutendex), movie facts and plots (OMDb, Wikidata, Wikipedia)
 - three.js frontend (no build step), FastAPI engine, Docker
 
+## Content and sources
+
+Keepers read sources at capture time and store only what they write: a book holds facts, short quotes, and the user's relationship with the work, never a copy of it. Fetched text (a transcript, lyrics, a plot) lives only in the model's context while the book is written. Sources are chosen by license: MusicBrainz facts (CC0), Wikipedia plots (CC BY-SA, cited in the book), Project Gutenberg full texts only when a book is public domain, and podcast transcripts only when the publisher ships one in the feed.
+
 ## Run locally (zero cloud cost)
 
 ```
@@ -44,6 +48,15 @@ The game is at http://localhost:8000, running against the official Firestore emu
 
 Nothing installs on the machine; everything lives in the containers.
 
+To make [Gemini CLI](https://github.com/google-gemini/gemini-cli) the brain (Google's own agent serving the island), register the toolkit and tell it to serve:
+
+```
+MODEL_TIER=agy docker compose --profile agy up -d
+gemini mcp add island -- docker compose exec -T agy /opt/venv/bin/python agy/src/mk_agy/mcp_server.py
+gemini
+> Serve the island: loop serve_next_model_job, write each answer yourself, hand it back with submit_model_reply.
+```
+
 To fill a world with sample memories and test the whole loop (tells, grounded asks, a dream with its knowledge graph):
 
 ```
@@ -59,24 +72,47 @@ docker compose run --rm test-frontend   # frontend (707 tests)
 
 Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set); frontend on vitest + jsdom + Testing Library + MSW.
 
-## Deploy
+## Deploy to Google Cloud (from zero)
+
+Four steps from a blank Google account to your own island; `scripts/deploy.sh` does the heavy lifting.
+
+1. Install the [gcloud CLI](https://cloud.google.com/sdk/docs/install) and sign in:
+
+   ```
+   gcloud auth login
+   ```
+
+2. Create a project and link your billing account (project ids are global, pick any unique suffix):
+
+   ```
+   gcloud projects create my-island-4821
+   gcloud billing accounts list
+   gcloud billing projects link my-island-4821 --billing-account=<ACCOUNT_ID from the list>
+   ```
+
+3. Clone and deploy:
+
+   ```
+   git clone https://github.com/hec-ovi/memory-keepers && cd memory-keepers
+   export INTERNAL_TOKEN=$(openssl rand -hex 16)
+   PROJECT=my-island-4821 scripts/deploy.sh
+   ```
+
+4. Open the URL the script prints. Done: the script enabled the APIs and created the Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler dream sweep.
+
+Optional env before step 3: `ACCESS_CODE=<island key>` gates the API behind `X-Access-Code` (visitors enter it once, or open a `?key=` link; anonymous traffic never reaches a model). `OMDB_KEY=<free key>` adds IMDb ratings to movie lookups. `MIN_INSTANCES=1 CPU_ALWAYS=1` keeps one instance warm for demo days. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
+
+### Or let Gemini set it up
+
+The same four steps, driven by [Gemini CLI](https://github.com/google-gemini/gemini-cli):
 
 ```
-export INTERNAL_TOKEN=<random secret>
-export ACCESS_CODE=<island key>       # optional: gates the API behind X-Access-Code
-export OMDB_KEY=<omdb key>            # optional: movie facts with IMDb ratings
-scripts/deploy.sh
+npm install -g @google/gemini-cli
+gemini
+> Clone https://github.com/hec-ovi/memory-keepers and follow the "Deploy to Google
+> Cloud (from zero)" steps in its README: create a project, link my billing account,
+> deploy with a random INTERNAL_TOKEN, and tell me the URL when done.
 ```
-
-Creates everything on an existing Google Cloud project: enables the APIs, then Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler sweep. Starting from nothing:
-
-```
-gcloud projects create <project-id>
-gcloud billing projects link <project-id> --billing-account=<account-id>
-PROJECT=<project-id> scripts/deploy.sh
-```
-
-With `ACCESS_CODE` set, visitors enter the key once (or open a `?key=` link); anonymous traffic never reaches a model. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
 ## Layout
 
