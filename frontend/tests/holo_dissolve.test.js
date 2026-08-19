@@ -4,7 +4,7 @@
 // geometry every time the population changes.
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { createHoloDissolve, thinToUniformDensity } from "../src/render/holo_dissolve.js";
+import { createHoloDissolve, sampleSurfacePoints } from "../src/render/holo_dissolve.js";
 
 function holoLikeGroup() {
   const group = new THREE.Group();
@@ -16,12 +16,13 @@ function holoLikeGroup() {
 }
 
 describe("createHoloDissolve", () => {
-  it("samples visible meshes into a points child, within the budget", () => {
+  it("fills the whole budget from visible surfaces, none from hidden ones", () => {
     const { group, visor } = holoLikeGroup();
-    const shell = createHoloDissolve({ source: group, maxPoints: 50 });
+    // far more points than the geometry has vertices: surface sampling fills it
+    const shell = createHoloDissolve({ source: group, maxPoints: 5000 });
     expect(shell.object.isPoints).toBe(true);
     expect(shell.object.parent).toBe(group);
-    expect(shell.count).toBeLessThanOrEqual(50);
+    expect(shell.count).toBe(5000);
     // the hidden visor contributes nothing
     const visorOnly = new THREE.Group();
     visorOnly.add(visor);
@@ -38,24 +39,30 @@ describe("createHoloDissolve", () => {
   });
 });
 
-describe("thinToUniformDensity", () => {
-  it("keeps everything under budget, spreads a dense cluster over it", () => {
-    const few = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 1, 1)];
-    expect(thinToUniformDensity(few, 10)).toHaveLength(2);
+describe("sampleSurfacePoints", () => {
+  it("spreads the budget by area and lands points on the surface", () => {
+    // two squares, one 100x the area of the other: it gets ~all the points
+    const big = new THREE.Mesh(new THREE.PlaneGeometry(10, 10));
+    const small = new THREE.Mesh(new THREE.PlaneGeometry(1, 1));
+    small.position.set(30, 0, 0);
+    const group = new THREE.Group();
+    group.add(big, small);
+    const points = sampleSurfacePoints(group, 800);
+    expect(points).toHaveLength(800);
+    const onSmall = points.filter((p) => p.x > 20).length;
+    expect(onSmall).toBeGreaterThan(0);
+    expect(onSmall).toBeLessThan(80);
+    // every point lies on one of the two planes (both at z = 0)
+    expect(points.every((p) => Math.abs(p.z) < 1e-6)).toBe(true);
+  });
 
-    // 100 points in one corner cluster + 8 spread out: the spread survive.
-    const points = [];
-    for (let i = 0; i < 100; i += 1) {
-      points.push(new THREE.Vector3(Math.random() * 0.01, 0, 0));
-    }
-    for (const x of [0, 1]) {
-      for (const y of [0, 1]) {
-        for (const z of [0, 1]) points.push(new THREE.Vector3(x * 9, y * 9, z * 9));
-      }
-    }
-    const kept = thinToUniformDensity(points, 16);
-    expect(kept).toHaveLength(16);
-    const far = kept.filter((p) => p.length() > 5);
-    expect(far.length).toBeGreaterThanOrEqual(7);
+  it("is deterministic and empty for an empty group", () => {
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6));
+    const g1 = new THREE.Group();
+    g1.add(mesh);
+    const first = sampleSurfacePoints(g1, 50);
+    const second = sampleSurfacePoints(g1, 50);
+    expect(first.map((p) => p.toArray())).toEqual(second.map((p) => p.toArray()));
+    expect(sampleSurfacePoints(new THREE.Group(), 50)).toEqual([]);
   });
 });

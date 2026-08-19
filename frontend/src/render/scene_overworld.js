@@ -607,7 +607,7 @@ export function createOverworldScene(ctx = {}) {
       if (obj.name === "visor") obj.visible = false;
     });
     monumentDissolve = createHoloDissolve({
-      source: holoGroup, maxPoints: 8000, pointSize: 2.1,
+      source: holoGroup, maxPoints: 12000, pointSize: 2.6,
     });
     holoGroup.traverse((obj) => {
       if (!obj.isMesh) return;

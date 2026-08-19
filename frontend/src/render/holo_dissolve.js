@@ -40,11 +40,11 @@ const VERTEX_SHADER = /* glsl */ `
     float perspective = clamp(6.0 / max(1.0, -view.z), 0.5, 1.6);
     gl_PointSize = uPointSize * uPixelRatio * perspective * (0.7 + aSeed * 0.6);
 
-    vColor = uTint * (0.8 + release * 0.9 + aSeed * 0.25);
-    // Held particles stay bright enough to carry the whole silhouette (no
-    // mesh backs them up); released ones flicker and burn brighter still.
-    vAlpha = (0.4 + release * 0.45) *
-      (0.65 + 0.35 * step(hash11(aSeed * 7.3 + floor(uTime * 5.0)), 0.6));
+    vColor = uTint * (0.85 + release * 0.9 + aSeed * 0.25);
+    // Held particles stay near-opaque to carry the whole silhouette in full
+    // daylight (no mesh backs them up); released ones flicker as they drift.
+    vAlpha = (0.72 + release * 0.28) *
+      (0.72 + 0.28 * step(hash11(aSeed * 7.3 + floor(uTime * 5.0)), 0.6));
   }
 `;
 
@@ -67,45 +67,68 @@ function deterministicRandom(index, salt = 0) {
   return value - Math.floor(value);
 }
 
-// Thins sample points to a budget with even density in space. A plain stride
-// spends the budget where the modelling detail is (eyes, ears) and leaves the
-// body bare; bucketing by position and taking round-robin from every bucket
-// spreads it over the volume instead.
-export function thinToUniformDensity(points, maxPoints) {
-  if (points.length <= maxPoints) return points;
-  const bounds = new THREE.Box3();
-  for (const p of points) bounds.expandByPoint(p);
-  const size = bounds.getSize(new THREE.Vector3());
-  const volume = Math.max(size.x * size.y * size.z, 1e-6);
-  const cell = Math.max(Math.cbrt(volume / maxPoints), 1e-4);
-
-  const buckets = new Map();
-  for (const p of points) {
-    const key = `${Math.floor(p.x / cell)}:${Math.floor(p.y / cell)}:${Math.floor(p.z / cell)}`;
-    const bucket = buckets.get(key);
-    if (bucket) bucket.push(p);
-    else buckets.set(key, [p]);
-  }
-
-  const lists = [...buckets.values()];
-  const kept = [];
-  for (let round = 0; kept.length < maxPoints; round += 1) {
-    let added = 0;
-    for (const list of lists) {
-      if (round < list.length) {
-        kept.push(list[round]);
-        added += 1;
-        if (kept.length >= maxPoints) break;
+// Samples `count` points spread evenly over the visible mesh surfaces under
+// `source`, in source-local space. Vertices alone are too few and too uneven
+// (a keeper is ~2k vertices, most of them in the eyes): picking triangles by
+// area and a barycentric point inside each fills any budget with even skin
+// density. Deterministic, so the figure is the same on every build.
+export function sampleSurfacePoints(source, count) {
+  source.updateMatrixWorld(true);
+  const inverse = new THREE.Matrix4().copy(source.matrixWorld).invert();
+  const relative = new THREE.Matrix4();
+  const corners = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const triangles = []; // flat corner coords + cumulative area
+  let totalArea = 0;
+  source.traverse((obj) => {
+    if (!obj.isMesh || obj.visible === false) return;
+    const positions = obj.geometry?.getAttribute?.("position");
+    if (!positions) return;
+    relative.multiplyMatrices(inverse, obj.matrixWorld);
+    const index = obj.geometry.getIndex();
+    const vertexCount = index ? index.count : positions.count;
+    for (let v = 0; v + 2 < vertexCount; v += 3) {
+      for (let c = 0; c < 3; c += 1) {
+        corners[c]
+          .fromBufferAttribute(positions, index ? index.getX(v + c) : v + c)
+          .applyMatrix4(relative);
       }
+      const area = corners[2].clone().sub(corners[0])
+        .cross(corners[1].clone().sub(corners[0])).length() / 2;
+      if (area <= 0) continue;
+      totalArea += area;
+      triangles.push({
+        a: corners[0].clone(), b: corners[1].clone(), c: corners[2].clone(),
+        upTo: totalArea,
+      });
     }
-    if (added === 0) break;
+  });
+  if (triangles.length === 0) return [];
+
+  const samples = [];
+  for (let i = 0; i < count; i += 1) {
+    const pick = deterministicRandom(i, 7) * totalArea;
+    let lo = 0;
+    let hi = triangles.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (triangles[mid].upTo < pick) lo = mid + 1;
+      else hi = mid;
+    }
+    const { a, b, c } = triangles[lo];
+    const su = Math.sqrt(deterministicRandom(i, 11));
+    const v = deterministicRandom(i, 13);
+    samples.push(new THREE.Vector3()
+      .addScaledVector(a, 1 - su)
+      .addScaledVector(b, su * (1 - v))
+      .addScaledVector(c, su * v));
   }
-  return kept;
+  return samples;
 }
 
-// Samples every visible mesh under `source` (in source-local space, so the
-// cloud scales and turns with her) and adds the points object to it.
-// Returns { object, update(dt), dispose() } or null with nothing to sample.
+// Builds the dust figure over every visible mesh under `source` (in
+// source-local space, so the cloud scales and turns with her) and adds the
+// points object to it. Returns { object, update(dt), dispose() } or null
+// with nothing to sample.
 export function createHoloDissolve({
   source,
   maxPoints = 2200,
@@ -113,24 +136,8 @@ export function createHoloDissolve({
   dissolve = 0.55,
   tint = 0x8fd8ff,
 } = {}) {
-  source.updateMatrixWorld(true);
-  const inverse = new THREE.Matrix4().copy(source.matrixWorld).invert();
-  const relative = new THREE.Matrix4();
-  const scratch = new THREE.Vector3();
-  let samples = [];
-  source.traverse((obj) => {
-    if (!obj.isMesh || obj.visible === false) return;
-    const positions = obj.geometry?.getAttribute?.("position");
-    if (!positions) return;
-    relative.multiplyMatrices(inverse, obj.matrixWorld);
-    for (let index = 0; index < positions.count; index += 1) {
-      scratch.fromBufferAttribute(positions, index);
-      scratch.applyMatrix4(relative);
-      samples.push(scratch.clone());
-    }
-  });
+  const samples = sampleSurfacePoints(source, maxPoints);
   if (samples.length === 0) return null;
-  samples = thinToUniformDensity(samples, maxPoints);
 
   const count = samples.length;
   const positions = new Float32Array(count * 3);
@@ -159,7 +166,9 @@ export function createHoloDissolve({
     fragmentShader: FRAGMENT_SHADER,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    // Normal blending, not additive: added light disappears against the
+    // sunlit island; covering pixels is what keeps her visible by day.
+    blending: THREE.NormalBlending,
   });
 
   const object = new THREE.Points(geometry, material);
