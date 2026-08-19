@@ -20,6 +20,9 @@ node_modules/
 .env
 *.key
 
+# local emulator data (the user's local world)
+.data/
+
 # local video renders
 video.mp4
 

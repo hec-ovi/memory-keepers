@@ -18,12 +18,14 @@ services:
     depends_on: [firestore]
 
   # Firestore emulator + the Emulator Suite UI: browse the database live
-  # at http://localhost:4000 (Firestore tab). Data persists across restarts
-  # in the mk-firestore-data volume; `docker compose down -v` resets it.
+  # at http://localhost:4000 (Firestore tab). Data lives in ./.data/firestore
+  # on the host (gitignored): it survives `down -v`, volume pruning and image
+  # rebuilds; start.sh snapshots it every minute and on graceful stop.
+  # Delete the folder to reset the world.
   firestore:
     build: emulators
     ports: ["8480:8480", "4000:4000"]
-    volumes: ["mk-firestore-data:/fb/data"]
+    volumes: ["./.data/firestore:/fb/data"]
     # firebase-tools exports only on a graceful Ctrl-C shutdown, so stop
     # with SIGINT instead of docker's default SIGTERM.
     stop_signal: SIGINT
@@ -46,4 +48,3 @@ services:
 
 volumes:
   mk-node-modules:
-  mk-firestore-data:
