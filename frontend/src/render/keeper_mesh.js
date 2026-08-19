@@ -69,7 +69,6 @@ export function derivePalette(_palette = {}, kind = "conscious") {
     eye: VISOR_BLUE, // digital eyes glowing behind the visor
     highlight: 0xe8fbff,
     blush: mixHex(VISOR_BLUE, 0xffffff, 0.45), // cheek status LEDs
-    mouth: mixHex(0x51606e, 0x2c3a46, 0.5),
     visor: 0x0e2233, // smoked glass band
     opacity: 1,
   };
@@ -80,7 +79,6 @@ export function derivePalette(_palette = {}, kind = "conscious") {
       eye: mixHex(out.eye, 0x7a5cff, 0.45), // night-shifted glow
       highlight: 0xd9d2ff,
       blush: mixHex(out.blush, UNCONSCIOUS_TINT, 0.5),
-      mouth: mixHex(out.mouth, 0x241530, 0.5),
       visor: mixHex(out.visor, 0x1a1030, 0.5),
       opacity: 1, // fully opaque: only the moonlit tint marks her unconscious
     };
@@ -348,15 +346,6 @@ export function createKeeperMesh({ keeper = {}, config = {} } = {}) {
     blush.lookAt(blush.position.clone().multiplyScalar(2));
     root.add(blush);
   }
-
-  // Tiny smile: a short torus arc centered on the bottom of its circle.
-  const smileArc = Math.PI * 0.62;
-  const smileGeo = new THREE.TorusGeometry(0.075, 0.017, 8, 20, smileArc);
-  const smileMat = mat({ color: pal.mouth, roughness: 0.6 });
-  const smile = new THREE.Mesh(smileGeo, smileMat);
-  smile.rotation.z = -Math.PI / 2 - smileArc / 2; // arc spans the bottom = smile
-  smile.position.set(0, -0.09, 0.5);
-  root.add(track(smile));
 
   // Zzz sprite: hidden unless tired level 2 or sleeping; pulses (zzzPulse).
   // Not in `materials`: its opacity is animated per-frame, so applyOpacity
