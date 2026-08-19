@@ -12,14 +12,16 @@ from mk_models import ModelGateway
 
 from . import chatter, dates
 from .fallbacks import (STOPWORDS, dated_citation, extract_book_fields,
-                        first_sentence, harvest_constraints, parse_json,
-                        route_by_wording)
+                        harvest_constraints, parse_json, route_by_wording)
 from .prompting import index_block, prompt, session_block
 from .runtime import build_agent, run_agent
 
 log = logging.getLogger(__name__)
 SHORTLIST = 6
-TURN_TEXT_CAP = 200  # chars of each turn kept in the session
+# Chars of each turn kept in the session: the log the dialog replays as chat
+# history and sleep binds into books (which dreaming then links across). Full
+# messages up to the cap; a told file's complete text lives in its book.
+TURN_TEXT_CAP = 2000
 
 
 def _today() -> str:
@@ -319,8 +321,8 @@ class AgentsApi:
         t = now_iso()
         self.library.session_append(
             world, kid,
-            [Turn(t=t, role="user", text=first_sentence(user_text, TURN_TEXT_CAP)),
-             Turn(t=t, role="keeper", text=first_sentence(keeper_text, TURN_TEXT_CAP))],
+            [Turn(t=t, role="user", text=user_text.strip()[:TURN_TEXT_CAP]),
+             Turn(t=t, role="keeper", text=keeper_text.strip()[:TURN_TEXT_CAP])],
             constraints=harvest_constraints(user_text))
         estimate = tokens or (len(user_text) + len(keeper_text)) // 4
         self.library.meter_add(world, kid, estimate)
