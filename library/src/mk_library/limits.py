@@ -4,7 +4,7 @@ LIGHT_CAP = 16          # plots on the light side
 DARK_CAP = 8            # plots on the dark side
 LIBRARY_CAP = 24        # one bookcase, 24 slots
 
-SESSION_TOKEN_BUDGET_DEFAULT = 12_000
+SESSION_TOKEN_BUDGET_DEFAULT = 32_000
 UNRESTED_THRESHOLD = 0.70
 NEEDS_SLEEP_THRESHOLD = 0.85
 
