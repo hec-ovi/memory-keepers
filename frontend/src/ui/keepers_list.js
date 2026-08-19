@@ -32,6 +32,12 @@ export function restHint(session = null) {
   return { tone: "cyan", label: "rested" };
 }
 
+// Island capacities, mirroring the library caps (library/CONTRACT.md):
+// group headers read "5/16" so the player knows how much room is left.
+export const LIGHT_CAP = 16;
+export const DARK_CAP = 8;
+export const BOOK_CAP = 24;
+
 const STYLE_ID = "mk-keepers-style";
 const CSS = `
 .mk-keepers{position:absolute;top:70px;left:16px;width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow:hidden;z-index:30;}
@@ -109,7 +115,7 @@ export function createKeepersList({ root, state, bus } = {}) {
     const level = Number.isFinite(keeper.level) ? keeper.level : 1;
     const lv = el("span", "mk-keepers-lv", `LV ${level}`);
     const count = keeper.book_count ?? 0;
-    const books = el("span", "mk-keepers-books", `${count} ${count === 1 ? "book" : "books"}`);
+    const books = el("span", "mk-keepers-books", `${count}/${BOOK_CAP} books`);
 
     row.append(dot, nameEl, lv, books);
     row.addEventListener("click", () => selectKeeper(keeper.id));
@@ -138,13 +144,19 @@ export function createKeepersList({ root, state, bus } = {}) {
       );
       return;
     }
+    // Counts against the caps come from the whole island, not the search hits,
+    // so filtering never misreports how much room is left.
+    const lightTotal = all.filter((a) => a.kind !== "unconscious").length;
+    const darkTotal = all.length - lightTotal;
     const groups = [
-      ["the village", keepers.filter((a) => a.kind !== "unconscious")],
-      ["across the ridge", keepers.filter((a) => a.kind === "unconscious")],
+      ["the village", keepers.filter((a) => a.kind !== "unconscious"),
+        `${lightTotal}/${LIGHT_CAP}`],
+      ["across the ridge", keepers.filter((a) => a.kind === "unconscious"),
+        `${darkTotal}/${DARK_CAP}`],
     ];
-    for (const [title, members] of groups) {
+    for (const [title, members, tally] of groups) {
       if (!members.length) continue;
-      scroll.appendChild(el("h3", "mk-keepers-group", title));
+      scroll.appendChild(el("h3", "mk-keepers-group", `${title} ${tally}`));
       const list = el("div", "holo-list");
       for (const keeper of members) list.appendChild(rowFor(keeper));
       scroll.appendChild(list);

@@ -45,21 +45,21 @@ describe("createKeepersList", () => {
     expect(panel.classList.contains("holo-panel")).toBe(true);
     expect(screen.getByRole("heading", { name: "The keepers" })).toBeTruthy();
 
-    // both sides of the island, grouped
-    expect(screen.getByRole("heading", { name: "the village" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "across the ridge" })).toBeTruthy();
+    // both sides of the island, grouped, with room left against the caps
+    expect(screen.getByRole("heading", { name: "the village 2/16" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "across the ridge 1/8" })).toBeTruthy();
 
-    // every keeper, with name, topic, level and book count
+    // every keeper, with name, topic, level and book count over the shelf cap
     const dreams = screen.getByRole("button", { name: "view Keeper of Dreams" });
     expect(dreams.textContent).toContain("Keeper of Dreams");
     expect(dreams.textContent).toContain("LV 3");
-    expect(dreams.textContent).toContain("2 books");
+    expect(dreams.textContent).toContain("2/24 books");
     const meetings = screen.getByRole("button", { name: "view Keeper of Meetings" });
     expect(meetings.textContent).toContain("LV 1");
-    expect(meetings.textContent).toContain("3 books");
+    expect(meetings.textContent).toContain("3/24 books");
     const still = screen.getByRole("button", { name: "view The Still Water" });
     expect(still.textContent).toContain("LV 2");
-    expect(still.textContent).toContain("1 book"); // singular
+    expect(still.textContent).toContain("1/24 books");
     expect(still.textContent).toContain("fear of water"); // her topic
   });
 
@@ -139,7 +139,7 @@ describe("createKeepersList", () => {
   it("re-renders the open list on state:loaded (levels and counts never go stale)", () => {
     bus.emit("keepers_list:open");
     expect(screen.getByRole("button", { name: "view Keeper of Dreams" }).textContent).toContain(
-      "2 books",
+      "2/24 books",
     );
 
     state.keepers[0].book_count = 9;
@@ -147,7 +147,7 @@ describe("createKeepersList", () => {
     bus.emit("state:loaded", { state, consolidation: {} });
 
     const row = screen.getByRole("button", { name: "view Keeper of Dreams" });
-    expect(row.textContent).toContain("9 books");
+    expect(row.textContent).toContain("9/24 books");
     expect(row.textContent).toContain("LV 4");
   });
 
@@ -157,7 +157,7 @@ describe("createKeepersList", () => {
     build([]);
     bus.emit("keepers_list:open");
     expect(screen.getByText(/nobody lives here yet/i)).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "the village" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /the village/ })).toBeNull();
     // the crossing shortcut still works on an empty island
     expect(screen.getByRole("button", { name: "Cross the ridge" })).toBeTruthy();
   });
