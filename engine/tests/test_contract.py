@@ -77,6 +77,14 @@ async def test_tell_ask_and_books(client):
     assert (await client.get(f"/keepers/dreams/books/{slug}")).status_code == 404
 
 
+async def test_chat_log_replays_the_conversation(client):
+    await client.post("/keepers/dreams/tell", json={"text": "I dreamed of a slow train."})
+    turns = (await client.get("/keepers/dreams/chat")).json()["turns"]
+    assert [t["role"] for t in turns] == ["user", "keeper"]
+    assert turns[0]["text"] == "I dreamed of a slow train."
+    assert (await client.get("/keepers/nope/chat")).status_code == 404
+
+
 async def test_say_routes_to_tell_or_ask(client):
     told = (await client.post("/keepers/dreams/say",
                               json={"text": "I dreamed of a red kite over the bay."})).json()

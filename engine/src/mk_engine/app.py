@@ -183,6 +183,14 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     async def chatter(kid: str, x_world: str | None = Header(default=None)):
         return {"line": agents_api.keeper_chatter(world_of(x_world), kid)}
 
+    @app.get("/keepers/{kid}/chat")
+    async def chat(kid: str, x_world: str | None = Header(default=None)):
+        world = world_of(x_world)
+        library.get_keeper(world, kid)  # 404 for unknown keepers
+        session = library.session_read(world, kid)
+        return {"turns": [{"t": t.t, "role": t.role, "text": t.text}
+                          for t in session.turns]}
+
     @app.post("/monument")
     async def monument(body: dict, x_world: str | None = Header(default=None)):
         world = world_of(x_world)

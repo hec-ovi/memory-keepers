@@ -21,6 +21,7 @@ The frontend sends `X-World: <id>` (generated once, kept in localStorage). First
 | `GET /keepers/{id}/books` / `GET .../books/{slug}` | | summaries newest first / full book |
 | `DELETE /keepers/{id}/books/{slug}` | | `{deleted: true}` |
 | `GET /keepers/{id}/chatter` | | `{line}` (short bubble text) |
+| `GET /keepers/{id}/chat` | | `{turns: [{t, role, text}]}`: her session's conversation log, oldest first; the dialog replays it as persistent history, and sleep binds these same turns into books that dreaming links |
 | `POST /keepers/{id}/sleep` | `{}` | 202 `{job_id, status}`; 409 `SLEEP_RUNNING`; poll `GET .../sleep/{job_id}` (404 `SLEEP_NOT_FOUND`) |
 | `POST /monument` | `{text}` | `{reply, created_keeper?}` (the root agent) |
 | `POST /dream` | `{}` | 202 `{status: queued, run_id}`; 409 `DREAM_RUNNING`; watch `/dreams/{run_id}` |
