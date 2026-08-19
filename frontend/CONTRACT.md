@@ -68,7 +68,7 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 |---|---|---|---|
 | `tick` | `dt` (seconds, number) | main.js | none in src (open hook, tests) |
 | `mode:set` | mode string (`"overworld"`, `"interior:<keeperId>"`) | render/scene_graph, ui/keepers_list (back to overworld before selecting from an interior) | main.js |
-| `mode:changed` | `{ mode, prev }` | main.js | ui/minimap, ui/onboarding |
+| `mode:changed` | `{ mode, prev }` | main.js | ui/minimap, ui/onboarding, ui/dialog (interior -> overworld closes the open talk panel) |
 | `scene:ready` | `{ mode, scene }` | main.js | none in src (tests) |
 | `state:loaded` | `{ state, consolidation }` | main.js (boot, refreshState), ui/hud (after Demo data) | ui/hud, ui/minimap, ui/onboarding, ui/dialog (open panel refreshes its session/level header cluster), ui/keepers_list (open roster re-renders), ui/interior_views (room readout re-reads state.keepers), render/scene_overworld + render/scene_interior (re-apply setTired from session status) |
 | `report:loaded` | consolidation report | main.js | ui/hud |

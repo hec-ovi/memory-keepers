@@ -298,6 +298,17 @@ describe("createDialog", () => {
     expect(screen.queryByRole("button", { name: "Join instance" })).toBeNull();
   });
 
+  it("closes when an instance returns to the island", () => {
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    expect(dialog.isOpen()).toBe(true);
+    bus.emit("mode:changed", { mode: "overworld", prev: "interior:dreams" });
+    expect(dialog.isOpen()).toBe(false);
+    // a plain mode change that never left an interior keeps the panel open
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    bus.emit("mode:changed", { mode: "graph", prev: "overworld" });
+    expect(dialog.isOpen()).toBe(true);
+  });
+
   it("join button is absent when no keeper is selected", () => {
     expect(screen.queryByRole("button", { name: /^join/i })).toBeNull();
     bus.emit("keeper:selected", { keeperId: "dreams" });

@@ -41,10 +41,9 @@
 //                                              button emits it too, from
 //                                              ui/interior_views.js)
 //   emits   "book:open"     { keeperId, slug }   when the fetched book floats out
-//   emits   "keeper:selected" { keeperId }         when the empty-library hint book
-//                                              OR the keeper herself is clicked
-//                                              (opens the same talk panel as
-//                                              the overworld)
+//   emits   "keeper:selected" { keeperId }         when the keeper herself is
+//                                              clicked (opens the same talk
+//                                              panel as the overworld)
 //
 // Three clickable views ("main" | "chairs" | "shelf"): the two armchairs are
 // a cozy pair angled toward one another, and the chairs view seats the camera
@@ -350,14 +349,13 @@ export function viewStep(machine, dt) {
 }
 
 // Classifies the first raycast hit into an action, honoring the mid-tween
-// input lock. `hit` is a plain descriptor: { slug } book, { hint } hint book,
-// { keeper } the keeper herself (opens the same talk panel as the overworld),
+// input lock. `hit` is a plain descriptor: { slug } book, { keeper } the
+// keeper herself (opens the same talk panel as the overworld),
 // { hotspot: "chair" } the guest armchair, { hotspot: "shelf", wall } a
 // bookcase. Hotspots pointing at the view you are already in do nothing.
 export function pickAction(hit, { view = "main", tweening = false } = {}) {
   if (tweening || !hit) return null;
   if (hit.slug) return { type: "pick", slug: hit.slug };
-  if (hit.hint) return { type: "hint" };
   if (hit.keeper) return { type: "keeper" };
   if (hit.hotspot === "chair") {
     return view === "chairs" ? null : { type: "view", view: "chairs" };
@@ -1193,11 +1191,9 @@ export function createInteriorScene(ctx = {}) {
   track(pagesMat);
   const books = []; // { slug, mesh, base, wall, inward, hoverK, own: [resources] }
   let bookIndex = 0;
-  let hintBook = null; // the glowing blank book when the library is empty
 
   function addBookMesh(book) {
     if (!book?.slug) return;
-    removeHintBook();
     const { wall, along, y, step } = shelfSlot(bookIndex++);
     // Spine size comes from the book's corpus tier (small | medium | big |
     // large). A "digest" book (source "sleep", written while she dreams) is
@@ -1290,34 +1286,6 @@ export function createInteriorScene(ctx = {}) {
     const ti = bookTweens.findIndex((t) => t.entry === entry);
     if (ti !== -1) bookTweens.splice(ti, 1);
     disposeEntry(entry);
-    if (books.length === 0) addHintBook();
-  }
-
-  // Empty library: no UI panel, just a single glowing blank book waiting on
-  // a shelf. Clicking it opens the talk dialog ("tell her something").
-  function addHintBook() {
-    if (hintBook || disposed) return;
-    const geo = new THREE.BoxGeometry(BOOK_D, BOOK_H, 0.09);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0xf6ecdf,
-      emissive: 0xffe9b8,
-      emissiveIntensity: 0.55,
-      roughness: 0.5,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    const { along, y } = shelfSlot(Math.floor(SHELF_LAYOUT.slotsPerShelf / 2) + SHELF_LAYOUT.slotsPerShelf);
-    mesh.position.set(bookX(0), y + BOOK_H / 2, along);
-    mesh.userData.hint = true;
-    bookGroup.add(mesh);
-    hintBook = { mesh, own: [geo, mat], baseY: mesh.position.y };
-  }
-
-  function removeHintBook() {
-    if (!hintBook) return;
-    if (hovered === hintBook) setHovered(null);
-    bookGroup.remove(hintBook.mesh);
-    for (const res of hintBook.own) res?.dispose?.();
-    hintBook = null;
   }
 
   api
@@ -1325,11 +1293,9 @@ export function createInteriorScene(ctx = {}) {
     .then((list) => {
       if (disposed) return;
       for (const book of list ?? []) addBookMesh(book);
-      if (books.length === 0) addHintBook();
     })
     .catch((err) => {
       console.warn("[memory-keepers] interior: could not load books:", err);
-      if (!disposed && books.length === 0) addHintBook();
     });
 
   // --- the keeper: same factory as outside, sitting on the chair ---
@@ -1684,7 +1650,7 @@ export function createInteriorScene(ctx = {}) {
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
   let pointerInside = false;
-  let hovered = null; // book entry or the hintBook
+  let hovered = null; // the book entry under the pointer
   let labelEl = null;
   const clickTarget = renderer?.domElement ?? container;
 
@@ -1697,7 +1663,6 @@ export function createInteriorScene(ctx = {}) {
   }
 
   // First raycast hit as a plain descriptor for pickAction: books and the
-  // hint book keep priority naturally (nearest hit wins), the keeper herself
   // opens the talk panel, the guest chair and the bookcases are the view
   // hotspots.
   function pickHit(ndc) {
@@ -1708,7 +1673,6 @@ export function createInteriorScene(ctx = {}) {
     )[0];
     if (!hit) return null;
     const ud = hit.object.userData;
-    if (ud.hint) return { hint: true, entry: hintBook };
     if (ud.slug) return { slug: ud.slug, entry: books.find((b) => b.mesh === hit.object) ?? null };
     if (ud.pick === "keeper") return { keeper: true };
     if (ud.hotspot) return { hotspot: ud.hotspot, wall: ud.wall };
@@ -1731,13 +1695,8 @@ export function createInteriorScene(ctx = {}) {
     labelEl.textContent = "";
     const title = doc.createElement("strong");
     const dateEl = doc.createElement("span");
-    if (entry === hintBook) {
-      title.textContent = "her first memory is unwritten";
-      dateEl.textContent = "tell her something";
-    } else {
-      title.textContent = entry.title;
-      dateEl.textContent = entry.date;
-    }
+    title.textContent = entry.title;
+    dateEl.textContent = entry.date;
     labelEl.appendChild(title);
     if (dateEl.textContent) labelEl.appendChild(dateEl);
   }
@@ -1788,7 +1747,7 @@ export function createInteriorScene(ctx = {}) {
       tweening: viewIsTweening(machine),
     });
     if (!action) return;
-    if (action.type === "hint" || action.type === "keeper")
+    if (action.type === "keeper")
       bus?.emit("keeper:selected", { keeperId }); // same panel as outside
     else if (action.type === "pick") startPick(action.slug);
     else if (action.type === "view") requestView(action.view, { wall: action.wall });
@@ -1926,10 +1885,6 @@ export function createInteriorScene(ctx = {}) {
       const f = flames[i];
       const s = 1 + Math.sin(elapsed * (9 + i * 3) + i * 2.1) * 0.18;
       f.scale.set(s, 1 + Math.sin(elapsed * (7 + i * 2) + i) * 0.24, s);
-    }
-    if (hintBook) {
-      hintBook.mesh.position.y = hintBook.baseY + Math.sin(elapsed * 2.2) * 0.02;
-      hintBook.mesh.material.emissiveIntensity = 0.55 + Math.sin(elapsed * 2.6) * 0.25;
     }
 
     // --- sit/fetch progression ---
@@ -2072,7 +2027,7 @@ export function createInteriorScene(ctx = {}) {
         view: machine.current,
         tweening: viewIsTweening(machine),
       });
-      const bookish = action && (action.type === "pick" || action.type === "hint");
+      const bookish = action && action.type === "pick";
       setHovered(bookish ? (hit?.entry ?? null) : null);
       hotspotHover = action?.type === "view" ? hotspotKeyFor(action) : null;
       const pannable =
@@ -2132,7 +2087,6 @@ export function createInteriorScene(ctx = {}) {
     keeperHandle?.dispose?.();
     for (const entry of books) disposeEntry(entry);
     books.length = 0;
-    removeHintBook();
     for (const res of disposables) res?.dispose?.();
     if (ownRenderer && renderer) {
       renderer.dispose();

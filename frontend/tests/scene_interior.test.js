@@ -453,12 +453,11 @@ describe("pickAction", () => {
     expect(pickAction({ keeper: true }, { view: "shelf" })).toEqual({ type: "keeper" });
   });
 
-  it("books and the hint book win over hotspots in any view", () => {
+  it("books win over hotspots in any view", () => {
     expect(pickAction({ slug: "2026-07-01-the-tide" }, { view: "shelf" })).toEqual({
       type: "pick",
       slug: "2026-07-01-the-tide",
     });
-    expect(pickAction({ hint: true }, { view: "chairs" })).toEqual({ type: "hint" });
   });
 
   it("hotspots enter their view, except from that view itself", () => {
@@ -589,14 +588,6 @@ describe("createInteriorScene (headless, no WebGL)", () => {
     });
     return out;
   };
-  const hintMeshes = (scene) => {
-    const out = [];
-    scene.scene.traverse((o) => {
-      if (o.userData?.hint) out.push(o);
-    });
-    return out;
-  };
-
   function makeScene(books = [flyingBook(), tideBook()], keepers = [dreamsKeeper()]) {
     const bus = createBus();
     const api = { listBooks: vi.fn(async () => books) };
@@ -629,7 +620,6 @@ describe("createInteriorScene (headless, no WebGL)", () => {
     expect(spineMeshes(scene).map((m) => m.userData.slug).sort()).toEqual(
       [flyingBook().slug, tideBook().slug].sort(),
     );
-    expect(hintMeshes(scene)).toHaveLength(0);
     expect(scene.keeperState()).toBe("sitting");
     scene.dispose();
   });
@@ -661,19 +651,16 @@ describe("createInteriorScene (headless, no WebGL)", () => {
     scene.dispose();
   });
 
-  it("empty library shows the glowing hint book; it yields to real books and returns", async () => {
+  it("an empty library shows no book at all; created books appear and go", async () => {
     const { scene, bus } = makeScene([]);
     await flush();
     expect(spineMeshes(scene)).toHaveLength(0);
-    expect(hintMeshes(scene)).toHaveLength(1);
 
     bus.emit("book:created", { keeperId: "dreams", book: tideBook() });
-    expect(hintMeshes(scene)).toHaveLength(0);
     expect(spineMeshes(scene)).toHaveLength(1);
 
     bus.emit("book:destroyed", { keeperId: "dreams", slug: tideBook().slug });
     expect(spineMeshes(scene)).toHaveLength(0);
-    expect(hintMeshes(scene)).toHaveLength(1);
     scene.dispose();
   });
 

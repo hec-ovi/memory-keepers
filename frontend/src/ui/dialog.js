@@ -77,17 +77,25 @@ import { createHoloPanel, ensureHoloStyles, ensureThinking, injectStyle, makeEl 
 
 const STYLE_ID = "mk-dialog-style";
 const CSS = `
-.mk-dialog{position:absolute;top:70px;right:16px;width:min(370px,calc(100vw - 32px));max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow:hidden;z-index:30;}
+/* The panel takes the full height it can, so the conversation reads long;
+   the native handle (bottom edge) lets the player resize it down. */
+.mk-dialog{position:absolute;top:70px;right:16px;width:min(370px,calc(100vw - 32px));height:calc(100vh - 96px);min-height:300px;max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow:hidden;resize:vertical;z-index:30;}
 .mk-dialog .holo-panel__body{flex:1;min-height:0;display:flex;flex-direction:column;}
 .mk-dialog-inner{flex:1;min-height:0;display:flex;flex-direction:column;}
 .mk-dialog-chips{margin-bottom:8px;}
-.mk-dialog-join{display:block;width:100%;margin:2px 0 10px;}
+/* action row at the bottom of the panel, buttons gathered at the right */
+.mk-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin:0 0 10px;}
 /* scrollback: a framed chat block, newest at the bottom (autoscrolled),
    older rows scroll away behind a always-visible thin scrollbar */
-.mk-dialog-hist{min-height:96px;max-height:22vh;overflow-y:scroll;margin-bottom:8px;padding:4px;border:1px solid var(--holo-line,rgba(255,166,64,.42));border-radius:4px;background:rgba(0,0,0,.35);scrollbar-width:thin;scrollbar-color:var(--holo-amber-dim,rgba(255,166,64,.55)) transparent;}
+.mk-dialog-hist{flex:1;min-height:96px;overflow-y:scroll;margin-bottom:8px;padding:4px;border:1px solid var(--holo-line,rgba(255,166,64,.42));border-radius:4px;background:rgba(0,0,0,.35);scrollbar-width:thin;scrollbar-color:var(--holo-amber-dim,rgba(255,166,64,.55)) transparent;}
 .mk-dialog-hist::-webkit-scrollbar{width:6px;}
 .mk-dialog-hist::-webkit-scrollbar-thumb{background:var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:3px;}
-.mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;}
+/* Bubbles alternate like a common conversation: yours hug the right edge,
+   hers the left, neither spanning the full width. */
+.mk-dialog-hist{display:flex;flex-direction:column;gap:9px;}
+.mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;max-width:85%;}
+.mk-dialog-hist-row-user{align-self:flex-end;}
+.mk-dialog-hist-row-keeper{align-self:flex-start;}
 .mk-dialog-hist-who{color:var(--holo-cyan,#3fe0ff);margin-right:6px;text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;}
 .mk-dialog-hist-row-keeper{color:var(--holo-amber-hi,#ffd9a0);}
 /* your own turns: blue-bordered on a darker ground, apart from her amber */
@@ -911,12 +919,20 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       content.appendChild(chips);
     }
 
-    // Primary action: join her. Closes the panel; the overworld walks her
-    // home with the camera following and fires "house:enter" on arrival.
-    // The main keeper has no house to join, and inside her own house the
-    // player is already with her, so no button either.
+    // Scrollback: recent exchanges, small, above the visualizer; the column
+    // is bottom-anchored so it grows upward.
+    histBox = el("div", "mk-dialog-hist holo-list");
+    histBox.setAttribute("aria-label", "recent exchanges");
+    content.appendChild(histBox);
+
+    // Primary action: join her, in the right-aligned row at the bottom.
+    // Closes the panel; the overworld walks her home with the camera
+    // following and fires "house:enter" on arrival. The main keeper has no
+    // house to join, and inside her own house the player is already with
+    // her, so no button either.
     const insideHers = state?.mode === `interior:${keeper.id}`;
     if (!isMonument && !insideHers) {
+      const actions = el("div", "mk-dialog-actions");
       const joinBtn = el("button", "holo-btn holo-btn--primary mk-dialog-join", "Join instance");
       joinBtn.type = "button";
       joinBtn.addEventListener("click", () => {
@@ -924,14 +940,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
         close();
         bus?.emit("keeper:join", { keeperId: id });
       });
-      content.appendChild(joinBtn);
+      actions.appendChild(joinBtn);
+      content.appendChild(actions);
     }
-
-    // Scrollback: recent exchanges, small, above the visualizer; the column
-    // is bottom-anchored so it grows upward.
-    histBox = el("div", "mk-dialog-hist holo-list");
-    histBox.setAttribute("aria-label", "recent exchanges");
-    content.appendChild(histBox);
 
 
     // Sleep prompt: status line + Send to sleep, shown when she tires (or her
@@ -1048,6 +1059,13 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
 
   // Clicking elsewhere in the overworld may clear her ring in the scene, but
   // the talk panel stays: only its X closes it (see the header comment).
+  // Leaving an instance back to the island is the exception: the panel
+  // belonged to that room and closes with it.
+  offs.push(
+    bus?.on?.("mode:changed", ({ mode, prev } = {}) => {
+      if (holo && String(prev ?? "").startsWith("interior:") && mode === "overworld") close();
+    }) ?? (() => {}),
+  );
 
   // The header cluster (LV badge, rest meter, sleep prompt) tracks server
   // truth: every state re-sync refreshes the open panel's local session copy
