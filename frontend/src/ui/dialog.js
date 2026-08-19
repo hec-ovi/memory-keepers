@@ -90,6 +90,8 @@ const CSS = `
 .mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;}
 .mk-dialog-hist-who{color:var(--holo-cyan,#3fe0ff);margin-right:6px;text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;}
 .mk-dialog-hist-row-keeper{color:var(--holo-amber-hi,#ffd9a0);}
+/* your own turns: blue-bordered on a darker ground, apart from her amber */
+.mk-dialog-hist-row-user{border:1px solid rgba(63,224,255,.55);background:rgba(0,8,14,.6);}
 @keyframes mk-dialog-breathe{0%,100%{opacity:.9;}50%{opacity:.35;}}
 .mk-dialog-hist-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
 .mk-dialog-hist-body p:first-child{margin-top:0;}

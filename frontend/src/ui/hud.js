@@ -24,6 +24,7 @@
 // bubbles; the counters do a tiny scale pop when their number changes.
 
 import { injectStyle, makeEl } from "./holo/holo.js";
+import { LIGHT_CAP } from "./keepers_list.js";
 
 const TOOLTIPS = {
   keepers: "Everyone on the island: her level, her books, how rested she is",
@@ -215,7 +216,8 @@ export function createHud({ root, state, bus, api, toasts, ui, reload } = {}) {
   function refresh() {
     const keepers = state?.keepers ?? [];
     const bookCount = keepers.reduce((sum, a) => sum + (a.book_count ?? 0), 0);
-    setStat(keeperStat, `${keepers.length} keepers`);
+    const light = keepers.filter((a) => a.kind !== "unconscious").length;
+    setStat(keeperStat, `${light}/${LIGHT_CAP} keepers`);
     setStat(bookStat, `${bookCount} books`);
 
     dreamBtn.disabled = running || consolidating;

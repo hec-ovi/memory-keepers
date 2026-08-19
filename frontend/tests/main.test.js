@@ -85,6 +85,13 @@ describe("createGame wiring", () => {
     expect(uiEl.querySelector(".toast-stack")).toBeTruthy();
   });
 
+  it("refuses to boot while the engine reports the model down", async () => {
+    const { game, api } = makeGame();
+    api.health = vi.fn(async () => ({ status: "degraded", tier: "local", model: "down" }));
+    await expect(game.boot()).rejects.toMatchObject({ code: "MODEL_DOWN" });
+    expect(api.getState).not.toHaveBeenCalled();
+  });
+
   it("house:enter switches to that keeper's interior and back on interior:exit", async () => {
     const { game, bus, uiEl } = makeGame();
     await game.boot();

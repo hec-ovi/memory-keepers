@@ -38,7 +38,7 @@ afterEach(() => {
 
 describe("createHud", () => {
   it("renders keeper and book counts from state", () => {
-    expect(screen.getByText("2 keepers")).toBeTruthy();
+    expect(screen.getByText("2/16 keepers")).toBeTruthy();
     expect(screen.getByText("5 books")).toBeTruthy();
   });
 
@@ -52,7 +52,7 @@ describe("createHud", () => {
     expect(screen.getByText("5 books")).toBeTruthy();
 
     bus.emit("keeper:created", { id: "films", topic: "films", book_count: 0 });
-    expect(screen.getByText("3 keepers")).toBeTruthy();
+    expect(screen.getByText("3/16 keepers")).toBeTruthy();
     expect(state.keepers).toHaveLength(3);
   });
 
@@ -142,12 +142,12 @@ describe("createHud", () => {
     const loaded = vi.fn();
     bus.on("state:loaded", loaded);
 
-    expect(screen.getByText("0 keepers")).toBeTruthy();
+    expect(screen.getByText("0/16 keepers")).toBeTruthy();
     const seedBtn = screen.getByRole("button", { name: "Demo data" });
     await user.click(seedBtn);
 
     await waitFor(() => expect(screen.queryByRole("button", { name: "Demo data" })).toBeNull());
-    expect(screen.getByText("2 keepers")).toBeTruthy();
+    expect(screen.getByText("2/16 keepers")).toBeTruthy();
     expect(screen.getByText("5 books")).toBeTruthy();
     expect(state.keepers).toHaveLength(2);
     expect(loaded).toHaveBeenCalled();
@@ -174,7 +174,7 @@ describe("createHud", () => {
 
   it("counters pop when their value changes, not on unrelated refreshes", () => {
     const bookStat = screen.getByText("5 books");
-    const keeperStat = screen.getByText("2 keepers");
+    const keeperStat = screen.getByText("2/16 keepers");
     expect(bookStat.classList.contains("stat-pop")).toBe(false);
 
     state.keepers[0].book_count += 1;

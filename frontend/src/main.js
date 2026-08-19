@@ -296,6 +296,22 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
   });
 
   async function boot() {
+    // The game is unusable on a dead model: the engine's health probe says so
+    // and boot refuses, landing on the connect screen. A failed health call
+    // itself is not the gate; getState below reports an unreachable engine.
+    let health = null;
+    try {
+      health = await api.health?.();
+    } catch {
+      health = null;
+    }
+    if (health?.model === "down") {
+      throw new ApiError({
+        status: 503,
+        code: "MODEL_DOWN",
+        message: `the ${health.tier} model is not answering; start the model server and try again`,
+      });
+    }
     const res = await api.getState(); // throws -> caller shows connect screen
     state.keepers = res.keepers ?? [];
     const consolidation = res.consolidation ?? {};

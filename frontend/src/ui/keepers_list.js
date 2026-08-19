@@ -40,8 +40,9 @@ export const BOOK_CAP = 24;
 
 const STYLE_ID = "mk-keepers-style";
 const CSS = `
-.mk-keepers{position:absolute;top:70px;left:16px;width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow:hidden;z-index:30;}
+.mk-keepers{position:absolute;top:70px;left:16px;width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 290px);display:flex;flex-direction:column;overflow:hidden;z-index:30;}
 .mk-keepers .holo-panel__body{flex:1;min-height:0;display:flex;flex-direction:column;}
+.mk-keepers-content{flex:1;min-height:0;display:flex;flex-direction:column;}
 .mk-keepers-search{flex:none;width:100%;margin:0 0 8px;}
 .mk-keepers-scroll{flex:1;min-height:0;overflow-y:auto;}
 .mk-keepers-group{margin:0 0 4px;padding:6px 2px 2px;font-size:.66rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--holo-cyan,#3fe0ff);text-shadow:0 0 8px rgba(63,224,255,.4);}
@@ -166,7 +167,10 @@ export function createKeepersList({ root, state, bus } = {}) {
   function open() {
     if (holo) return;
 
-    const content = el("div");
+    // The flex chain must run holo-panel__body -> content -> scroll unbroken,
+    // or the row list grows past the panel and clips instead of scrolling.
+    // The panel height also stops above the minimap (bottom-left, ~200px).
+    const content = el("div", "mk-keepers-content");
     query = "";
     const search = el("input", "input mk-keepers-search");
     search.type = "search";
