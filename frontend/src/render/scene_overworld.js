@@ -592,10 +592,8 @@ export function createOverworldScene(ctx = {}) {
     for (const m of plaza.glowMats) m.emissiveIntensity = 0.3;
 
     // The Monument herself: a large figure of drifting particles floating
-    // over the well; nothing but her dust is ever drawn. The keeper mesh
-    // supplies the shape to sample and stays as the invisible hit volume:
-    // hidden at the MATERIAL level, because the raycaster ignores material
-    // visibility while resolvePickTarget nulls object-level hiding.
+    // over the well, with her body ghosting at 10% opacity beneath the dust
+    // so the silhouette holds while the particles carry the effect.
     monumentHolo = createKeeperMesh({ keeper: { id: monumentId }, config });
     monumentBaseY = world.heightAt(world.plaza.center.x, world.plaza.center.z) + 3.2;
     const holoGroup = monumentHolo.group;
@@ -609,11 +607,7 @@ export function createOverworldScene(ctx = {}) {
     monumentDissolve = createHoloDissolve({
       source: holoGroup, maxPoints: 12000, pointSize: 2.6,
     });
-    holoGroup.traverse((obj) => {
-      if (!obj.isMesh) return;
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      for (const m of mats) m.visible = false;
-    });
+    monumentHolo.setOpacity?.(0.1);
     worldGroup.add(holoGroup);
     pickables.push(holoGroup);
     const hub = buildPlaza({
@@ -1345,6 +1339,7 @@ export function createOverworldScene(ctx = {}) {
   function update(dt) {
     if (monumentHolo) {
       monumentT += dt;
+      monumentHolo.update?.(dt);
       monumentDissolve?.update(dt);
       const g = monumentHolo.group;
       g.position.y = monumentBaseY + Math.sin(monumentT * 0.8) * 0.2;
