@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 describe("createInteriorViews", () => {
-  it("renders the nav cluster in vertical order: Back to Keeper on top, Back to the island at the bottom", () => {
+  it("renders the nav cluster as one row: Back to Keeper first, Back to the island last", () => {
     createInteriorViews({ root });
     const cluster = screen.getByRole("group", { name: "Room navigation" });
     const buttons = within(cluster).getAllByRole("button");
@@ -49,7 +49,7 @@ describe("createInteriorViews", () => {
     expect(EXIT_LABEL).toBe("Back to the island");
     // the cluster stacks vertically (top button = first in DOM order)
     const css = document.getElementById("mk-interior-views-style").textContent;
-    expect(css).toMatch(/\.mk-interior-views\{[^}]*flex-direction:column/);
+    expect(css).toMatch(/\.mk-interior-views\{[^}]*flex-direction:row/);
   });
 
   it("injects the holo kit styles and its own placement styles", () => {

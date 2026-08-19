@@ -77,9 +77,9 @@ import { createHoloPanel, ensureHoloStyles, ensureThinking, injectStyle, makeEl 
 
 const STYLE_ID = "mk-dialog-style";
 const CSS = `
-/* The panel takes the full height it can, so the conversation reads long;
-   the native handle (bottom edge) lets the player resize it down. */
-.mk-dialog{position:absolute;top:70px;right:16px;width:min(370px,calc(100vw - 32px));height:calc(100vh - 96px);min-height:300px;max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow:hidden;resize:vertical;z-index:30;}
+/* The panel opens at 75% of the viewport so the conversation reads long;
+   the native handle (bottom edge) lets the player resize it either way. */
+.mk-dialog{position:absolute;top:70px;right:16px;width:min(370px,calc(100vw - 32px));height:75vh;min-height:300px;max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow:hidden;resize:vertical;z-index:30;}
 .mk-dialog .holo-panel__body{flex:1;min-height:0;display:flex;flex-direction:column;}
 .mk-dialog-inner{flex:1;min-height:0;display:flex;flex-direction:column;}
 .mk-dialog-chips{margin-bottom:8px;}
@@ -96,10 +96,9 @@ const CSS = `
 .mk-dialog-hist-row{font-size:.78rem;line-height:1.35;padding:4px 8px;max-width:85%;}
 .mk-dialog-hist-row-user{align-self:flex-end;}
 .mk-dialog-hist-row-keeper{align-self:flex-start;}
-.mk-dialog-hist-who{color:var(--holo-cyan,#3fe0ff);margin-right:6px;text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;}
 .mk-dialog-hist-row-keeper{color:var(--holo-amber-hi,#ffd9a0);}
 /* your own turns: blue-bordered on a darker ground, apart from her amber */
-.mk-dialog-hist-row-user{border:1px solid rgba(63,224,255,.55);background:rgba(0,8,14,.6);}
+.mk-dialog-hist-row-user{border:1px solid rgba(63,224,255,.55);border-left:3px solid rgba(63,224,255,.8);background:rgba(0,8,14,.6);}
 @keyframes mk-dialog-breathe{0%,100%{opacity:.9;}50%{opacity:.35;}}
 .mk-dialog-hist-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
 .mk-dialog-hist-body p:first-child{margin-top:0;}
@@ -397,7 +396,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   function pushHistory(kind, text) {
     if (!histBox) return { row: null, body: null, span: null };
     const row = el("div", `mk-dialog-hist-row mk-dialog-hist-row-${kind} holo-row`);
-    if (kind === "user") row.appendChild(el("span", "mk-dialog-hist-who", "you"));
     const body = el("div", "mk-dialog-hist-body");
     const span = el("span", null, text);
     body.appendChild(span);
@@ -841,8 +839,10 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       sending = true;
       sync();
       // The user's row lands in the chat the moment it is sent, not when the
-      // reply arrives; a failed send leaves it there and keeps the input.
+      // reply arrives, and the input empties right away; a failed send puts
+      // the text back so nothing typed is ever lost.
       pushHistory("user", label ?? text);
+      input.value = "";
       setInFlight(true);
       ensureThinking(form, true);
       try {
@@ -851,7 +851,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
           setInFlight(false);
           ensureThinking(form, false);
           say(res?.reply ?? "...", { md: true });
-          input.value = "";
           if (res?.created_keeper) {
             bus?.emit("keeper:created", res.created_keeper);
           }
@@ -872,7 +871,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
               bus?.emit("book:created", { keeperId: keeper.id, book: res.book });
             }
           }
-          input.value = "";
           if (res?.session) {
             session = { ...res.session };
             renderSession();
@@ -881,6 +879,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       } catch (err) {
         setInFlight(false);
         ensureThinking(form, false);
+        if (!input.value) input.value = text; // give the words back to retry
         if (err?.code === "NEEDS_SLEEP") showNeedsSleep();
         else if (err?.code === "LIBRARY_FULL") showLibraryFull();
         else if (keeper.monument) toastError(err?.message || "the island did not answer");
