@@ -687,7 +687,7 @@ describe("createDialog", () => {
     expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe("none");
   });
 
-  it("sleep failure: unlock, toast, prompt stays", async () => {
+  it("sleep failure: toast, prompt stays, the composer stays locked (she still cannot answer)", async () => {
     const user = userEvent.setup();
     state.keepers[0].session = { tokens_used: 900, budget: 1000, status: "needs_sleep" };
     server.use(
@@ -703,7 +703,7 @@ describe("createDialog", () => {
 
     await screen.findByText("already dreaming"); // toast
     expect(screen.getByRole("button", { name: "Send to sleep" }).disabled).toBe(false);
-    expect(screen.getByRole("textbox", { name: /speak to/i }).disabled).toBe(false);
+    expect(screen.getByRole("textbox", { name: /speak to/i }).disabled).toBe(true);
     expect(screen.getByText("she needs to dream")).toBeTruthy();
   });
 

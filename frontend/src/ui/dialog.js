@@ -606,7 +606,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
               : "";
     }
     if (sleepBtn) sleepBtn.disabled = dreaming;
-    setChatDisabled(dreaming);
+    // She cannot answer while she needs to dream (the engine refuses both
+    // tell and ask), so the composer locks instead of failing on send.
+    setChatDisabled(dreaming || info.status === "needs_sleep");
   }
 
   // A 409 NEEDS_SLEEP from a send lands here: same prompt as a filling meter.
