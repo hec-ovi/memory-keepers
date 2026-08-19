@@ -591,10 +591,11 @@ export function createOverworldScene(ctx = {}) {
     pickables.push(plaza.group); // the well at the center opens the monument
     for (const m of plaza.glowMats) m.emissiveIntensity = 0.3;
 
-    // The Monument herself: a large keeper hologram floating over the well,
-    // reading as a projection coming apart: a near-solid shell with a
-    // disintegration point cloud drifting off it. No visor, no shadow:
-    // light projected from the water.
+    // The Monument herself: a large figure of drifting particles floating
+    // over the well; nothing but her dust is ever drawn. The keeper mesh
+    // supplies the shape to sample and stays as the invisible hit volume:
+    // hidden at the MATERIAL level, because the raycaster ignores material
+    // visibility while resolvePickTarget nulls object-level hiding.
     monumentHolo = createKeeperMesh({ keeper: { id: monumentId }, config });
     monumentBaseY = world.heightAt(world.plaza.center.x, world.plaza.center.z) + 3.2;
     const holoGroup = monumentHolo.group;
@@ -605,8 +606,14 @@ export function createOverworldScene(ctx = {}) {
       if (obj.isMesh) obj.castShadow = false;
       if (obj.name === "visor") obj.visible = false;
     });
-    monumentHolo.setOpacity?.(0.55);
-    monumentDissolve = createHoloDissolve({ source: holoGroup });
+    monumentDissolve = createHoloDissolve({
+      source: holoGroup, maxPoints: 8000, pointSize: 2.1,
+    });
+    holoGroup.traverse((obj) => {
+      if (!obj.isMesh) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const m of mats) m.visible = false;
+    });
     worldGroup.add(holoGroup);
     pickables.push(holoGroup);
     const hub = buildPlaza({
@@ -1338,7 +1345,6 @@ export function createOverworldScene(ctx = {}) {
   function update(dt) {
     if (monumentHolo) {
       monumentT += dt;
-      monumentHolo.update?.(dt);
       monumentDissolve?.update(dt);
       const g = monumentHolo.group;
       g.position.y = monumentBaseY + Math.sin(monumentT * 0.8) * 0.2;

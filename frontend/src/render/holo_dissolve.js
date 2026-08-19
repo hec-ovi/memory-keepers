@@ -1,8 +1,8 @@
-// The monument's disintegration shell: her body sampled once into a static
-// point cloud whose motion lives entirely in the vertex shader. A release
-// band travels up the body; particles inside it drift off and flicker,
-// everything else holds the surface, so she reads as a projection coming
-// apart at the edges rather than as translucent glass.
+// The monument's disintegration figure: her body sampled once into a static
+// point cloud whose motion lives entirely in the vertex shader. Nothing else
+// draws her: she exists only as her dust. A release band travels up the
+// figure; particles inside it drift off and burn brighter, the rest hold the
+// surface densely enough to keep her silhouette from across the plaza.
 //
 // GPU cost is deliberately small: one draw call, a fixed point budget,
 // no compute pass and no per-frame attribute writes; update() only
@@ -41,9 +41,10 @@ const VERTEX_SHADER = /* glsl */ `
     gl_PointSize = uPointSize * uPixelRatio * perspective * (0.7 + aSeed * 0.6);
 
     vColor = uTint * (0.8 + release * 0.9 + aSeed * 0.25);
-    // Each particle appears and goes on its own; released ones burn brighter.
-    vAlpha = (0.22 + release * 0.5) *
-      (0.55 + 0.45 * step(hash11(aSeed * 7.3 + floor(uTime * 5.0)), 0.6));
+    // Held particles stay bright enough to carry the whole silhouette (no
+    // mesh backs them up); released ones flicker and burn brighter still.
+    vAlpha = (0.4 + release * 0.45) *
+      (0.65 + 0.35 * step(hash11(aSeed * 7.3 + floor(uTime * 5.0)), 0.6));
   }
 `;
 
