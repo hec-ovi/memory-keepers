@@ -75,8 +75,8 @@ async def test_chatter_and_monument(client):
 
 async def test_needs_sleep_gate_and_tired_dream(client, library):
     await client.get("/state")  # creates the world
-    library.meter_add("w-test", "meetings", int(BUDGET * 0.9))
-    r = await client.post("/keepers/meetings/tell", json={"text": "quick note"})
+    library.meter_add("w-test", "books", int(BUDGET * 0.9))
+    r = await client.post("/keepers/books/tell", json={"text": "quick note"})
     assert r.status_code == 409 and r.json()["error"]["code"] == "NEEDS_SLEEP"
 
 

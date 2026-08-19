@@ -8,7 +8,7 @@ from mk_library.testing import FakeFirestore
 def test_ensure_world_seeds_once(library):
     library.ensure_world("w1")
     keepers = library.list_keepers("w1")
-    assert {k.topic for k in keepers} == {"dreams", "meetings", "music"}
+    assert {k.topic for k in keepers} == {"dreams", "books", "music"}
     assert all(k.side == "light" and k.level >= 2 for k in keepers)
     library.ensure_world("w1")  # idempotent
     assert len(library.list_keepers("w1")) == 3
@@ -63,8 +63,8 @@ def test_book_lifecycle(library, world):
     assert dup.slug.endswith("-2")
 
     books = library.list_books(world, "dreams")
-    assert books[0].date >= books[-1].date and len(books) == 5
-    assert library.get_keeper(world, "dreams").book_count == 5
+    assert books[0].date >= books[-1].date and len(books) == 3
+    assert library.get_keeper(world, "dreams").book_count == 3
 
     full = library.get_book(world, "dreams", book.slug)
     assert full.body_md.startswith("x")
@@ -72,7 +72,7 @@ def test_book_lifecycle(library, world):
     assert "body_md" not in rows[0] and rows[0]["slug"]
 
     library.delete_book(world, "dreams", dup.slug)
-    assert library.get_keeper(world, "dreams").book_count == 4
+    assert library.get_keeper(world, "dreams").book_count == 2
     with pytest.raises(LibraryError) as e:
         library.get_book(world, "dreams", dup.slug)
     assert e.value.code == "BOOK_NOT_FOUND"

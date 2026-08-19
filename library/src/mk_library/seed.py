@@ -1,5 +1,15 @@
-"""Demo content for a fresh world: three keepers whose books share threads,
-so the first dreaming has something real to connect."""
+"""Demo content for a fresh world: three keepers (dreams, books, music), one
+real memory each, so visitors can test tell/ask without adding their own.
+The treatise and the song share the alienation tag, so the first dreaming
+still finds a cross-keeper theme."""
+from pathlib import Path
+
+_BOOKS_DIR = Path(__file__).parent / "seed_books"
+
+
+def _read(name: str) -> str:
+    return (_BOOKS_DIR / name).read_text(encoding="utf-8").strip()
+
 
 SEED = [
     {
@@ -7,47 +17,28 @@ SEED = [
         "persona": "Keeper of the user's dreams. Soft-spoken, a little sleepy, "
                    "treats every dream as worth shelving.",
         "books": [
-            {"title": "The glass elevator", "date": "2026-08-02",
-             "tags": ["falling", "city"], "entities": ["Harbor Tower"],
-             "one_liner": "Riding a glass elevator that rises past the roof.",
-             "body_md": "I was in a glass elevator on the outside of Harbor Tower. "
-                        "It kept going past the last floor, into low clouds. I was not "
-                        "scared, more curious about how far up it goes. Luna waved from "
-                        "the street, tiny below."},
-            {"title": "Rehearsing the launch", "date": "2026-08-05",
-             "tags": ["space", "waiting"], "entities": ["Mars mission", "Luna"],
-             "one_liner": "A dream about waiting in a suit that smells of rain.",
-             "body_md": "I stood in a hangar in a suit that smelled like rain, waiting "
-                        "for the Mars mission countdown. Luna checked my helmet twice. "
-                        "Someone kept postponing the launch by exactly one minute, "
-                        "forever."},
-            {"title": "The song under water", "date": "2026-08-07",
-             "tags": ["ocean", "music"], "entities": ["Aurora"],
-             "one_liner": "Hearing Aurora play muffled under a black ocean.",
-             "body_md": "I floated over a black ocean and heard Aurora playing from "
-                        "under the surface, muffled and slow. Diving made it clearer "
-                        "but colder. I woke up before the chorus."},
+            {"title": "The deer in the forest", "date": "2026-08-18",
+             "tags": ["deer", "forest", "dusk"], "entities": [],
+             "one_liner": "A deer walked beside me through a forest at dusk.",
+             "body_md": "I was walking in a forest at dusk when a deer stepped "
+                        "out of the trees and looked straight at me. It was not "
+                        "afraid. It walked beside me for a while, as if it knew "
+                        "the path and was only waiting for me to notice. Where "
+                        "the trees ended the deer stayed behind, and I woke with "
+                        "the feeling of having been accompanied."},
         ],
     },
     {
-        "topic": "meetings", "name": "Keeper of Meetings",
-        "persona": "Keeper of the user's meetings and conversations. Precise, "
-                   "remembers who said what and when.",
+        "topic": "books", "name": "Keeper of Books",
+        "persona": "Keeper of the user's books and reading. Quotes precisely, "
+                   "never invents a page.",
         "books": [
-            {"title": "Kickoff with Luna", "date": "2026-08-03",
-             "tags": ["work", "planning"], "entities": ["Luna", "Mars mission"],
-             "one_liner": "Luna proposed splitting the Mars mission demo in two.",
-             "body_md": "Luna and I walked through the Mars mission plan. She wants the "
-                        "demo split in two parts: the simulation first, hardware later. "
-                        "I promised her a draft schedule by Friday. She was worried "
-                        "about the budget line, twice."},
-            {"title": "Coffee with Marcos", "date": "2026-08-05",
-             "tags": ["catchup", "advice"], "entities": ["Marcos", "Harbor Tower"],
-             "one_liner": "Marcos wants to move his studio to Harbor Tower.",
-             "body_md": "Marcos is serious about renting a studio floor in Harbor "
-                        "Tower. He asked what I thought about the commute and whether "
-                        "the light is good for filming. I said the west side floods "
-                        "with sun after four."},
+            {"title": "Hypostasis Simulacri", "date": "2026-08-10",
+             "tags": ["simulation", "alienation", "intelligence"],
+             "entities": ["Hypostasis Simulacri"],
+             "one_liner": "A treatise: all intelligence is artificial and "
+                          "no layer holds the original.",
+             "body_md": _read("hypostasis-simulacri.md")},
         ],
     },
     {
@@ -55,18 +46,20 @@ SEED = [
         "persona": "Keeper of the user's music. Hums while shelving, files songs "
                    "by the feeling they leave.",
         "books": [
-            {"title": "Aurora, live version", "date": "2026-08-04",
-             "tags": ["song", "live"], "entities": ["Aurora"],
-             "one_liner": "The live cut of Aurora, slower and warmer than the album.",
-             "body_md": "Found a live version of Aurora that drops the drums for the "
-                        "first minute. It feels like the underwater way I remember it "
-                        "from somewhere. Saved next to the album cut for rainy days."},
-            {"title": "Playlist for the launch", "date": "2026-08-06",
-             "tags": ["playlist", "focus"], "entities": ["Mars mission"],
-             "one_liner": "Nine tracks to play while the Mars mission work gets heavy.",
-             "body_md": "Built a nine track playlist for the Mars mission stretch: "
-                        "long intros, no vocals until track four, ends with Aurora so "
-                        "finishing feels like surfacing."},
+            {"title": "Wish You Were Here (Pink Floyd)", "date": "2026-08-14",
+             "tags": ["song", "absence", "alienation"],
+             "entities": ["Pink Floyd", "Wish You Were Here"],
+             "one_liner": "The 1975 title track, kept as facts; the lyrics "
+                          "stay fetchable on demand.",
+             "body_md": "Wish You Were Here, by Pink Floyd. Title track of the "
+                        "1975 album of the same name, written by David Gilmour "
+                        "and Roger Waters, released September 1975 on Harvest. "
+                        "The album circles absence: absent friends, absent "
+                        "minds, an industry trading presence for signals.\n\n"
+                        "Only the facts live in this book: the lyrics are still "
+                        "under copyright, so they are not stored. Ask me to "
+                        "find the lyrics and I will fetch them for you on the "
+                        "spot."},
         ],
     },
 ]

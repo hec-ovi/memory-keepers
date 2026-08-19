@@ -67,10 +67,10 @@ async def test_follow_up_grows_the_same_book(api, library):
 
 
 async def test_ask_grounded_with_sources(api):
-    out = await api.keeper_ask("w", "dreams", "what did I dream about the launch?")
+    out = await api.keeper_ask("w", "dreams", "what did I dream about the deer?")
     assert out["grounded"] and not out["followup"]
-    assert out["sources"][0]["slug"] == "2026-08-05-rehearsing-the-launch"
-    assert "countdown" in out["answer"] or "launch" in out["answer"].lower()
+    assert out["sources"][0]["slug"] == "2026-08-18-the-deer-in-the-forest"
+    assert "deer" in out["answer"].lower() or "forest" in out["answer"].lower()
 
 
 async def test_ask_unknown_topic_offers_followup(api, library):
@@ -127,9 +127,9 @@ async def test_monument_creates_keeper(api, library):
 
 
 async def test_monument_routes_to_keeper(api):
-    out = await api.monument_chat("w", "ask my dreams shelf about the launch")
+    out = await api.monument_chat("w", "ask my dreams shelf about the deer")
     assert out["created_keeper"] is None
-    assert "Mars mission" in out["reply"]  # the dreams keeper's launch book came back
+    assert "deer" in out["reply"]  # the dreams keeper's deer book came back
 
 
 async def test_dream_prose_shapes(api):

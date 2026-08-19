@@ -17,10 +17,15 @@ def rig():
 
 def test_linking_finds_cross_keeper_themes(rig):
     library, _ = rig
+    for kid in ("dreams", "music"):
+        library.write_book("w", kid, title=f"Mars mission notes ({kid})",
+                           body_md="The Mars mission plan: build, launch, deliver.",
+                           date="2026-08-07", source="told", one_liner="s",
+                           entities=["Mars mission"])
     books = {k.id: library.list_books("w", k.id) for k in library.list_keepers("w")}
     graph, themes = link(books)
     keys = [t["key"] for t in themes]
-    assert "mars-mission" in keys and "aurora" in keys
+    assert "alienation" in keys  # seeded: the treatise and the song share the tag
     mars = next(t for t in themes if t["key"] == "mars-mission")
     assert len(mars["keepers"]) >= 2 and mars["archetype"] == "ambition"
     assert any(n["kind"] == "entity" for n in graph["nodes"])
