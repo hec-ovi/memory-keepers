@@ -58,7 +58,6 @@ import * as THREE from "three";
 import { createRenderer } from "./renderer.js";
 import { createCameraRig, FOLLOW_FRAMING } from "./camera.js";
 import { createKeeperMesh, tiredLevelFor } from "./keeper_mesh.js";
-import { createHoloDissolve } from "./holo_dissolve.js";
 import { createSpeech, bubbleSeconds } from "./speech.js";
 import { buildTerrain, buildWater, buildShoreFoam, buildGrass, extractShoreline } from "./terrain.js";
 import { buildSkyDome, buildClouds, buildNightSky } from "./sky.js";
@@ -495,7 +494,6 @@ export function createOverworldScene(ctx = {}) {
   let mists = []; // empty-plot mist sprites, drifting
   let pickables = [];
   let monumentHolo = null; // the big holographic keeper floating over the well
-  let monumentDissolve = null; // her disintegration point shell
   let monumentBaseY = 0;
   let monumentT = 0;
   let populationKey = null;
@@ -544,8 +542,6 @@ export function createOverworldScene(ctx = {}) {
     floaters = [];
     mists = [];
     pickables = [];
-    monumentDissolve?.dispose();
-    monumentDissolve = null;
     monumentHolo?.dispose();
     monumentHolo = null;
     joining = null;
@@ -591,23 +587,19 @@ export function createOverworldScene(ctx = {}) {
     pickables.push(plaza.group); // the well at the center opens the monument
     for (const m of plaza.glowMats) m.emissiveIntensity = 0.3;
 
-    // The Monument herself: a large figure of drifting particles floating
-    // over the well, with her body ghosting at 10% opacity beneath the dust
-    // so the silhouette holds while the particles carry the effect.
+    // The Monument herself: a larger, translucent keeper hologram floating
+    // over the well. No visor, no shadow: light projected from the water.
     monumentHolo = createKeeperMesh({ keeper: { id: monumentId }, config });
-    monumentBaseY = world.heightAt(world.plaza.center.x, world.plaza.center.z) + 3.2;
+    monumentBaseY = world.heightAt(world.plaza.center.x, world.plaza.center.z) + 2.6;
     const holoGroup = monumentHolo.group;
-    holoGroup.scale.setScalar(2.6);
+    holoGroup.scale.setScalar(2.1);
     holoGroup.position.set(world.plaza.center.x, monumentBaseY, world.plaza.center.z);
     holoGroup.traverse((obj) => {
       obj.userData = { ...(obj.userData ?? {}), pick: "monument" };
       if (obj.isMesh) obj.castShadow = false;
       if (obj.name === "visor") obj.visible = false;
     });
-    monumentDissolve = createHoloDissolve({
-      source: holoGroup, maxPoints: 12000, pointSize: 2.6,
-    });
-    monumentHolo.setOpacity?.(0.1);
+    monumentHolo.setOpacity?.(0.35);
     worldGroup.add(holoGroup);
     pickables.push(holoGroup);
     const hub = buildPlaza({
@@ -1340,7 +1332,6 @@ export function createOverworldScene(ctx = {}) {
     if (monumentHolo) {
       monumentT += dt;
       monumentHolo.update?.(dt);
-      monumentDissolve?.update(dt);
       const g = monumentHolo.group;
       g.position.y = monumentBaseY + Math.sin(monumentT * 0.8) * 0.2;
       // She faces whoever is looking: yaw eased toward the camera each frame.
