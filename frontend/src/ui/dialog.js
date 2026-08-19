@@ -97,9 +97,9 @@ const CSS = `
 
 /* composer row: the pill (input + mic) with the attach button outside it */
 .mk-dialog-composer{display:flex;align-items:center;gap:6px;margin-top:auto;}
-.mk-dialog-io{position:relative;flex:1;min-width:0;display:flex;align-items:center;gap:4px;border:1px solid var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:999px;background:rgba(10,5,2,.75);padding:3px 3px 3px 14px;}
-.mk-dialog-io.holo-thinking{border-radius:999px;}
-.mk-dialog-io.holo-thinking::before,.mk-dialog-io.holo-thinking::after{border-radius:999px;}
+.mk-dialog-io{position:relative;flex:1;min-width:0;display:flex;align-items:center;gap:4px;border:1px solid var(--holo-amber-dim,rgba(255,166,64,.55));border-radius:0 999px 999px 0;background:rgba(10,5,2,.75);padding:3px 3px 3px 14px;}
+.mk-dialog-io.holo-thinking{border-radius:0 999px 999px 0;}
+.mk-dialog-io.holo-thinking::before,.mk-dialog-io.holo-thinking::after{border-radius:0 999px 999px 0;}
 .mk-dialog-field{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--holo-amber-hi,#ffd9a0);caret-color:var(--holo-cyan,#3fe0ff);font-family:var(--holo-font,inherit);font-size:.92rem;letter-spacing:.02em;padding:8px 0;}
 .mk-dialog-field::placeholder{color:rgba(255,182,88,.4);}
 .mk-dialog-field:disabled{opacity:.5;}
@@ -758,7 +758,13 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     fileInput.accept = ".md,.txt,text/markdown,text/plain";
     fileInput.style.display = "none";
     fileInput.setAttribute("aria-hidden", "true");
-    const attachBtn = el("button", "holo-btn mk-dialog-mic mk-dialog-attach", "+");
+    const attachBtn = el("button", "holo-btn mk-dialog-mic mk-dialog-attach");
+    attachBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
+      'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+      'stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M14 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5V7.5z"/>' +
+      '<path d="M14 3v4.5h4.5"/><path d="M12 11v6M9 14h6"/></svg>';
     attachBtn.type = "button";
     attachBtn.setAttribute("aria-label", "attach a memory file");
     attachBtn.addEventListener("click", () => fileInput.click());
