@@ -1,5 +1,7 @@
 # Changelog
 
+0.7: the session budget defaults to 32000 tokens. Fresh worlds seed three keepers with one real memory each: a dream (the deer in the forest), a book (Hypostasis Simulacri, full text) and a song (Wish You Were Here as facts; lyrics fetch on demand). The say router decides by intended outcome (a new book vs an answer), and ask replies synthesize from opened books instead of retelling them. Local emulator data lives in ./.data/firestore on the host, snapshotted every minute, so it survives docker volume cleanup and hard kills.
+
 0.6.1: model tiers are cloud (Vertex Gemini), local (Gemma on llama.cpp), fake; the frontend suite proves the whole module graph resolves, so the three.js scenes load in every browser. 74 backend + 708 frontend tests.
 
 0.6: worlds travel: Export island saves the whole world (keepers, books, sessions, dream runs) as one JSON file; Import island lands it on a fresh crypto world id, cloud to local and back. Emulator data survives restarts in a compose volume. A lean pass across every box: shared helpers, tighter contracts, the ask prompt names all seven lookup tools. 79 backend + 707 frontend tests.
