@@ -1,6 +1,6 @@
 // The keeper: a procedural android look. White porcelain shell with a subtle
 // vertical gradient (vertex colors), a smoked-glass visor band with digital
-// blue eyes glowing behind it, cheek status LEDs, cat ears, a tiny smile.
+// blue eyes glowing behind it, cat ears.
 // All conscious keepers share the same KEEPER_WHITE shell (Keeper.palette is
 // ignored for the body); unconscious keepers keep the darker moonlit variant.
 // Locomotion is a squash-stretch hop with a ground-contact squish; idle has
@@ -68,7 +68,6 @@ export function derivePalette(_palette = {}, kind = "conscious") {
     bottom: mixHex(darkenHex(primary, 0.16), 0x9fb6c8, 0.35), // cool shaded base
     eye: VISOR_BLUE, // digital eyes glowing behind the visor
     highlight: 0xe8fbff,
-    blush: mixHex(VISOR_BLUE, 0xffffff, 0.45), // cheek status LEDs
     visor: 0x0e2233, // smoked glass band
     opacity: 1,
   };
@@ -78,7 +77,6 @@ export function derivePalette(_palette = {}, kind = "conscious") {
       bottom: mixHex(out.bottom, darkenHex(UNCONSCIOUS_TINT, 0.35), 0.55),
       eye: mixHex(out.eye, 0x7a5cff, 0.45), // night-shifted glow
       highlight: 0xd9d2ff,
-      blush: mixHex(out.blush, UNCONSCIOUS_TINT, 0.5),
       visor: mixHex(out.visor, 0x1a1030, 0.5),
       opacity: 1, // fully opaque: only the moonlit tint marks her unconscious
     };
@@ -330,21 +328,6 @@ export function createKeeperMesh({ keeper = {}, config = {} } = {}) {
     hi2.position.set(0.05 * sx, -0.045, 0.115);
     eye.add(hi1, hi2);
     eyes.add(eye);
-  }
-
-  // Blush discs on the cheeks.
-  const blushGeo = new THREE.SphereGeometry(0.095, 14, 10);
-  const blushMat = mat({ color: pal.blush, roughness: 0.9 });
-  blushMat.emissive = new THREE.Color(pal.blush);
-  blushMat.emissiveIntensity = 0.12;
-  geometries.push(blushGeo);
-  materials.push(blushMat);
-  for (const sx of [-1, 1]) {
-    const blush = new THREE.Mesh(blushGeo, blushMat);
-    blush.position.set(0.36 * sx, -0.075, 0.36);
-    blush.scale.set(1, 0.72, 0.32);
-    blush.lookAt(blush.position.clone().multiplyScalar(2));
-    root.add(blush);
   }
 
   // Zzz sprite: hidden unless tired level 2 or sleeping; pulses (zzzPulse).
