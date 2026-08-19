@@ -845,17 +845,31 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       input.value = "";
       setInFlight(true);
       ensureThinking(form, true);
+      // A reply belongs to the panel that asked: if the panel closed or
+      // another keeper's opened while the model thought, the late reply is
+      // dropped from the UI (world events still fire, and keeper replies are
+      // in her session, so reopening her replays them).
+      const stale = () => composer?.form !== form;
       try {
         if (keeper.monument) {
           const res = await api.monument(text);
-          setInFlight(false);
-          ensureThinking(form, false);
-          say(res?.reply ?? "...", { md: true });
           if (res?.created_keeper) {
             bus?.emit("keeper:created", res.created_keeper);
           }
+          if (stale()) return;
+          setInFlight(false);
+          ensureThinking(form, false);
+          say(res?.reply ?? "...", { md: true });
         } else {
           const res = await api.say(keeper.id, text);
+          // Unconscious tells are conversational: she listens, no book is
+          // written, so there is nothing to count or announce.
+          if (res?.kind !== "ask" && res?.book) {
+            const rec = state?.keepers?.find((a) => a.id === keeper.id);
+            if (rec) rec.book_count = (rec.book_count ?? 0) + 1;
+            bus?.emit("book:created", { keeperId: keeper.id, book: res.book });
+          }
+          if (stale()) return;
           setInFlight(false);
           ensureThinking(form, false);
           if (res?.kind === "ask") {
@@ -863,13 +877,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
             renderAskResult(keeper, res, text, replyBody);
           } else {
             say(res?.reply ?? "...", { md: true });
-            // Unconscious tells are conversational: she listens, no book is
-            // written, so there is nothing to count or announce.
-            if (res?.book) {
-              const rec = state?.keepers?.find((a) => a.id === keeper.id);
-              if (rec) rec.book_count = (rec.book_count ?? 0) + 1;
-              bus?.emit("book:created", { keeperId: keeper.id, book: res.book });
-            }
           }
           if (res?.session) {
             session = { ...res.session };
@@ -877,6 +884,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
           }
         }
       } catch (err) {
+        if (stale()) return;
         setInFlight(false);
         ensureThinking(form, false);
         if (!input.value) input.value = text; // give the words back to retry
@@ -886,7 +894,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
         else toastError(err?.message || "she could not answer that");
       } finally {
         sending = false;
-        sync();
+        if (!stale()) sync();
       }
     }
 

@@ -84,6 +84,28 @@ describe("createDialog", () => {
     expect(screen.getByText("It is kept.")).toBeTruthy();
   });
 
+  it("a late reply never leaks into another keeper's panel", async () => {
+    const user = userEvent.setup();
+    const gate = deferred();
+    server.use(
+      http.post(`${BASE}/keepers/dreams/say`, async () => {
+        await gate.promise;
+        return HttpResponse.json({ reply: "late reply from dreams." });
+      }),
+    );
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    await user.type(
+      screen.getByRole("textbox", { name: /speak to keeper of dreams/i }),
+      "hello{Enter}",
+    );
+    // switch panels while she is still thinking
+    bus.emit("keeper:selected", { keeperId: "still-water" });
+    gate.resolve();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByText("late reply from dreams.")).toBeNull();
+    expect(root.querySelector(".mk-dialog-hist").children.length).toBe(0);
+  });
+
   it("composer: pill pinned to the panel bottom, mic inside its right end, attach outside", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     const inner = root.querySelector(".mk-dialog-inner");
