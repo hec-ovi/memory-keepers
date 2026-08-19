@@ -38,7 +38,7 @@ Keepers read sources at capture time and store only what they write: a book hold
 docker compose up
 ```
 
-The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000). Emulator data survives restarts in a compose volume; `docker compose down -v` starts clean. One switch picks the brain, nothing else changes:
+The game is at http://localhost:8000, running against the official Firestore emulator (browse it at http://localhost:4000). Your worlds live in `./.data/firestore` on the host, snapshotted every minute, so they survive restarts, rebuilds, and docker cleanups; delete that folder to start clean. One switch picks the brain, nothing else changes:
 
 | MODEL_TIER | brain | needs |
 |---|---|---|
@@ -55,7 +55,7 @@ llama-server --model <path to gemma .gguf> --alias gemma-4-26b-a4b-qat-q4 \
 MODEL_TIER=local docker compose up -d
 ```
 
-Defaults line up: the island looks for `http://host.docker.internal:8080/v1` and asks for the model id `gemma-4-26b-a4b-qat-q4`; override with `LOCAL_MODEL_URL` and `LOCAL_MODEL_ID` if your server differs.
+Defaults line up: the island looks for `http://host.docker.internal:8080/v1` and asks for the model id `gemma-4-26b-a4b-qat-q4`; override with `LOCAL_MODEL_URL` and `LOCAL_MODEL_ID` if your server differs. The engine's health check probes the model server, and the game refuses to open while it is down, so a dead brain shows up at the door instead of as strange answers.
 
 To fill a world with sample memories and test the whole loop (tells, grounded asks, a dream with its knowledge graph):
 
@@ -67,7 +67,7 @@ python3 scripts/demo_world.py http://localhost:8000 demo --verify
 
 ```
 docker compose run --rm test            # python boxes (79 tests)
-docker compose run --rm test-frontend   # frontend (707 tests)
+docker compose run --rm test-frontend   # frontend (693 tests)
 ```
 
 Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set); frontend on vitest + jsdom + Testing Library + MSW.

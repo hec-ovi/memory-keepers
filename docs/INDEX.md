@@ -5,7 +5,7 @@ Each box is one folder with a CONTRACT.md; outsiders use the contract, never the
 | box | purpose | depends on |
 |---|---|---|
 | frontend | three.js SPA: island, keepers, houses, libraries, holo UI, dream movie | engine |
-| engine | FastAPI app: REST surface, world scoping, meters and caps, serves the frontend | agents, library, voice, lookups |
+| engine | FastAPI app: REST surface, world scoping, meters and caps, serves the frontend | agents, library, models, voice, lookups |
 | agents | ADK agents: the monument (root), one agent per keeper, dream agents | library, models, lookups |
 | library | Firestore store: worlds, keepers, books, sessions, dream runs | - |
 | models | model gateway: Gemini on Vertex AI, local Gemma tier, fake tier | - |

@@ -135,5 +135,5 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 
 ## How to test
 
-`cd frontend && npm test` (vitest + jsdom, 36 files / 713 tests as of this
+`cd frontend && npm test` (vitest + jsdom, 36 files / 693 tests as of this
 writing). Boot/mode/bus wiring: `tests/main.test.js`, `tests/bus.test.js`.
