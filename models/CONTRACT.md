@@ -10,6 +10,7 @@ Class `ModelGateway(tier=None)` (tier defaults to the `MODEL_TIER` env, default 
 |---|---|---|
 | `model_for(role)` | `chat` or `dream` | an ADK model handle |
 | `tier()` | | base tier (per-role env overrides not applied) |
+| `probe()` async | | `bool`: the tier's model endpoint answers; local asks the llama.cpp server for its model list (2 s timeout, never raises), cloud and fake report True |
 
 ## Tiers
 

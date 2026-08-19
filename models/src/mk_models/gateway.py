@@ -17,6 +17,23 @@ class ModelGateway:
     def tier(self) -> str:
         return self._tier
 
+    async def probe(self) -> bool:
+        """True when the tier's model endpoint answers. Only the local tier
+        has a cheap question to ask (the llama.cpp server's model list);
+        cloud and fake report True."""
+        if self._tier != "local":
+            return True
+        import httpx
+        base = os.environ.get("LOCAL_MODEL_URL", "http://127.0.0.1:8080/v1").rstrip("/")
+        key = os.environ.get("LOCAL_MODEL_KEY")
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                response = await client.get(f"{base}/models", headers=headers)
+            return response.status_code == 200
+        except Exception:
+            return False
+
     def model_for(self, role: str):
         assert role in ROLES
         tier = os.environ.get(f"MODEL_TIER_{role.upper()}") or self._tier

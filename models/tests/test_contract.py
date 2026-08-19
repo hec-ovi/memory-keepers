@@ -28,6 +28,14 @@ def test_tiers(monkeypatch):
     assert type(ModelGateway(tier="local").model_for("chat")).__name__ == "LiteLlm"
     with pytest.raises(ModelsError):
         ModelGateway(tier="nope")
+
+
+async def test_probe_reports_endpoint_reachability(monkeypatch):
+    assert await ModelGateway(tier="fake").probe() is True
+    assert await ModelGateway(tier="cloud").probe() is True
+    # port 9 (discard) refuses instantly: a dead llama.cpp server reads False
+    monkeypatch.setenv("LOCAL_MODEL_URL", "http://127.0.0.1:9/v1")
+    assert await ModelGateway(tier="local").probe() is False
     monkeypatch.setenv("MODEL_TIER_DREAM", "fake")
     assert type(ModelGateway(tier="cloud").model_for("dream")).__name__ == "FakeLlm"
     monkeypatch.setenv("MODEL_TIER_CHAT", "clod")  # a typo must raise, never fall through
