@@ -18,10 +18,31 @@ async def poll(fn):
 async def test_health_and_state_boot(client):
     health = (await client.get("/health")).json()
     assert health["status"] == "ok" and health["tier"] == "fake"
+    assert health["model"] == "ok"
     state = (await client.get("/state")).json()
     assert len(state["keepers"]) == 3
     assert state["dream"] == {"latest_run_id": None, "running": False}
     assert state["keepers"][0]["session"]["status"] == "rested"
+
+
+async def test_health_degrades_when_model_is_down(library, offline_lookups, monkeypatch):
+    import httpx
+    from mk_models import ModelGateway
+
+    monkeypatch.setenv("VOICE", "off")
+
+    class DownGateway(ModelGateway):
+        def __init__(self):
+            super().__init__(tier="fake")
+
+        async def probe(self):
+            return False
+
+    app = create_app(library=library, gateway=DownGateway(), lookups=offline_lookups)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+        health = (await c.get("/health")).json()
+    assert health["status"] == "degraded" and health["model"] == "down"
 
 
 async def test_world_header_required(client):

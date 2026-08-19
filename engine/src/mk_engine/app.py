@@ -104,7 +104,9 @@ def create_app(library: Library | None = None, gateway: ModelGateway | None = No
     # -- health and state ------------------------------------------------------
     @app.get("/health")
     async def health():
-        return {"status": "ok", "version": VERSION, "tier": gateway.tier()}
+        model_ok = await gateway.probe()
+        return {"status": "ok" if model_ok else "degraded", "version": VERSION,
+                "tier": gateway.tier(), "model": "ok" if model_ok else "down"}
 
     @app.get("/state")
     async def state(x_world: str | None = Header(default=None)):

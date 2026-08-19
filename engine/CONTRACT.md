@@ -10,7 +10,7 @@ The frontend sends `X-World: <id>` (generated once, kept in localStorage). First
 
 | route | in | out |
 |---|---|---|
-| `GET /health` | | `{status, version, tier}` |
+| `GET /health` | | `{status, version, tier, model}`: the gateway probe answers `model: ok\|down`, and a dead model endpoint makes status `degraded` (the frontend refuses to boot on it) |
 | `GET /state` | | `{keepers: [Keeper], dream: {latest_run_id, running}}`, one call boots the UI |
 | `POST /keepers` | `{topic, name?, persona?}` | Keeper (201); 409 `KEEPER_EXISTS` / `KEEPERS_FULL` |
 | `GET /keepers` / `GET /keepers/{id}` | | Keeper list / one |
