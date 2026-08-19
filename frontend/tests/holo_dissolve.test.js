@@ -49,11 +49,30 @@ describe("sampleSurfacePoints", () => {
     group.add(big, small);
     const points = sampleSurfacePoints(group, 800);
     expect(points).toHaveLength(800);
-    const onSmall = points.filter((p) => p.x > 20).length;
+    const onSmall = points.filter((p) => p.position.x > 20).length;
     expect(onSmall).toBeGreaterThan(0);
     expect(onSmall).toBeLessThan(80);
     // every point lies on one of the two planes (both at z = 0)
-    expect(points.every((p) => Math.abs(p.z) < 1e-6)).toBe(true);
+    expect(points.every((p) => Math.abs(p.position.z) < 1e-6)).toBe(true);
+  });
+
+  it("tints glowing surfaces near-white and grades the rest dark", () => {
+    const body = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    const eye = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshStandardMaterial({ color: 0x3fe0ff }));
+    eye.material.emissive = new THREE.Color(0x3fe0ff);
+    eye.material.emissiveIntensity = 0.85;
+    eye.position.set(10, 0, 0);
+    const group = new THREE.Group();
+    group.add(body, eye);
+    const grade = new THREE.Color(0.2, 0.4, 0.6);
+    const points = sampleSurfacePoints(group, 400, grade);
+    const luma = (t) => t.r + t.g + t.b;
+    const bodyTint = points.find((p) => p.position.x < 5).tint;
+    const eyeTint = points.find((p) => p.position.x > 5).tint;
+    expect(luma(eyeTint)).toBeGreaterThan(luma(bodyTint) + 0.5);
+    expect(bodyTint.r).toBeCloseTo(0.2);
   });
 
   it("is deterministic and empty for an empty group", () => {
@@ -62,7 +81,8 @@ describe("sampleSurfacePoints", () => {
     g1.add(mesh);
     const first = sampleSurfacePoints(g1, 50);
     const second = sampleSurfacePoints(g1, 50);
-    expect(first.map((p) => p.toArray())).toEqual(second.map((p) => p.toArray()));
+    expect(first.map((p) => p.position.toArray()))
+      .toEqual(second.map((p) => p.position.toArray()));
     expect(sampleSurfacePoints(new THREE.Group(), 50)).toEqual([]);
   });
 });

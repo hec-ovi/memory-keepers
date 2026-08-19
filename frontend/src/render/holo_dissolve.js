@@ -15,8 +15,8 @@ const VERTEX_SHADER = /* glsl */ `
   uniform float uPointSize;
   uniform float uPixelRatio;
   uniform float uDissolve;
-  uniform vec3 uTint;
   attribute float aSeed;
+  attribute vec3 aTint;
   varying vec3 vColor;
   varying float vAlpha;
 
@@ -40,7 +40,7 @@ const VERTEX_SHADER = /* glsl */ `
     float perspective = clamp(6.0 / max(1.0, -view.z), 0.5, 1.6);
     gl_PointSize = uPointSize * uPixelRatio * perspective * (0.7 + aSeed * 0.6);
 
-    vColor = uTint * (0.85 + release * 0.9 + aSeed * 0.25);
+    vColor = aTint * (0.85 + release * 0.9 + aSeed * 0.25);
     // Held particles stay near-opaque to carry the whole silhouette in full
     // daylight (no mesh backs them up); released ones flicker as they drift.
     vAlpha = (0.72 + release * 0.28) *
@@ -67,12 +67,30 @@ function deterministicRandom(index, salt = 0) {
   return value - Math.floor(value);
 }
 
+// A particle's colour, from the mesh it sits on. Glowing surfaces (emissive
+// eyes, the tone-unmapped highlights) go near-white so the face reads across
+// the plaza; everything else is the material colour graded by `grade`, which
+// darkens the porcelain body into a figure that stands off the sunlit island.
+function meshTint(material, grade) {
+  const color = material?.color ? material.color.clone() : new THREE.Color(1, 1, 1);
+  // Intensity alone is not glow: standard materials default to intensity 1
+  // with a black emissive, so the emissive colour must weigh in too.
+  const emissive = material?.emissive;
+  const glow = (material?.emissiveIntensity ?? 0) *
+    (emissive ? Math.max(emissive.r, emissive.g, emissive.b) : 0);
+  if (glow > 0.3 || material?.toneMapped === false) {
+    return color.lerp(new THREE.Color(0xffffff), 0.65);
+  }
+  return color.multiply(grade);
+}
+
 // Samples `count` points spread evenly over the visible mesh surfaces under
-// `source`, in source-local space. Vertices alone are too few and too uneven
-// (a keeper is ~2k vertices, most of them in the eyes): picking triangles by
-// area and a barycentric point inside each fills any budget with even skin
-// density. Deterministic, so the figure is the same on every build.
-export function sampleSurfacePoints(source, count) {
+// `source`, in source-local space; each sample is { position, tint } (see
+// meshTint). Vertices alone are too few and too uneven (a keeper is ~2k
+// vertices, most of them in the eyes): picking triangles by area and a
+// barycentric point inside each fills any budget with even skin density.
+// Deterministic, so the figure is the same on every build.
+export function sampleSurfacePoints(source, count, grade = new THREE.Color(1, 1, 1)) {
   source.updateMatrixWorld(true);
   const inverse = new THREE.Matrix4().copy(source.matrixWorld).invert();
   const relative = new THREE.Matrix4();
@@ -84,6 +102,8 @@ export function sampleSurfacePoints(source, count) {
     const positions = obj.geometry?.getAttribute?.("position");
     if (!positions) return;
     relative.multiplyMatrices(inverse, obj.matrixWorld);
+    const tint = meshTint(
+      Array.isArray(obj.material) ? obj.material[0] : obj.material, grade);
     const index = obj.geometry.getIndex();
     const vertexCount = index ? index.count : positions.count;
     for (let v = 0; v + 2 < vertexCount; v += 3) {
@@ -98,7 +118,7 @@ export function sampleSurfacePoints(source, count) {
       totalArea += area;
       triangles.push({
         a: corners[0].clone(), b: corners[1].clone(), c: corners[2].clone(),
-        upTo: totalArea,
+        tint, upTo: totalArea,
       });
     }
   });
@@ -114,13 +134,14 @@ export function sampleSurfacePoints(source, count) {
       if (triangles[mid].upTo < pick) lo = mid + 1;
       else hi = mid;
     }
-    const { a, b, c } = triangles[lo];
+    const { a, b, c, tint } = triangles[lo];
     const su = Math.sqrt(deterministicRandom(i, 11));
     const v = deterministicRandom(i, 13);
-    samples.push(new THREE.Vector3()
+    const position = new THREE.Vector3()
       .addScaledVector(a, 1 - su)
       .addScaledVector(b, su * (1 - v))
-      .addScaledVector(c, su * v));
+      .addScaledVector(c, su * v);
+    samples.push({ position, tint });
   }
   return samples;
 }
@@ -134,33 +155,37 @@ export function createHoloDissolve({
   maxPoints = 2200,
   pointSize = 2.4,
   dissolve = 0.55,
-  tint = 0x8fd8ff,
+  tint = 0x4aa8d8,
 } = {}) {
-  const samples = sampleSurfacePoints(source, maxPoints);
+  const samples = sampleSurfacePoints(source, maxPoints, new THREE.Color(tint));
   if (samples.length === 0) return null;
 
   const count = samples.length;
   const positions = new Float32Array(count * 3);
+  const tints = new Float32Array(count * 3);
   const seeds = new Float32Array(count);
   for (let index = 0; index < count; index += 1) {
-    positions[index * 3] = samples[index].x;
-    positions[index * 3 + 1] = samples[index].y;
-    positions[index * 3 + 2] = samples[index].z;
+    const { position, tint: c } = samples[index];
+    positions[index * 3] = position.x;
+    positions[index * 3 + 1] = position.y;
+    positions[index * 3 + 2] = position.z;
+    tints[index * 3] = c.r;
+    tints[index * 3 + 1] = c.g;
+    tints[index * 3 + 2] = c.b;
     seeds[index] = deterministicRandom(index, 17);
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("aTint", new THREE.BufferAttribute(tints, 3));
   geometry.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
 
-  const color = new THREE.Color(tint);
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
       uPointSize: { value: pointSize },
       uPixelRatio: { value: Math.min(globalThis.devicePixelRatio || 1, 1.6) },
       uDissolve: { value: dissolve },
-      uTint: { value: new THREE.Vector3(color.r, color.g, color.b) },
     },
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
@@ -173,6 +198,9 @@ export function createHoloDissolve({
 
   const object = new THREE.Points(geometry, material);
   object.frustumCulled = false;
+  // After the transparent street ribbons (renderOrder 1), which write no
+  // depth and would otherwise paint over her.
+  object.renderOrder = 6;
   source.add(object);
 
   let time = 0;
