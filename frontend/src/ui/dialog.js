@@ -295,8 +295,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     if (keeperId === MONUMENT_ID) {
       return {
         id: MONUMENT_ID,
-        name: "Main Keeper",
-        topic: "the whole island",
+        name: "Memory Keeper",
+        topic: "",
         kind: "conscious",
         palette: { primary: "#57e6ff", accent: "#2fb9ff" },
         monument: true,
@@ -401,7 +401,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     body.appendChild(span);
     row.appendChild(body);
     histBox.appendChild(row);
-    while (histBox.children.length > 12) histBox.firstChild.remove();
+    while (histBox.children.length > 60) histBox.firstChild.remove();
     histBox.scrollTop = histBox.scrollHeight;
     return { row, body, span };
   }
@@ -923,6 +923,27 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     histBox = el("div", "mk-dialog-hist holo-list");
     histBox.setAttribute("aria-label", "recent exchanges");
     content.appendChild(histBox);
+
+    // Persistent history: her session's turn log replays as chat rows the
+    // moment the panel opens (instantly, no typing). The same turns are what
+    // sleep binds into books and dreaming links across, so the conversation
+    // and the consolidation read from one record. The main keeper holds no
+    // session, so she has nothing to replay.
+    if (!isMonument) {
+      api
+        ?.getChat?.(keeper.id)
+        .then((res) => {
+          if (!histBox || currentId !== keeper.id) return;
+          for (const turn of res?.turns ?? []) {
+            if (!turn?.text) continue;
+            const { span } = pushHistory(turn.role === "user" ? "user" : "keeper",
+                                         turn.role === "user" ? turn.text : "");
+            if (turn.role !== "user" && span) renderMd(span, turn.text);
+          }
+          histBox.scrollTop = histBox.scrollHeight;
+        })
+        .catch(() => {});
+    }
 
     // Primary action: join her, in the right-aligned row at the bottom.
     // Closes the panel; the overworld walks her home with the camera

@@ -22,7 +22,14 @@ import { createHoloPanel, ensureHoloStyles, injectStyle, makeEl } from "./holo/h
 
 const STYLE_ID = "mk-reader-style";
 const CSS = `
-.mk-reader{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(680px,calc(100vw - 48px));max-height:min(82vh,760px);overflow-y:auto;z-index:40;}
+/* The head (title + close) and the chips row stay pinned; only the page
+   below them scrolls. */
+.mk-reader{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(680px,calc(100vw - 48px));max-height:min(82vh,760px);display:flex;flex-direction:column;overflow:hidden;z-index:40;}
+.mk-reader .holo-panel__head{flex:none;}
+.mk-reader .holo-panel__body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.mk-reader-content{flex:1;min-height:0;display:flex;flex-direction:column;}
+.mk-reader-chips{flex:none;}
+.mk-reader-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--holo-amber-dim,rgba(255,166,64,.55)) transparent;}
 .mk-reader-chips{margin-bottom:12px;}
 .mk-reader-chip-date{color:var(--holo-amber-hi,#ffd9a0);}
 .mk-reader-chip-source{color:var(--holo-cyan,#3fe0ff);border-color:var(--holo-cyan-dim,rgba(63,224,255,.35));}
@@ -87,7 +94,7 @@ export function createReader({ root, state, bus, api, toasts, confirm, ui } = {}
 
   function buildShell() {
     if (holo) return;
-    content = el("div");
+    content = el("div", "mk-reader-content");
     holo = createHoloPanel({
       title: "book",
       content,
@@ -121,9 +128,13 @@ export function createReader({ root, state, bus, api, toasts, confirm, ui } = {}
     for (const entity of book.entities ?? []) chips.appendChild(el("span", "holo-chip chip", entity));
     content.appendChild(chips);
 
+    // Everything below the chips scrolls as one page.
+    const scroll = el("div", "mk-reader-scroll");
+    content.appendChild(scroll);
+
     const body = el("div", "mk-reader-body");
     renderMd(body, book.body_md ?? "");
-    content.appendChild(body);
+    scroll.appendChild(body);
 
     if (book.links?.length) {
       const linksBox = el("div", "mk-reader-links");
@@ -137,7 +148,7 @@ export function createReader({ root, state, bus, api, toasts, confirm, ui } = {}
         });
         linksBox.appendChild(btn);
       }
-      content.appendChild(linksBox);
+      scroll.appendChild(linksBox);
     }
 
     const foot = el("div", "mk-reader-foot");
@@ -171,7 +182,7 @@ export function createReader({ root, state, bus, api, toasts, confirm, ui } = {}
       }
     });
     foot.appendChild(destroyBtn);
-    content.appendChild(foot);
+    scroll.appendChild(foot);
   }
 
   async function open(keeperId, slug) {

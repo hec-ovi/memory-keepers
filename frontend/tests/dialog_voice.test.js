@@ -244,7 +244,7 @@ describe("spoken replies", () => {
 
     bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
     await user.click(speakerToggle());
-    await user.type(screen.getByRole("textbox", { name: /speak to main keeper/i }), "hello{Enter}");
+    await user.type(screen.getByRole("textbox", { name: /speak to memory keeper/i }), "hello{Enter}");
     await screen.findByText("the island answers.");
     await waitFor(() => expect(kinds).toEqual(["dark", "monument"]));
   });

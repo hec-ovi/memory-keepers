@@ -231,6 +231,7 @@ export function createApi({
     tell: (keeperId, text) => request(`/keepers/${id(keeperId)}/tell`, { method: "POST", body: { text } }),
     ask: (keeperId, question) => request(`/keepers/${id(keeperId)}/ask`, { method: "POST", body: { question } }),
     getChatter: (keeperId) => request(`/keepers/${id(keeperId)}/chatter`),
+    getChat: (keeperId) => request(`/keepers/${id(keeperId)}/chat`),
 
     // sessions / sleep (compaction). sleep() -> 202 {job_id}; sleepJob() is
     // the poll target -> {status}. Response fields (grounded/followup on ask,

@@ -68,6 +68,22 @@ describe("createDialog", () => {
     expect(closed).not.toHaveBeenCalled();
   });
 
+  it("replays the persistent conversation when the panel opens", async () => {
+    server.use(
+      http.get(`${BASE}/keepers/dreams/chat`, () =>
+        HttpResponse.json({
+          turns: [
+            { t: "2026-08-19T10:00:00Z", role: "user", text: "hello there" },
+            { t: "2026-08-19T10:00:01Z", role: "keeper", text: "It is kept." },
+          ],
+        }),
+      ),
+    );
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    await waitFor(() => expect(screen.getByText("hello there")).toBeTruthy());
+    expect(screen.getByText("It is kept.")).toBeTruthy();
+  });
+
   it("composer: pill pinned to the panel bottom, mic inside its right end, attach outside", () => {
     bus.emit("keeper:selected", { keeperId: "dreams" });
     const inner = root.querySelector(".mk-dialog-inner");
@@ -800,7 +816,7 @@ describe("bookSpineColor (pure)", () => {
 describe("the main keeper rides the same dialog", () => {
   it("opens via keeper:selected: same panel, no Join, no tabs, no session cluster", () => {
     bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
-    expect(screen.getByRole("heading", { name: "Main Keeper" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Memory Keeper" })).toBeTruthy();
     expect(root.querySelectorAll(".mk-dialog")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /join/i })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Tell" })).toBeNull();
@@ -829,7 +845,7 @@ describe("the main keeper rides the same dialog", () => {
     const created = [];
     bus.on("keeper:created", (k) => created.push(k));
     bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
-    const input = screen.getByRole("textbox", { name: /speak to main keeper/i });
+    const input = screen.getByRole("textbox", { name: /speak to memory keeper/i });
     await user.type(input, "I want a keeper for films");
     await user.keyboard("{Enter}");
     await screen.findByText(/has her house now/i);
