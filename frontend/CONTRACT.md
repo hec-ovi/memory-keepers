@@ -131,6 +131,11 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
   and the interior apply `mesh.setTired` from `keeper.session.status` on build
   and on every `state:loaded`; the comm panel is the same ui/dialog
   component everywhere (`keeper:selected` opens it from either scene).
+- A reply in flight belongs to the keeper, not the panel: switching panels
+  keeps it pending (her reopened panel shows the sent row and the thinking
+  border, and the reply lands there), and every open replays her history
+  from her session log (`GET /keepers/{id}/chat`). The main keeper holds no
+  session, so her conversation lives in the page for the current load.
 - Esc ordering: overlay modals first (capture phase), then the reader, then
   the keepers list, then interior-view fallback, then main.js exits the
   current mode. The talk panel is not in the chain: it closes only from its

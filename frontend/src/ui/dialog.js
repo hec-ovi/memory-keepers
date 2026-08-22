@@ -260,6 +260,18 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   let histBox = null;
   let keeperName = "";
 
+  // Talk state that outlives the panel, per keeper: the request in flight
+  // (its reply lands in her panel if it is open when it arrives, even one
+  // reopened meanwhile) and, for the main keeper who holds no session on the
+  // engine, the transcript itself.
+  const talks = new Map(); // keeperId -> { pending: { label } | null, transcript: [{ role, text }] }
+  let replayed = false; // the open panel has drawn her history
+  let replayToken = 0;
+  function talkFor(keeperId) {
+    if (!talks.has(keeperId)) talks.set(keeperId, { pending: null, transcript: [] });
+    return talks.get(keeperId);
+  }
+
   // session/sleep state for the open panel
   let session = null; // local copy of keeper.session, patched by 409s and sleep
   let level = 1;
@@ -612,7 +624,12 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   }
 
   // A 409 NEEDS_SLEEP from a send lands here: same prompt as a filling meter.
-  function showNeedsSleep() {
+  // She needs to sleep: her record remembers it for the next open, and the
+  // open panel (if it is hers) says so now.
+  function showNeedsSleep(keeperId) {
+    const rec = state?.keepers?.find((a) => a.id === keeperId);
+    if (rec) rec.session = { ...(rec.session ?? {}), status: "needs_sleep" };
+    if (currentId !== keeperId) return;
     session = { ...(session ?? {}), status: "needs_sleep" };
     renderSession();
   }
@@ -689,6 +706,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     session = null;
     libraryFull = false;
     histBox = null;
+    replayed = false;
     levelEl = meterEl = meterFill = sleepRow = sleepNote = sleepBtn = null;
     composer = null;
     spkBtn = null;
@@ -818,10 +836,10 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       }
     });
 
-    let sending = false;
+    const talk = talkFor(keeper.id);
 
     const sync = () => {
-      input.disabled = chatLocked;
+      input.disabled = chatLocked || !!talk.pending;
     };
     input.addEventListener("input", sync);
 
@@ -837,8 +855,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     });
 
     async function send(text, { label } = {}) {
-      if (!text || sending || chatLocked) return;
-      sending = true;
+      if (!text || talk.pending || chatLocked) return;
+      talk.pending = { label: label ?? text };
       sync();
       // The user's row lands in the chat the moment it is sent, not when the
       // reply arrives, and the input empties right away; a failed send puts
@@ -847,33 +865,44 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       input.value = "";
       setInFlight(true);
       ensureThinking(form, true);
-      // A reply belongs to the panel that asked: if the panel closed or
-      // another keeper's opened while the model thought, the late reply is
-      // dropped from the UI (world events still fire, and keeper replies are
-      // in her session, so reopening her replays them).
-      const stale = () => composer?.form !== form;
+      // The reply belongs to her, not to this panel: it lands in whichever
+      // panel shows her when it arrives (this one, or one reopened while the
+      // model thought). Away from her, world events still fire and her
+      // history carries it to the next open. landed() settles the in-flight
+      // state and says whether her panel is the open one.
+      const landed = () => {
+        talk.pending = null;
+        if (currentId !== keeper.id) return false;
+        setInFlight(false);
+        ensureThinking(composer.form, false);
+        composer.sync();
+        return true;
+      };
       try {
         if (keeper.monument) {
           const res = await api.monument(text);
           if (res?.created_keeper) {
             bus?.emit("keeper:created", res.created_keeper);
           }
-          if (stale()) return;
-          setInFlight(false);
-          ensureThinking(form, false);
-          say(res?.reply ?? "...", { md: true });
+          const reply = res?.reply ?? "...";
+          talk.transcript.push({ role: "user", text: label ?? text }, { role: "keeper", text: reply });
+          if (!landed()) return;
+          say(reply, { md: true });
         } else {
           const res = await api.say(keeper.id, text);
           // Unconscious tells are conversational: she listens, no book is
           // written, so there is nothing to count or announce.
+          const rec = state?.keepers?.find((a) => a.id === keeper.id);
           if (res?.kind !== "ask" && res?.book) {
-            const rec = state?.keepers?.find((a) => a.id === keeper.id);
             if (rec) rec.book_count = (rec.book_count ?? 0) + 1;
             bus?.emit("book:created", { keeperId: keeper.id, book: res.book });
           }
-          if (stale()) return;
-          setInFlight(false);
-          ensureThinking(form, false);
+          if (rec && res?.session) rec.session = { ...res.session };
+          if (!landed()) return;
+          if (!replayed) {
+            replay(keeper); // her history is still loading; the fresh log carries this turn
+            return;
+          }
           if (res?.kind === "ask") {
             const replyBody = say(res?.answer ?? "", { md: true });
             renderAskResult(keeper, res, text, replyBody);
@@ -886,23 +915,55 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
           }
         }
       } catch (err) {
-        if (stale()) return;
-        setInFlight(false);
-        ensureThinking(form, false);
-        if (!input.value) input.value = text; // give the words back to retry
-        if (err?.code === "NEEDS_SLEEP") showNeedsSleep();
-        else if (err?.code === "LIBRARY_FULL") showLibraryFull();
-        else if (keeper.monument) toastError(err?.message || "the island did not answer");
+        const here = landed();
+        if (err?.code === "NEEDS_SLEEP") showNeedsSleep(keeper.id);
+        else if (err?.code === "LIBRARY_FULL") {
+          if (here) showLibraryFull();
+        } else if (keeper.monument) toastError(err?.message || "the island did not answer");
         else toastError(err?.message || "she could not answer that");
+        if (here && !composer.input.value) composer.input.value = text; // give the words back to retry
       } finally {
-        sending = false;
-        if (!stale()) sync();
+        talk.pending = null;
+        if (currentId === keeper.id) composer?.sync();
       }
     }
 
     composer = { form, input, micBtn, attachBtn, sync };
     sync();
     return row;
+  }
+
+  // Draws her history into the open panel, instantly, no typing: her
+  // session's turn log (the same turns sleep binds into books and dreaming
+  // links across) or, for the main keeper who holds no session, the page's
+  // transcript of her. A request still in flight shows its row and the
+  // thinking border; its reply lands here when it arrives.
+  async function replay(keeper) {
+    const token = ++replayToken;
+    const talk = talkFor(keeper.id);
+    let turns = talk.transcript;
+    if (!keeper.monument) {
+      try {
+        turns = (await api?.getChat?.(keeper.id))?.turns ?? [];
+      } catch {
+        turns = [];
+      }
+    }
+    if (token !== replayToken || currentId !== keeper.id || !histBox) return;
+    histBox.replaceChildren();
+    for (const turn of turns) {
+      if (!turn?.text) continue;
+      const user = turn.role === "user";
+      const { span } = pushHistory(user ? "user" : "keeper", user ? turn.text : "");
+      if (!user && span) renderMd(span, turn.text);
+    }
+    if (talk.pending) {
+      pushHistory("user", talk.pending.label);
+      setInFlight(true);
+      ensureThinking(composer.form, true);
+    }
+    histBox.scrollTop = histBox.scrollHeight;
+    replayed = true;
   }
 
   function open(keeperId) {
@@ -933,27 +994,6 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     histBox = el("div", "mk-dialog-hist holo-list");
     histBox.setAttribute("aria-label", "recent exchanges");
     content.appendChild(histBox);
-
-    // Persistent history: her session's turn log replays as chat rows the
-    // moment the panel opens (instantly, no typing). The same turns are what
-    // sleep binds into books and dreaming links across, so the conversation
-    // and the consolidation read from one record. The main keeper holds no
-    // session, so she has nothing to replay.
-    if (!isMonument) {
-      api
-        ?.getChat?.(keeper.id)
-        .then((res) => {
-          if (!histBox || currentId !== keeper.id) return;
-          for (const turn of res?.turns ?? []) {
-            if (!turn?.text) continue;
-            const { span } = pushHistory(turn.role === "user" ? "user" : "keeper",
-                                         turn.role === "user" ? turn.text : "");
-            if (turn.role !== "user" && span) renderMd(span, turn.text);
-          }
-          histBox.scrollTop = histBox.scrollHeight;
-        })
-        .catch(() => {});
-    }
 
     // Primary action: join her, in the right-aligned row at the bottom.
     // Closes the panel; the overworld walks her home with the camera
@@ -1083,6 +1123,7 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
     root.appendChild(holo.el);
     lastVoiceMode = "idle";
     bus?.emit("ui:open", { panel: "dialog", keeperId: keeper.id });
+    replay(keeper);
   }
 
   offs.push(bus?.on?.("keeper:selected", (p) => open(typeof p === "string" ? p : p?.keeperId)) ?? (() => {}));

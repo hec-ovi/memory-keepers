@@ -34,6 +34,8 @@ beforeEach(() => {
   toasts = createToasts({ root });
   const api = createApi({ baseUrl: BASE, sleep: noSleep });
   dialog = createDialog({ root, state, bus, api, toasts, sleepPollMs: 5 });
+  // every open replays her session log; tests that need turns override this
+  server.use(http.get(`${BASE}/keepers/:id/chat`, () => HttpResponse.json({ turns: [] })));
 });
 
 afterEach(() => {
@@ -84,7 +86,39 @@ describe("createDialog", () => {
     expect(screen.getByText("It is kept.")).toBeTruthy();
   });
 
-  it("a late reply never leaks into another keeper's panel", async () => {
+  it("a reply that lands while another panel is open stays out of it; her own history replays it", async () => {
+    const user = userEvent.setup();
+    const gate = deferred();
+    const turns = [];
+    server.use(
+      http.post(`${BASE}/keepers/dreams/say`, async () => {
+        await gate.promise;
+        turns.push({ role: "user", text: "hello" }, { role: "keeper", text: "late reply from dreams." });
+        return HttpResponse.json({ reply: "late reply from dreams." });
+      }),
+      http.get(`${BASE}/keepers/dreams/chat`, () => HttpResponse.json({ turns })),
+    );
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    await user.type(
+      screen.getByRole("textbox", { name: /speak to keeper of dreams/i }),
+      "hello{Enter}",
+    );
+    // switch panels while she is still thinking
+    bus.emit("keeper:selected", { keeperId: "still-water" });
+    gate.resolve();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByText("late reply from dreams.")).toBeNull();
+    expect(root.querySelector(".mk-dialog-hist").children.length).toBe(0);
+    // back to her: the session log replays both rows, instantly, nothing pending
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    await screen.findByText("late reply from dreams.");
+    expect(screen.getByText("hello")).toBeTruthy();
+    const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
+    expect(input.disabled).toBe(false);
+    expect(input.closest("form").classList.contains("holo-thinking")).toBe(false);
+  });
+
+  it("a reply in flight follows her: her reopened panel shows the sent row and the thinking border, and the reply lands there", async () => {
     const user = userEvent.setup();
     const gate = deferred();
     server.use(
@@ -98,12 +132,29 @@ describe("createDialog", () => {
       screen.getByRole("textbox", { name: /speak to keeper of dreams/i }),
       "hello{Enter}",
     );
-    // switch panels while she is still thinking
     bus.emit("keeper:selected", { keeperId: "still-water" });
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    const input = screen.getByRole("textbox", { name: /speak to keeper of dreams/i });
+    await waitFor(() => expect(screen.getByText("hello")).toBeTruthy());
+    expect(input.disabled).toBe(true);
+    expect(input.closest("form").classList.contains("holo-thinking")).toBe(true);
     gate.resolve();
-    await new Promise((r) => setTimeout(r, 30));
-    expect(screen.queryByText("late reply from dreams.")).toBeNull();
-    expect(root.querySelector(".mk-dialog-hist").children.length).toBe(0);
+    await screen.findByText("late reply from dreams.");
+    await waitFor(() => expect(input.closest("form").classList.contains("holo-thinking")).toBe(false));
+    expect(input.disabled).toBe(false);
+  });
+
+  it("the main keeper's conversation lives in the page: switching away and back replays it", async () => {
+    const user = userEvent.setup();
+    server.use(http.post(`${BASE}/monument`, () => HttpResponse.json({ reply: "the island remembers." })));
+    bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
+    await user.type(screen.getByRole("textbox", { name: /speak to memory keeper/i }), "who are you{Enter}");
+    await screen.findByText("the island remembers.");
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    expect(screen.queryByText("the island remembers.")).toBeNull();
+    bus.emit("keeper:selected", { keeperId: MONUMENT_ID });
+    expect(screen.getByText("who are you")).toBeTruthy();
+    expect(screen.getByText("the island remembers.")).toBeTruthy();
   });
 
   it("composer: pill pinned to the panel bottom, mic inside its right end, attach outside", () => {
