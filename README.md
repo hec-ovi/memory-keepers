@@ -63,6 +63,18 @@ To fill a world with sample memories and test the whole loop (tells, grounded as
 python3 scripts/demo_world.py http://localhost:8000 demo --verify
 ```
 
+## Sample island
+
+`samples/hector-island.json` is a whole island exported from this game: the author's own memories, told to five keepers through the real tell flow on the local tier (career, studies, repos, literature with two books told chapter by chapter, and Cronenberg films), loose remarks on every shelf, the ridge dreamed from what recurs across them, and the conversations behind every book. Load it with the HUD's Import island button (it lands on a fresh island id of its own, never on yours), then ask a keeper something, open a book, send her a remark, talk to the ridge, or run Dreaming.
+
+To build an island from your own memories, write them as the seeder's JSON (keepers with `memories`, optional `remarks` sent through the router, and an `ask` to verify) and run:
+
+```
+python3 scripts/demo_world.py http://localhost:8000 mine --verify --memories my_memories.json
+```
+
+Export island then saves it as one file.
+
 ## Tests
 
 ```
