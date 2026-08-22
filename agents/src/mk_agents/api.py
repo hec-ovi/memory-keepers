@@ -14,7 +14,7 @@ from . import chatter, dates
 from .fallbacks import (STOPWORDS, dated_citation, extract_book_fields,
                         harvest_constraints, parse_json, route_by_wording)
 from .prompting import index_block, index_block_across, prompt, session_block
-from .runtime import build_agent, run_agent
+from .runtime import build_agent, run_agent, run_flow
 
 log = logging.getLogger(__name__)
 SHORTLIST = 6
@@ -34,24 +34,33 @@ class AgentsApi:
         self.gateway = gateway
         self.lookups = lookups  # LookupsApi-shaped; optional, tools appear when present
 
-    def _date_tool(self) -> list:
+    def _date_tool(self, text: str) -> list:
+        """resolve_date, bound to the user's message: it answers only for a
+        relative-day phrase the user actually wrote, so a model cannot wander
+        through phrases of its own."""
+        said = " ".join(text.lower().split())
+
         def resolve_date(phrase: str) -> dict:
-            """Turn ONE relative day phrase ("tomorrow", "in two weeks", "next
-            friday", "3 days ago", "march 3") into the calendar date it means,
-            counted from today. Call it once per phrase; dates already written
-            with a month or a year are not relative, write them as they are."""
-            day = dates.resolve_phrase(phrase, date.today())
+            """Calendar date for a day the user gave relative to today, quoted
+            exactly as written in their message. Only for such phrases; a date
+            written with its month or year needs no call."""
+            wording = " ".join(phrase.lower().split())
+            if wording not in said:
+                return {"ok": False, "phrase": phrase,
+                        "error": "the user did not write that; resolve only a phrase "
+                                 "from their message, or write the date as they gave it"}
+            day = dates.resolve_phrase(wording, date.today())
             if day is None:
-                return {"ok": False, "phrase": phrase, "today": _today(),
-                        "error": "not a relative day; write it as it is and do not call again"}
+                return {"ok": False, "phrase": phrase,
+                        "error": "not a day relative to today; write it as the user gave it"}
             return {"ok": True, "phrase": phrase, "date": day.isoformat(),
                     "weekday": day.strftime("%A"), "today": _today()}
 
         return [resolve_date]
 
-    def _keeper_tools(self) -> list:
+    def _keeper_tools(self, text: str) -> list:
         """Every keeper flow carries the date tool; lookups when the box is wired."""
-        return [*self._date_tool(), *self._lookup_tools()]
+        return [*self._date_tool(text), *self._lookup_tools()]
 
     def _lookup_tools(self) -> list:
         if not self.lookups:
@@ -163,10 +172,8 @@ class AgentsApi:
                              index=index_block(rows[:SHORTLIST]))
         reply, tokens = "", 0
         try:
-            raw, tokens = await run_agent(
-                build_agent("keeper_talk", self.gateway.model_for("chat"), instruction,
-                            self._date_tool()),
-                text)
+            raw, tokens = await run_flow("keeper_talk", self.gateway.model_for("chat"),
+                                         instruction, self._date_tool(text), text)
             reply = str((parse_json(raw) or {}).get("reply") or "").strip()
         except Exception:
             log.exception("talk model failed, using fallback")
@@ -183,10 +190,8 @@ class AgentsApi:
                              index=index_block(rows[:SHORTLIST * 2]))
         reply_data, tokens = {}, 0
         try:
-            raw, tokens = await run_agent(
-                build_agent("keeper_tell", self.gateway.model_for("chat"), instruction,
-                            self._keeper_tools()),
-                text)
+            raw, tokens = await run_flow("keeper_tell", self.gateway.model_for("chat"),
+                                         instruction, self._keeper_tools(text), text)
             reply_data = parse_json(raw) or {}
         except Exception:
             log.exception("tell model failed, using fallbacks")
@@ -250,9 +255,8 @@ class AgentsApi:
                              date_note=date_note, session=session_block(session))
         data, tokens = None, 0
         try:
-            raw, tokens = await run_agent(
-                build_agent("keeper_ask", self.gateway.model_for("chat"),
-                            instruction, [read_book, *self._keeper_tools()]), question)
+            raw, tokens = await run_flow("keeper_ask", self.gateway.model_for("chat"), instruction,
+                                         [read_book, *self._keeper_tools(question)], question)
             data = parse_json(raw)
         except Exception:
             log.exception("ask model failed, using fallbacks")
@@ -319,9 +323,8 @@ class AgentsApi:
                              session=session_block(session))
         data, tokens = {}, 0
         try:
-            raw, tokens = await run_agent(
-                build_agent("dark_keeper", self.gateway.model_for("chat"), instruction,
-                            [read_book, *self._date_tool()]), text)
+            raw, tokens = await run_flow("dark_keeper", self.gateway.model_for("chat"), instruction,
+                                         [read_book, *self._date_tool(text)], text)
             data = parse_json(raw) or {}
         except Exception:
             log.exception("dark keeper model failed, using fallback")
@@ -350,7 +353,7 @@ class AgentsApi:
             """List every keeper alive on the island."""
             return {"keepers": [f"{k.name} ({k.topic}, {k.side})" for k in keepers]}
 
-        tools: list = [create_keeper, list_keepers, *self._date_tool()]
+        tools: list = [create_keeper, list_keepers, *self._date_tool(text)]
         for keeper in keepers:
             tools.append(AgentTool(agent=self._ask_subagent(world, keeper)))
 

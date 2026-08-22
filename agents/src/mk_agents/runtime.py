@@ -1,6 +1,7 @@
 """One place that touches ADK's Runner: run an agent for one message and
 return its final text plus token usage. Durable memory lives in the library,
 so every run gets a fresh in-memory session."""
+from google.adk.agents.invocation_context import LlmCallsLimitExceededError
 from google.adk.agents.llm_agent import LlmAgent
 from google.adk.agents.run_config import RunConfig
 from google.adk.runners import Runner
@@ -16,6 +17,18 @@ MAX_LLM_CALLS = 12
 
 def build_agent(name: str, model, instruction: str, tools: list) -> LlmAgent:
     return LlmAgent(name=name, model=model, instruction=instruction, tools=tools)
+
+
+async def run_flow(name: str, model, instruction: str, tools: list, user_text: str) -> tuple[str, int]:
+    """One flow, end to end: the agent with its tools; a model that spends
+    the whole call budget on tools gets one more run without them, so the
+    answer is still the model's own and not the deterministic fallback."""
+    try:
+        return await run_agent(build_agent(name, model, instruction, tools), user_text)
+    except LlmCallsLimitExceededError:
+        if not tools:
+            raise
+        return await run_agent(build_agent(name, model, instruction, []), user_text)
 
 
 async def run_agent(agent: LlmAgent, user_text: str) -> tuple[str, int]:
