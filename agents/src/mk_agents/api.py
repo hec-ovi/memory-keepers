@@ -6,6 +6,7 @@ from datetime import date
 
 from google.adk.tools.agent_tool import AgentTool
 from mk_library import Library, LibraryError
+from mk_library.text import TIER_BOUNDS
 from mk_library.records import Turn
 from mk_library.store import now_iso
 from mk_models import ModelGateway
@@ -250,15 +251,19 @@ class AgentsApi:
             value = reply_data.get(key)
             if value:
                 fields[key] = value
-        failed = not reply_data
+        authored = reply_data.get("body_md")  # the keeper authors the book
+        authored = authored.strip() if isinstance(authored, str) else ""
+        failed = not authored  # no usable book, whatever else came back
         short = len(text.strip()) < SHORT_REMARK
+        # A short telling whose authored body stays under the small tier is a
+        # remark, not a book: it belongs on the loose pages.
+        remark = short and (failed or len(authored) < TIER_BOUNDS[0])
         reply = reply_data.get("reply") or (
             "I could not reach my words just now, so I kept yours on the loose pages."
-            if short else
+            if remark else
             f"I could not reach my words just now, so I kept yours as they are: "
             f"{fields['title']}.")
-        body = reply_data.get("body_md")  # the keeper authors the book
-        body = body.strip() if isinstance(body, str) and body.strip() else text
+        body = authored or text
 
         book = None
         grown = None
@@ -273,10 +278,10 @@ class AgentsApi:
                     # A follow-up grows the existing book instead of minting a new one.
                     grown = self.library.append_to_book(world, kid, extends,
                                                         note_md=body, date=_today())
-                elif reply_data.get("note") is True or (failed and short):
+                elif reply_data.get("note") is True or remark:
                     # A passing remark lands in her one notes book, pointing at
-                    # the books it is about; a short sentence the model failed on
-                    # goes there too, never a book of its own.
+                    # the books it is about; a short telling without a book's
+                    # worth of body goes there too, never a book of its own.
                     grown = self.library.append_note(world, kid, note_md=body, date=_today(),
                                                      tags=fields["tags"], about=about)
                 else:

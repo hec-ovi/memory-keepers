@@ -211,7 +211,8 @@ class FakeLlm(BaseLlm):
             f"What it carries sits beside the older books now, close enough "
             f"to touch spines.",
             f"Margin note: bound the evening it was told, filed under "
-            f"{', '.join(tags) if tags else 'no tags yet'}.",
+            f"{', '.join(tags) if tags else 'no tags yet'}. The pages run past the "
+            f"small tier on purpose: a told memory is a book, and a book has a body.",
         ])
         body += self._lookup_note(responses)
         return self._text({

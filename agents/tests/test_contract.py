@@ -165,18 +165,24 @@ async def test_run_flow_writes_without_tools_after_a_looping_pass():
     assert '"reply": "written"' in text and '"seen": true' in text  # the lookup result reached the writing pass
 
 
-async def test_a_short_sentence_the_model_fails_on_becomes_a_note_not_a_book(api, library, monkeypatch):
+async def test_a_short_telling_without_a_book_behind_it_becomes_a_note(api, library, monkeypatch):
     import mk_agents.api as api_mod
+    answers = iter([RuntimeError("model down"), '{"tools": [{"name": "x"}]}',
+                    '{"reply": "noted", "title": "I like that director", "body_md": "I like that director."}'])
 
-    async def broken(*args, **kwargs):
-        raise RuntimeError("model down")
+    async def flaky(*args, **kwargs):
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer, 0
 
-    monkeypatch.setattr(api_mod, "run_flow", broken)
+    monkeypatch.setattr(api_mod, "run_flow", flaky)
     count = library.get_keeper("w", "dreams").book_count
-    out = await api.keeper_tell("w", "dreams", "I still want to finish a degree some day")
-    assert out["book"] is None and out["book_grown"]["slug"] == "notes"
-    assert "loose pages" in out["reply"]
-    assert library.get_keeper("w", "dreams").book_count == count + 1  # the notes book itself
+    for text in ("I still want to finish a degree some day", "I like that director.", "I like that director."):
+        out = await api.keeper_tell("w", "dreams", text)
+        assert out["book"] is None and out["book_grown"]["slug"] == "notes", text
+    assert "loose pages" in out["reply"] or out["reply"] == "noted"
+    assert library.get_keeper("w", "dreams").book_count == count + 1  # the notes book itself, once
     assert library.session_read("w", "dreams").turns[0].book == "notes"
 
 
