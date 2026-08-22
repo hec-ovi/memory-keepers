@@ -39,6 +39,17 @@ describe("createSleepTimeline (pure)", () => {
     expect(tl.phase).toBe("idle"); // reusable for the next nap
   });
 
+  it("a walk home that never arrives enters where she stands once walkS is spent", () => {
+    const tl = createSleepTimeline({ walkS: 3, enterS: 0.5, minDreamS: 1 });
+    expect(tl.start()).toEqual(["started", "walk"]);
+    expect(tl.update(2.9)).toEqual([]);
+    expect(tl.phase).toBe("walking");
+    expect(tl.update(0.2)).toEqual(["enter"]);
+    expect(tl.phase).toBe("entering");
+    expect(tl.arrive()).toEqual([]); // the late arrival means nothing now
+    expect(tl.update(0.6)).toEqual(["dream"]);
+  });
+
   it("at-door variant skips the walk", () => {
     const tl = createSleepTimeline({ enterS: 0.5 });
     expect(tl.start({ atDoor: true })).toEqual(["started", "enter"]);

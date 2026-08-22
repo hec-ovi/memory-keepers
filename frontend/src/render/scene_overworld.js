@@ -211,7 +211,9 @@ export function createCinematicTimeline(timing = {}) {
 // she re-emerges rested with a small sparkle. Ambient, never a cinematic:
 // no input lock anywhere. Phases:
 //   idle -> walking -> entering -> dreaming -> waking -> idle
-// start({atDoor: true}) skips the walk (she is already at her door).
+// start({atDoor: true}) skips the walk (she is already at her door). A walk
+// home that has not arrived within walkS (blocked street, crowd at the door)
+// enters from where she stands: the choreography always completes.
 // rested() during walking/entering is remembered, and the dream always
 // dwells: "wake" never fires before minDreamS of dreaming, so even a
 // backend that finishes instantly shows a visible beat of dreaming over
@@ -224,6 +226,7 @@ export function createCinematicTimeline(timing = {}) {
 //   "done"     re-emerged; effect removed, back to plain wandering
 
 export const SLEEP_TIMING = {
+  walkS: 18, // budget for the walk home; past it she slips inside where she is
   enterS: 0.7, // fade through the door (windows dim, dream fx ramps in)
   wakeS: 0.9, // effect fades out while she fades back in
   sparkleS: 1.4, // the re-emerge sparkle's lifetime
@@ -291,10 +294,15 @@ export function createSleepTimeline(timing = {}) {
     },
 
     update(dt) {
-      if (phase !== "entering" && phase !== "dreaming" && phase !== "waking") return [];
+      if (phase === "idle") return [];
       clock += dt;
       const events = [];
-      if (phase === "entering" && clock >= t.enterS) {
+      if (phase === "walking") {
+        if (clock >= t.walkS) {
+          goto("entering");
+          events.push("enter");
+        }
+      } else if (phase === "entering" && clock >= t.enterS) {
         goto("dreaming");
         events.push("dream");
       } else if (phase === "dreaming" && pendingRested && clock >= t.minDreamS) {

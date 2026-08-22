@@ -645,9 +645,11 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
   // panel closing; the header/inputs are only touched when the panel still
   // shows this keeper.
   async function runSleep(keeperId) {
+    let started = false; // the scenes began her sleep choreography
     try {
       const res = await api.sleep(keeperId);
       bus?.emit("keeper:sleep", { keeperId });
+      started = true;
       const jobId = res?.job_id;
       let status = res?.status ?? "running";
       while (jobId && status !== "done" && status !== "failed" && !factoryDisposed) {
@@ -678,6 +680,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       sleepingIds.delete(keeperId);
       if (currentId === keeperId) renderSession();
       toastError(err?.message || "she could not fall asleep");
+      // A lost poll never leaves her asleep on the island: the scenes wake
+      // her, and the state refresh that follows restores her true status.
+      if (started) bus?.emit("keeper:rested", { keeperId });
     }
   }
 

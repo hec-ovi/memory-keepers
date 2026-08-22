@@ -738,6 +738,23 @@ describe("createDialog", () => {
     expect(root.querySelector(".mk-dialog-sleeprow").style.display).toBe("none");
   });
 
+  it("a sleep poll that dies after she left still wakes her: keeper:rested follows the toast", async () => {
+    const user = userEvent.setup();
+    state.keepers[0].session = { tokens_used: 960, budget: 1000, status: "needs_sleep" };
+    server.use(
+      http.post(`${BASE}/keepers/dreams/sleep`, () =>
+        HttpResponse.json({ job_id: "job-2", status: "running" }, { status: 202 }),
+      ),
+      http.get(`${BASE}/keepers/dreams/sleep/job-2`, () => HttpResponse.error()),
+    );
+    const rested = vi.fn();
+    bus.on("keeper:rested", rested);
+    bus.emit("keeper:selected", { keeperId: "dreams" });
+    await user.click(screen.getByRole("button", { name: "Send to sleep" }));
+    await waitFor(() => expect(rested).toHaveBeenCalledWith({ keeperId: "dreams" }));
+    expect(screen.getByRole("button", { name: "Send to sleep" }).disabled).toBe(false);
+  });
+
   it("sleep failure: toast, prompt stays, the composer stays locked (she still cannot answer)", async () => {
     const user = userEvent.setup();
     state.keepers[0].session = { tokens_used: 900, budget: 1000, status: "needs_sleep" };

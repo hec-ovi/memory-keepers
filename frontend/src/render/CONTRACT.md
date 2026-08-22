@@ -483,7 +483,7 @@ dreaming -> waking -> idle`; events `started/walk/enter/dream/wake/done`;
 `rested()` before she is inside OR before the dream has dwelled is
 remembered; `wake` never fires before `minDreamS` of dreaming, so an
 instant backend still shows a visible dream) with
-`SLEEP_TIMING = {enterS, wakeS, sparkleS, minDreamS}`;
+`SLEEP_TIMING = {walkS, enterS, wakeS, sparkleS, minDreamS}`; a walk home past `walkS` enters where she stands, so the choreography always completes;
 `sleepGlow(phase, clock, timing) -> 0..1` (dream-effect intensity: ramps in
 entering, 1 dreaming, fades waking; the door fade is `1 - k` in both
 directions); `dreamWisp(u, {rise}) -> {y, opacity, scale}` (loops, opacity 0
