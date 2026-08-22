@@ -1,6 +1,7 @@
 // Top HUD bar: keeper/book counts, the View keepers button, and the action
 // buttons (Create keeper, Dreaming, How to play, Demo data, and world travel:
-// Export island on a lived-in island, Import island on an empty one). Factory
+// Export island on a lived-in island, Import island always: an import lands
+// on a fresh island id, never on this one). Factory
 // per the module contract, no module-level side effects:
 //
 //   const hud = createHud({ root, state, bus, api, toasts, reload });
@@ -148,8 +149,9 @@ export function createHud({ root, state, bus, api, toasts, ui, reload } = {}) {
     }
   });
 
-  // World travel: export shows on a lived-in island, import on an empty one
-  // (an import always lands on a fresh island id, then the page reloads into it).
+  // World travel: export shows on a lived-in island; import always, since an
+  // import lands on a fresh island id (then the page reloads into it) and a
+  // fresh island already holds the seed keepers, so it is never "empty".
   const exportBtn = el("button", "btn", "Export island");
   exportBtn.type = "button";
   exportBtn.setAttribute("data-tooltip", TOOLTIPS.exportWorld);
@@ -229,7 +231,7 @@ export function createHud({ root, state, bus, api, toasts, ui, reload } = {}) {
       else if (!show && bar.contains(btn)) btn.remove();
     };
     place(seedBtn, empty);
-    place(importBtn, empty);
+    place(importBtn, true);
     place(exportBtn, !empty);
   }
 

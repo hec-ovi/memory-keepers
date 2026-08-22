@@ -197,7 +197,7 @@ describe("createHud", () => {
 
   it("Export island downloads the world file on a lived-in island", async () => {
     const user = userEvent.setup();
-    expect(screen.queryByRole("button", { name: "Import island" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Import island" })).toBeTruthy(); // always reachable
     server.use(
       http.get(`${BASE}/world/export`, () =>
         HttpResponse.json({ format: "memory-keepers-world", version: 1,
