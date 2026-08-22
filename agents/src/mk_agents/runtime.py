@@ -23,6 +23,8 @@ def build_agent(name: str, model, instruction: str, tools: list) -> LlmAgent:
 
 async def _run(agent: LlmAgent, user_text: str) -> tuple[str, int, list[dict], bool]:
     """Streams one run. Returns (final text, tokens, lookups made, stuck):
+    tokens is the largest context one call carried (the last call holds every
+    earlier round), so tool rounds do not count the prompt again and again;
     stuck when the model repeated an identical tool call or hit the cap."""
     service = InMemorySessionService()
     runner = Runner(agent=agent, app_name="memory-keepers", session_service=service)
@@ -37,7 +39,7 @@ async def _run(agent: LlmAgent, user_text: str) -> tuple[str, int, list[dict], b
         async for event in events:
             usage = getattr(event, "usage_metadata", None)
             if usage and usage.total_token_count:
-                tokens += usage.total_token_count
+                tokens = max(tokens, usage.total_token_count)
             parts = event.content.parts if event.content and event.content.parts else []
             for part in parts:
                 if part.function_call:

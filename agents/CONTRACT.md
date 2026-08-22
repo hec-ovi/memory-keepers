@@ -31,7 +31,7 @@ Class `AgentsApi(library, gateway, lookups=None)`; `lookups` is a `LookupsApi`-s
 
 - Grounding in `keeper_ask` is validated outside the model: `used_slugs` are filtered to books the agent actually opened via `read_book`; nothing left means `grounded: false`. The model owns `followup`: an ungrounded answer with `followup: false` is a complete answer about the keeper herself, never an invented memory.
 - Relative dates in questions resolve by rules (`dates.py`) and bias the shortlist; no model involved.
-- Every tell/ask appends both turns to the keeper's session, harvests imperative constraint sentences verbatim, and meters reported token usage (estimate fallback).
+- Every tell/ask appends both turns to the keeper's session, harvests imperative constraint sentences verbatim, and meters the largest context one model call of the run carried (tool rounds never count the prompt twice; estimate fallback).
 - Every model call goes through `gateway.model_for(role)`; roles used: `chat`, `dream`.
 - Lookup tools never raise (the lookups contract): a failed lookup leaves the flow exactly as if the tool was never called.
 - Model failures log and fall back deterministically (dated citation, extraction fields, template prose); no exception ever escapes a flow because of a model.
