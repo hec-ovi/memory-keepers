@@ -136,9 +136,10 @@ Box map and dependency edges: `docs/INDEX.md`. Each box is one folder with a CON
 |---|---|
 | `frontend/` | three.js SPA, no build step |
 | `engine/` | FastAPI surface, world scoping, meters, jobs |
-| `agents/` | ADK: monument root agent, keeper agents, dream prose |
+| `agents/` | ADK: monument root agent, keeper agents (tell, ask, talk, notes), ridge keepers, dream agents |
 | `library/` | Firestore store: worlds, keepers, books, sessions, dream runs |
 | `models/` | model gateway: cloud / local / fake tiers |
 | `dreaming/` | consolidation: linking pass and dark side writer |
 | `voice/` | Cloud TTS / STT router |
 | `lookups/` | keeper tools: transcripts, lyrics, movie facts |
+| `samples/` | a whole island to import: the author's memories |
