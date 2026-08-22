@@ -142,14 +142,57 @@ async def test_ask_model_reply_without_slugs_falls_back(library):
     assert out["answer"] and out["grounded"] and out["sources"]
 
 
-def test_chatter_rotates_and_matches_pool(api):
-    from mk_agents.chatter import BUCKET_SECONDS, TOPIC_POOLS, line_for
-    assert api.keeper_chatter("w", "dreams") in TOPIC_POOLS["dreams"]
-    lines = {line_for("dreams", "dreams", "light", None, now=i * BUCKET_SECONDS)
-             for i in range(10)}
-    assert len(lines) > 5  # rotates
-    long_topic = "the complete recorded history of every conversation about my grandmother's garden"
-    assert len(line_for("k", long_topic, "light", None)) < 90  # generic lines clamp too
+def test_chatter_comes_from_books_after_a_consolidation(api, library):
+    from mk_agents.chatter import BUCKET_SECONDS, pick
+    assert api.keeper_chatter("w", "dreams") is None  # silent before the first dreaming
+    library.create_keeper("w", "calls")  # an empty shelf
+    library.write_book("w", "dreams", title="The long corridor " * 6, body_md="x",
+                       date="2026-08-10", source="told",
+                       one_liner="A corridor that never ended, " * 6)
+    counts = api.refresh_chatter("w")
+    assert counts["dreams"] >= 3 and counts["calls"] == 0  # calls holds no books
+    assert api.keeper_chatter("w", "calls") is None
+    books = library.list_books("w", "dreams")
+    allowed = {b.one_liner for b in books} | {f"Ask me about {b.title}." for b in books}
+    lines = library.get_keeper("w", "dreams").chatter
+    assert all(len(line) < 90 for line in lines)
+    assert all(line in allowed or line.endswith("...") for line in lines)
+    assert len({pick(lines, "dreams", now=i * BUCKET_SECONDS) for i in range(10)}) > 1  # rotates
+
+
+def test_resolve_phrase_turns_relative_days_into_calendar_days():
+    from mk_agents.dates import resolve_phrase
+    today = date(2026, 8, 22)  # a Saturday
+    cases = {
+        "tomorrow": date(2026, 8, 23), "in two weeks": date(2026, 9, 5),
+        "in 3 days": date(2026, 8, 25), "3 days ago": date(2026, 8, 19),
+        "next friday": date(2026, 8, 28), "friday": date(2026, 8, 28),
+        "this saturday": date(2026, 8, 22), "next saturday": date(2026, 8, 29),
+        "next month": date(2026, 9, 22), "march 3": date(2027, 3, 3),
+        "3rd of march": date(2027, 3, 3), "2026-12-01": date(2026, 12, 1),
+    }
+    for phrase, day in cases.items():
+        assert resolve_phrase(phrase, today) == day, phrase
+    assert resolve_phrase("whenever", today) is None
+
+
+async def test_tell_writes_the_calendar_date_not_the_phrase(api, library):
+    out = await api.keeper_tell("w", "dreams", "I have a job interview tomorrow, remember it.")
+    body = library.get_book("w", "dreams", out["book"]["slug"]).body_md
+    assert (date.today() + timedelta(days=1)).isoformat() in body
+
+
+async def test_ridge_keeper_reads_any_shelf_and_asks(api, library):
+    seeded = library.list_books("w", "dreams")[0]
+    dark = library.create_keeper("w", "the deer", side="dark", archetype="obsession")
+    library.write_book("w", dark.id, title="The one who circles the deer", body_md="It returns.",
+                       date="2026-08-20", source="dream", one_liner="A night reading.",
+                       links=[f"dreams/{seeded.slug}"], enforce_cap=False)
+    out = await api.keeper_say("w", dark.id, "why does the deer keep coming back?")
+    assert out["kind"] == "talk" and out["book"] is None
+    assert out["reply"].rstrip().endswith("?")
+    assert out["sources"] == [f"dreams/{seeded.slug}"]  # opened across the village
+    assert library.get_keeper("w", dark.id).book_count == 1  # nothing written
 
 
 async def test_monument_creates_keeper(api, library):

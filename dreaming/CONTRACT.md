@@ -19,7 +19,8 @@ Delivery is a Pub/Sub push subscription to the engine's `/internal/dream-run` ro
 
 1. Deterministic linking (`linking.py`, zero model calls): entity/tag co-occurrence across light books; elements cited by 2+ books become graph nodes; elements spanning 2+ keepers become themes, ranked by citation count. Archetype per theme by keyword lexicon (`desire | fear | ambition | obsession`).
 2. Per theme: `agents.dream_write` prose; the dark keeper is created on first need (theme key is her topic) and her dream book lands citing `keeper/slug` evidence links, with `derived_from` edges in the graph.
-3. `agents.dream_narrative` closes the run; the frontend plays the graph back as the dream movie.
+3. `agents.refresh_chatter` stores every keeper's bubble lines from her books (the island only chatters after its first dreaming, and only about real books).
+4. `agents.dream_narrative` closes the run; the frontend plays the graph back as the dream movie.
 
 ## Invariants
 

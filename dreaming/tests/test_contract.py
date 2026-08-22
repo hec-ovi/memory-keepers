@@ -44,6 +44,11 @@ async def test_dream_births_dark_side(rig):
     assert book.source == "dream" and book.links  # cites real sources
     assert any(e["kind"] == "derived_from" for e in report["graph"]["edges"])
     assert report["narrative"]
+    # the island chatters only after dreaming, and only from real books
+    for keeper in library.list_keepers("w"):
+        books = [b for b in library.list_books("w", keeper.id) if b.source not in ("sleep", "notes")]
+        line = agents_api.keeper_chatter("w", keeper.id)
+        assert (line is None) == (not books)
 
 
 async def test_dream_is_idempotent_on_unchanged_sources(rig):

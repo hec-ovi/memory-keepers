@@ -25,7 +25,7 @@ Privacy first: the same code runs against Gemini on Vertex AI or entirely on you
 - Pub/Sub + Cloud Scheduler: the nightly dream sweep
 - Cloud Text-to-Speech and Speech-to-Text: keeper voices and the talk key
 - Gemma on llama.cpp: the local model tier
-- Keeper tools: YouTube and podcast transcripts, song facts (MusicBrainz) and lyrics (LRCLIB), book facts and public-domain texts (Gutendex), movie facts and plots (OMDb, Wikidata, Wikipedia)
+- Keeper tools: YouTube and podcast transcripts, song facts (MusicBrainz) and lyrics (LRCLIB), book facts and public-domain texts (Gutendex), movie facts and plots (OMDb, Wikidata, Wikipedia). `resolve_date` turns "tomorrow" or "in two weeks" into the calendar date before anything is written, in every keeper flow, the main agent and the ridge
 - three.js frontend (no build step), FastAPI engine, Docker
 
 ## Content and sources

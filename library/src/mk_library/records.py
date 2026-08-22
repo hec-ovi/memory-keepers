@@ -19,6 +19,7 @@ class Keeper:
     last_book_at: str | None = None
     tokens_used: int = 0
     sleep_job: dict | None = None  # {job_id, status, started_at, finished_at, books_written, error}
+    chatter: list | None = None    # bubble lines drawn from her books at the last consolidation
 
     def to_doc(self) -> dict:
         return asdict(self)

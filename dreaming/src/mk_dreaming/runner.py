@@ -74,6 +74,8 @@ async def _dream(library: Library, agents_api, world: str) -> dict:
             {"source": bid, "target": f"book:{ref}", "kind": "derived_from", "weight": 1}
             for ref in evidence_slugs)
 
+    # Bubbles follow the books: every keeper's lines refresh from her shelf.
+    agents_api.refresh_chatter(world)
     narrative = await agents_api.dream_narrative(
         [t["key"] for t in themes[:DARK_CAP]])
     return {"graph": graph, "narrative": narrative,

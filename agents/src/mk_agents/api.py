@@ -13,7 +13,7 @@ from mk_models import ModelGateway
 from . import chatter, dates
 from .fallbacks import (STOPWORDS, dated_citation, extract_book_fields,
                         harvest_constraints, parse_json, route_by_wording)
-from .prompting import index_block, prompt, session_block
+from .prompting import index_block, index_block_across, prompt, session_block
 from .runtime import build_agent, run_agent
 
 log = logging.getLogger(__name__)
@@ -33,6 +33,25 @@ class AgentsApi:
         self.library = library
         self.gateway = gateway
         self.lookups = lookups  # LookupsApi-shaped; optional, tools appear when present
+
+    def _date_tool(self) -> list:
+        def resolve_date(phrase: str) -> dict:
+            """Turn a relative day phrase ("tomorrow", "in two weeks", "next
+            friday", "3 days ago", "march 3") into the calendar date it means,
+            counted from today. Write that date, never the phrase."""
+            day = dates.resolve_phrase(phrase, date.today())
+            if day is None:
+                return {"ok": False, "phrase": phrase, "today": _today(),
+                        "error": "phrase not understood; try tomorrow, in N days or "
+                                 "weeks, next <weekday>, N days ago, <month> <day>"}
+            return {"ok": True, "phrase": phrase, "date": day.isoformat(),
+                    "weekday": day.strftime("%A"), "today": _today()}
+
+        return [resolve_date]
+
+    def _keeper_tools(self) -> list:
+        """Every keeper flow carries the date tool; lookups when the box is wired."""
+        return [*self._date_tool(), *self._lookup_tools()]
 
     def _lookup_tools(self) -> list:
         if not self.lookups:
@@ -73,6 +92,19 @@ class AgentsApi:
                 find_movie_plot, find_song_facts, find_book_facts,
                 find_podcast_transcript]
 
+    def _read_any_book_tool(self, world: str, opened: list[str]):
+        """The ridge reads across the village: any keeper's book by id and slug."""
+        def read_book(keeper_id: str, slug: str) -> dict:
+            """Open one book from any keeper's shelf by keeper id and slug, and read it."""
+            try:
+                book = self.library.get_book(world, keeper_id, slug)
+            except LibraryError:
+                return {"error": "no such book"}
+            opened.append(f"{keeper_id}/{slug}")
+            return {"keeper_id": keeper_id, "slug": slug, "title": book.title,
+                    "date": book.date, "body_md": book.body_md}
+        return read_book
+
     def _read_book_tool(self, world: str, kid: str, allowed: set[str] | None = None,
                         opened: list[str] | None = None):
         """One read_book closure for every ask flow; allowed=None opens any shelf slug."""
@@ -93,8 +125,11 @@ class AgentsApi:
 
     # -- keeper chat --------------------------------------------------------
     async def keeper_say(self, world: str, kid: str, text: str) -> dict:
-        """One door for both flows: the model reads the message and routes it
-        to tell (keep a memory) or ask (answer from the shelves)."""
+        """One door for every flow: the model reads the message and routes it
+        to tell (keep a memory), ask (answer from the shelves) or talk. A dark
+        keeper always converses (dark_chat); she never writes."""
+        if self.library.get_keeper(world, kid).side == "dark":
+            return await self.dark_chat(world, kid, text) | {"kind": "talk"}
         kind = await self._route_say(text)
         if kind == "ask":
             out = await self.keeper_ask(world, kid, text)
@@ -129,7 +164,8 @@ class AgentsApi:
         reply, tokens = "", 0
         try:
             raw, tokens = await run_agent(
-                build_agent("keeper_talk", self.gateway.model_for("chat"), instruction, []),
+                build_agent("keeper_talk", self.gateway.model_for("chat"), instruction,
+                            self._date_tool()),
                 text)
             reply = str((parse_json(raw) or {}).get("reply") or "").strip()
         except Exception:
@@ -149,7 +185,7 @@ class AgentsApi:
         try:
             raw, tokens = await run_agent(
                 build_agent("keeper_tell", self.gateway.model_for("chat"), instruction,
-                            self._lookup_tools()),
+                            self._keeper_tools()),
                 text)
             reply_data = parse_json(raw) or {}
         except Exception:
@@ -216,7 +252,7 @@ class AgentsApi:
         try:
             raw, tokens = await run_agent(
                 build_agent("keeper_ask", self.gateway.model_for("chat"),
-                            instruction, [read_book, *self._lookup_tools()]), question)
+                            instruction, [read_book, *self._keeper_tools()]), question)
             data = parse_json(raw)
         except Exception:
             log.exception("ask model failed, using fallbacks")
@@ -242,9 +278,59 @@ class AgentsApi:
         return {"answer": answer, "sources": sources,
                 "grounded": grounded, "followup": followup}
 
-    def keeper_chatter(self, world: str, kid: str) -> str:
+    def keeper_chatter(self, world: str, kid: str) -> str | None:
+        """One bubble line from the lines the last consolidation drew from her
+        books; None while she has none (before the first dreaming, or an
+        empty shelf)."""
         keeper = self.library.get_keeper(world, kid)
-        return chatter.line_for(keeper.id, keeper.topic, keeper.side, keeper.archetype)
+        return chatter.pick(keeper.chatter or [], keeper.id)
+
+    def refresh_chatter(self, world: str) -> dict:
+        """After a consolidation: every keeper's bubble lines, literally from
+        her books (one liners and titles). Returns keeper id -> line count."""
+        counts = {}
+        for keeper in self.library.list_keepers(world):
+            lines = chatter.lines_from_books(self.library.list_books(world, keeper.id))
+            self.library.update_keeper(world, keeper.id, chatter=lines)
+            counts[keeper.id] = len(lines)
+        return counts
+
+    async def dark_chat(self, world: str, kid: str, text: str) -> dict:
+        """A keeper of the ridge talks: sentient about the theme she was born
+        from, she may open any village book for context, reflects and asks.
+        Nothing is written; both turns land in her session."""
+        keeper = self.library.get_keeper(world, kid)
+        session = self.library.session_read(world, kid)
+        own = self.library.list_books(world, kid)
+        reading = "\n\n".join(f"## {b.title}\n{b.body_md}" for b in own) or "(no reading yet)"
+        cited = {link for b in own for link in b.links}
+        rows = [r | {"keeper_id": k.id}
+                for k in self.library.list_keepers(world) if k.side == "light"
+                for r in self.library.index_rows(world, k.id)]
+        first = [r for r in rows if f"{r['keeper_id']}/{r['slug']}" in cited]
+        rest = [r for r in rows if f"{r['keeper_id']}/{r['slug']}" not in cited]
+        shortlist = first + (self._shortlist(rest, text, None) if rest else [])
+        opened: list[str] = []
+        read_book = self._read_any_book_tool(world, opened)
+        instruction = prompt("dark_keeper", persona=keeper.persona, keeper_name=keeper.name,
+                             element=keeper.topic, archetype=keeper.archetype or "unnamed",
+                             today=_today(), reading=reading,
+                             index=index_block_across(shortlist[:SHORTLIST * 2]),
+                             session=session_block(session))
+        data, tokens = {}, 0
+        try:
+            raw, tokens = await run_agent(
+                build_agent("dark_keeper", self.gateway.model_for("chat"), instruction,
+                            [read_book, *self._date_tool()]), text)
+            data = parse_json(raw) or {}
+        except Exception:
+            log.exception("dark keeper model failed, using fallback")
+        reply = str(data.get("reply") or "").strip() or (
+            f"I was born from what kept returning: {keeper.topic}. "
+            "Where does it touch you these days?")
+        used = [s for s in (data.get("used_slugs") or []) if s in set(opened)]
+        self._record(world, kid, text, reply, tokens)
+        return {"reply": reply, "book": None, "book_grown": None, "sources": used}
 
     # -- monument -------------------------------------------------------------
     async def monument_chat(self, world: str, text: str) -> dict:
@@ -264,7 +350,7 @@ class AgentsApi:
             """List every keeper alive on the island."""
             return {"keepers": [f"{k.name} ({k.topic}, {k.side})" for k in keepers]}
 
-        tools: list = [create_keeper, list_keepers]
+        tools: list = [create_keeper, list_keepers, *self._date_tool()]
         for keeper in keepers:
             tools.append(AgentTool(agent=self._ask_subagent(world, keeper)))
 

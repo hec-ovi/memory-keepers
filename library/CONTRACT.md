@@ -7,7 +7,8 @@ Purpose: the only store. Firestore holds every world, keeper, book, session and 
 ```
 worlds/{world_id}                     meta: created_at, seeded, dream_counter, latest_run_id
   keepers/{keeper_id}                 profile: name, topic, side, archetype, persona,
-                                      palette, created_at, book_count, session meter
+                                      palette, created_at, book_count, session meter,
+                                      chatter lines (from her books, set by dreaming)
     books/{slug}                      title, date, tags, entities, source, one_liner,
                                       links, tier, body_md
     session/current                   summary blocks (constraints, recent topics)

@@ -96,8 +96,7 @@ async def test_say_routes_to_tell_or_ask(client):
 
 
 async def test_chatter_and_monument(client):
-    line = (await client.get("/keepers/music/chatter")).json()["line"]
-    assert 0 < len(line) < 90
+    assert (await client.get("/keepers/music/chatter")).json() == {"line": None}  # no dreaming yet
     out = (await client.post("/monument", json={"text": "I want a new keeper for recipes"})).json()
     assert out["created_keeper"]["topic"] == "recipes"
 

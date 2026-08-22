@@ -26,6 +26,11 @@ CAPTURE_CUES = frozenset("save keep remember note shelve".split())
 REMARK_CUES = ("i liked", "i like", "i love", "i hate", "i did not like", "i didn't like",
                "i don't like", "not my", "loved", "hated")
 SLUG_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}-[a-z0-9-]+\b")
+RELATIVE_DAY_RE = re.compile(
+    r"\b(day after tomorrow|tomorrow|yesterday|in (?:\w+) (?:days?|weeks?|months?)|"
+    r"\w+ (?:days?|weeks?) ago|(?:next|this) (?:monday|tuesday|wednesday|thursday|"
+    r"friday|saturday|sunday|week|month))\b")
+ACROSS_ROW_RE = re.compile(r"^([a-z0-9-]+)/(\S+) \| ", re.M)
 ENTITY_RE = re.compile(r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b")
 YOUTUBE_RE = re.compile(r"https?://\S*(?:youtube\.com|youtu\.be)/\S+")
 QUOTED_RE = re.compile(r'"([^"]{2,80})"')
@@ -107,6 +112,9 @@ class FakeLlm(BaseLlm):
         a song, or a movie in the told text triggers the matching wired tool."""
         tools = req.tools_dict or {}
         lower = text.lower()
+        day = RELATIVE_DAY_RE.search(lower)
+        if day and "resolve_date" in tools:
+            return self._call("resolve_date", {"phrase": day.group(1)})
         url = YOUTUBE_RE.search(text)
         if url and "fetch_youtube_transcript" in tools:
             return self._call("fetch_youtube_transcript", {"url": url.group(0)})
@@ -133,7 +141,7 @@ class FakeLlm(BaseLlm):
             detail = payload.get("text") or payload.get("lyrics") or ", ".join(
                 str(payload[k]) for k in ("title", "artist", "album", "author",
                                           "year", "director", "show", "episode",
-                                          "plot")
+                                          "plot", "date", "weekday")
                 if payload.get(k))
             if detail:
                 return f"\n\nFrom the lookup, kept in the margin: {detail[:400]}"
@@ -150,6 +158,20 @@ class FakeLlm(BaseLlm):
         else:
             kind = "tell"
         return self._text({"kind": kind})
+
+    def _dark_keeper(self, req, system) -> types.Content:
+        """Opens the first listed village book, then reflects and asks."""
+        responses = self._function_responses(req)
+        row = ACROSS_ROW_RE.search(system)
+        if not responses and row and "read_book" in (req.tools_dict or {}):
+            return self._call("read_book", {"keeper_id": row.group(1), "slug": row.group(2)})
+        opened = [f"{r.response['keeper_id']}/{r.response['slug']}" for r in responses
+                  if isinstance(r.response, dict) and r.response.get("slug")]
+        element = re.search(r'because "([^"]+)" kept returning', system)
+        head = element.group(1) if element else "what returns"
+        return self._text({"reply": f"{head} keeps coming back through your shelves. "
+                                    "Where does it touch you most these days?",
+                           "used_slugs": opened})
 
     def _keeper_talk(self, req, system) -> types.Content:
         return self._text({"reply": "I hear you. Tell me something to keep, or ask me about the shelf."})

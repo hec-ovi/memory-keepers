@@ -90,6 +90,28 @@ async def test_fake_say_route_is_deterministic():
     assert json.loads(resp.content.parts[0].text)["reply"]
 
 
+async def test_fake_tell_resolves_relative_days_first():
+    model = ModelGateway(tier="fake").model_for("chat")
+    def resolve_date(phrase: str) -> dict:
+        return {"ok": True, "phrase": phrase, "date": "2026-08-23", "weekday": "Sunday"}
+    resp = await _run(model, _req("<!-- flow:keeper_tell -->", "I have an interview tomorrow.",
+                                  tools={"resolve_date": resolve_date}))
+    call = resp.content.parts[0].function_call
+    assert call.name == "resolve_date" and call.args == {"phrase": "tomorrow"}
+
+
+async def test_fake_dark_keeper_opens_a_village_book_then_asks():
+    model = ModelGateway(tier="fake").model_for("chat")
+    def read_book(keeper_id: str, slug: str) -> dict:
+        return {"keeper_id": keeper_id, "slug": slug, "body_md": "x"}
+    system = ('<!-- flow:dark_keeper -->\nbecause "the deer" kept returning\n'
+              "dreams/2026-08-01-the-deer | 2026-08-01 | a deer in the forest")
+    resp = await _run(model, _req(system, "why the deer?", tools={"read_book": read_book}))
+    call = resp.content.parts[0].function_call
+    assert call.name == "read_book"
+    assert call.args == {"keeper_id": "dreams", "slug": "2026-08-01-the-deer"}
+
+
 async def test_fake_tell_marks_short_remarks_as_notes_about_the_matching_book():
     model = ModelGateway(tier="fake").model_for("chat")
     system = "<!-- flow:keeper_tell -->\nindex:\n2026-08-05-inception-night"

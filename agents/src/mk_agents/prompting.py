@@ -30,3 +30,11 @@ def index_block(rows: list[dict]) -> str:
     if not rows:
         return "(the shelf is empty)"
     return "\n".join(f"{r['slug']} | {r['date']} | {r['one_liner']}" for r in rows)
+
+
+def index_block_across(rows: list[dict]) -> str:
+    """Rows from many shelves: each carries keeper_id, shown as keeper/slug."""
+    if not rows:
+        return "(the village has no books yet)"
+    return "\n".join(f"{r['keeper_id']}/{r['slug']} | {r['date']} | {r['one_liner']}"
+                      for r in rows)
