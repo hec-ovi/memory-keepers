@@ -301,7 +301,7 @@ class FakeLlm(BaseLlm):
 
     def _dream_select(self, req, system) -> types.Content:
         keys = re.findall(r"^key: (\S+)", self._last_user_text(req), re.M)
-        return self._text({"keep": keys})
+        return self._text({"human": keys, "technical": []})
 
     def _dream_narrative(self, req, system) -> types.Content:
         text = self._last_user_text(req)

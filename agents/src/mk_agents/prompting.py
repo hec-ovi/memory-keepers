@@ -4,6 +4,7 @@ from pathlib import Path
 from string import Template
 
 _DIR = Path(__file__).parent / "prompts"
+TURN_CHARS = 280  # a turn in the prompt is a reminder, not the whole message
 
 
 def prompt(name: str, **values) -> str:
@@ -20,8 +21,13 @@ def session_block(session) -> str:
     turns = session.turns[-6:]
     if turns:
         lines.append("Last turns:")
-        lines.extend(f"- [{t.t}] {t.role}: {t.text}" for t in turns)
+        lines.extend(f"- [{t.t}] {t.role}: {clip(t.text)}" for t in turns)
     return "\n".join(lines) or "(first conversation)"
+
+
+def clip(text: str, cap: int = TURN_CHARS) -> str:
+    text = " ".join(str(text or "").split())
+    return text if len(text) <= cap else text[: cap - 3].rsplit(" ", 1)[0] + "..."
 
 
 def index_block(rows: list[dict]) -> str:

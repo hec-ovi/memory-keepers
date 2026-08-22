@@ -490,7 +490,7 @@ class AgentsApi:
             raw, _ = await run_agent(
                 build_agent("dream_select", self.gateway.model_for("dream"),
                             prompt("dream_select", cap=cap), []), "\n".join(lines) or "no themes")
-            keep = (parse_json(raw) or {}).get("keep")
+            keep = (parse_json(raw) or {}).get("human")
             if isinstance(keep, list):
                 kept = [k for k in keep if isinstance(k, str) and k in candidates]
                 return list(dict.fromkeys(kept))[:cap]

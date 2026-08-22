@@ -186,6 +186,14 @@ async def test_a_short_telling_without_a_book_behind_it_becomes_a_note(api, libr
     assert library.session_read("w", "dreams").turns[0].book == "notes"
 
 
+def test_session_block_clips_long_turns_in_the_prompt():
+    from mk_agents.prompting import TURN_CHARS, session_block
+    from mk_library.records import Session, Turn
+    session = Session(turns=[Turn(t="2026-08-22T00:00:00Z", role="user", text="a chapter " * 400)])
+    block = session_block(session)
+    assert len(block) < TURN_CHARS + 80 and block.rstrip().endswith("...")
+
+
 def test_wording_router_without_a_model():
     from mk_agents.fallbacks import route_by_wording
     assert route_by_wording("hello") == "talk"
@@ -307,7 +315,7 @@ async def test_dream_select_keeps_only_candidate_keys(api, library, monkeypatch)
     import mk_agents.api as api_mod
 
     async def picky(agent, text):
-        return '{"keep": ["fear-of-water", "fastapi", "not-a-candidate"]}', 0
+        return '{"human": ["fear-of-water", "fastapi", "not-a-candidate"], "technical": []}', 0
 
     monkeypatch.setattr(api_mod, "run_agent", picky)
     themes = [{"key": k, "kind": "tag", "element": k, "weight": 2, "keepers": ["a", "b"],
