@@ -6,7 +6,7 @@ Each box is one folder with a CONTRACT.md; outsiders use the contract, never the
 |---|---|---|
 | frontend | three.js SPA: island, keepers, houses, libraries, holo UI, dream movie | engine |
 | engine | FastAPI app: REST surface, world scoping, meters and caps, serves the frontend | agents, library, models, voice, lookups |
-| agents | ADK agents: the monument (root), one agent per keeper, dream agents | library, models, lookups |
+| agents | ADK agents: the monument (root), one agent per keeper (tell, ask, talk, notes), the ridge keepers (cross-shelf, therapeutic), dream agents (theme selection, prose, narrative) | library, models, lookups |
 | library | Firestore store: worlds, keepers, books, sessions, dream runs | - |
 | models | model gateway: Gemini on Vertex AI, local Gemma tier, fake tier | - |
 | dreaming | consolidation job: Pub/Sub triggered, builds the knowledge graph and the dark keepers | agents, library |
