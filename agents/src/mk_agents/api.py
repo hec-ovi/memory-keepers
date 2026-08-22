@@ -18,6 +18,17 @@ from .runtime import build_agent, run_agent, run_flow
 
 log = logging.getLogger(__name__)
 SHORTLIST = 6
+# A lookup family is offered only when the message names that kind of work,
+# so a model cannot wander the tools over companies, products or technologies.
+LOOKUP_CUES = {
+    "fetch_youtube_transcript": r"youtube\.com|youtu\.be",
+    "find_song_lyrics": r"\blyrics?\b",
+    "find_song_facts": r"\b(songs?|albums?|tracks?|singer|band|lyrics?)\b",
+    "find_book_facts": r"\b(books?|novels?|author|reading|read|treatise)\b",
+    "find_podcast_transcript": r"\b(podcasts?|episodes?)\b",
+    "find_movie_facts": r"\b(movies?|films?|watched|director|cinema)\b",
+    "find_movie_plot": r"\b(movies?|films?|watched|director|cinema)\b",
+}
 # Chars of each turn kept in the session: the log the dialog replays as chat
 # history and sleep binds into books (which dreaming then links across). Full
 # messages up to the cap; a told file's complete text lives in its book.
@@ -63,9 +74,9 @@ class AgentsApi:
 
     def _keeper_tools(self, text: str) -> list:
         """Every keeper flow carries the date tool; lookups when the box is wired."""
-        return [*self._date_tool(text), *self._lookup_tools()]
+        return [*self._date_tool(text), *self._lookup_tools(text)]
 
-    def _lookup_tools(self) -> list:
+    def _lookup_tools(self, text: str) -> list:
         if not self.lookups:
             return []
         lookups = self.lookups
@@ -100,9 +111,11 @@ class AgentsApi:
             one; missing transcripts are a normal answer."""
             return lookups.podcast_transcript(show, episode)
 
-        return [fetch_youtube_transcript, find_song_lyrics, find_movie_facts,
-                find_movie_plot, find_song_facts, find_book_facts,
-                find_podcast_transcript]
+        said = text.lower()
+        return [tool for tool in (fetch_youtube_transcript, find_song_lyrics, find_movie_facts,
+                                  find_movie_plot, find_song_facts, find_book_facts,
+                                  find_podcast_transcript)
+                if re.search(LOOKUP_CUES[tool.__name__], said)]
 
     def _read_any_book_tool(self, world: str, opened: list[str]):
         """The ridge reads across the village: any keeper's book by id and slug."""

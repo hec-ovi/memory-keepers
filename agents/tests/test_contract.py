@@ -91,6 +91,13 @@ async def test_passing_remarks_land_in_the_one_notes_book(api, library):
     assert library.get_keeper("w", keeper.id).book_count == count + 1  # one notes book, once
 
 
+def test_lookups_are_offered_only_for_the_kind_of_work_named(api):
+    names = lambda text: sorted(t.__name__ for t in api._lookup_tools(text))
+    assert names("I worked at Ohara with SpacetimeDB and Phaser.") == []
+    assert names("Watched Videodrome again last night.") == ["find_movie_facts", "find_movie_plot"]
+    assert names('Keep the lyrics of "Money" for me.') == ["find_song_facts", "find_song_lyrics"]
+
+
 def test_resolve_date_exists_only_for_messages_with_a_relative_day(api):
     assert api._date_tool("I worked at Ohara from Mar 2025 to Jan 2026.") == []  # nothing to resolve
     resolve_date = api._date_tool("the interview is tomorrow, remember it")[0]
