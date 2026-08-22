@@ -56,8 +56,13 @@ createGame({ appEl, uiEl, api, bus = createBus(), win = globalThis } = {})
   graph movie, `CONSOLIDATION_POLL_MS`, `sceneModules`); nothing writes to
   it at runtime.
 - Auto-boot only runs in the real page (`document.getElementById("app")`);
-  importing main.js under tests has no side effects. Engine unreachable at
-  boot -> connect/retry screen.
+  importing main.js under tests has no side effects.
+- Boot gate: `GET /health` must answer `status: "ok"` and `GET /state` must
+  load before the feature UI (hud, minimap, dialog, ...) mounts and the
+  overworld opens. Until then a boot screen is the only thing on the page:
+  "API ERROR" (engine unreachable or health not ok; names `.env` and the
+  compose command) or the key screen (`ACCESS_REQUIRED`). Retry runs boot
+  again and the screen follows the new outcome.
 
 ## Bus event registry (definitive; grep bus.emit / bus.on to re-derive)
 

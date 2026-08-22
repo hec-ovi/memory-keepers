@@ -432,9 +432,9 @@ button.chip:focus-visible { outline: 2px solid var(--lavender); outline-offset: 
   justify-content: center;
 }
 
-.connect-panel { text-align: center; max-width: 380px; }
-.connect-panel .face { font-size: 2.2rem; margin-bottom: 6px; color: var(--pink); }
-.connect-panel p { color: var(--text-dim); margin: 8px 0 16px; }
+.boot-panel { text-align: center; max-width: 380px; }
+.boot-panel .face { font-size: 2.2rem; margin-bottom: 6px; color: var(--pink); }
+.boot-panel p { color: var(--text-dim); margin: 8px 0 16px; }
 
 .scene-placeholder {
   position: absolute;

@@ -105,22 +105,27 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
     confirm: createConfirm({ root: uiEl }),
     howto: createHowto({ root: uiEl }),
   };
-  // Feature UI, mounted once at boot. Each subscribes to the bus itself:
-  // hud drives create/dreaming and opens the keepers list
-  // ("keepers_list:open"), dialog opens on "keeper:selected", reader on
-  // "book:open" (inside the interior the 3D books themselves are the
-  // interface; there is no list panel), create_keeper on "create_keeper:open",
-  // minimap redraws on "minimap:update", cinematic letterboxes on
-  // "cinematic:started" (the Join sequence), onboarding shows once after the
-  // first "state:loaded".
-  ui.hud = createHud({ root: uiEl, state, bus, api, toasts: ui.toasts });
-  ui.dialog = createDialog({ root: uiEl, state, bus, api, toasts: ui.toasts });
-  ui.reader = createReader({ root: uiEl, state, bus, api, toasts: ui.toasts, confirm: ui.confirm });
-  ui.createKeeper = createCreateKeeper({ root: uiEl, state, bus, api, toasts: ui.toasts });
-  ui.keepersList = createKeepersList({ root: uiEl, state, bus });
-  ui.minimap = createMinimap({ root: uiEl, state, bus, config });
-  ui.cinematic = createCinematic({ root: uiEl, state, bus });
-  ui.onboarding = createOnboarding({ root: uiEl, bus, storage: win.localStorage ?? null });
+  // Feature UI, mounted once when boot passes its gate (engine reachable,
+  // model answering, state loaded). Until then a boot screen is the only
+  // thing on the page, so nothing can fire a request behind it. Each piece
+  // subscribes to the bus itself: hud drives create/dreaming and opens the
+  // keepers list ("keepers_list:open"), dialog opens on "keeper:selected",
+  // reader on "book:open" (inside the interior the 3D books themselves are
+  // the interface; there is no list panel), create_keeper on
+  // "create_keeper:open", minimap redraws on "minimap:update", cinematic
+  // letterboxes on "cinematic:started" (the Join sequence), onboarding shows
+  // once after the first "state:loaded".
+  function mountFeatureUi() {
+    if (ui.hud) return;
+    ui.hud = createHud({ root: uiEl, state, bus, api, toasts: ui.toasts });
+    ui.dialog = createDialog({ root: uiEl, state, bus, api, toasts: ui.toasts });
+    ui.reader = createReader({ root: uiEl, state, bus, api, toasts: ui.toasts, confirm: ui.confirm });
+    ui.createKeeper = createCreateKeeper({ root: uiEl, state, bus, api, toasts: ui.toasts });
+    ui.keepersList = createKeepersList({ root: uiEl, state, bus });
+    ui.minimap = createMinimap({ root: uiEl, state, bus, config });
+    ui.cinematic = createCinematic({ root: uiEl, state, bus });
+    ui.onboarding = createOnboarding({ root: uiEl, bus, storage: win.localStorage ?? null });
+  }
 
   // Cursor language for the canvas: CSS makes #app show a grab cursor;
   // while a pointer is held down we flip to grabbing (pan) or move (middle
@@ -296,23 +301,19 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
   });
 
   async function boot() {
-    // The game is unusable on a dead model: the engine's health probe says so
-    // and boot refuses, landing on the connect screen. A failed health call
-    // itself is not the gate; getState below reports an unreachable engine.
-    let health = null;
-    try {
-      health = await api.health?.();
-    } catch {
-      health = null;
-    }
-    if (health?.model === "down") {
+    // The engine's health is the gate: the game opens only on status "ok"
+    // (engine reachable, model answering). Anything else throws before any
+    // feature UI exists, and the page stays blocked behind a boot screen.
+    const health = await api.health(); // an unreachable engine throws here
+    if (health?.status !== "ok") {
       throw new ApiError({
         status: 503,
         code: "MODEL_DOWN",
-        message: `the ${health.tier} model is not answering; start the model server and try again`,
+        message: `The ${health?.tier ?? "configured"} model is not answering`,
       });
     }
-    const res = await api.getState(); // throws -> caller shows connect screen
+    const res = await api.getState(); // ACCESS_REQUIRED lands on the key screen
+    mountFeatureUi();
     state.keepers = res.keepers ?? [];
     const consolidation = res.consolidation ?? {};
     bus.emit("state:loaded", { state, consolidation });
@@ -351,108 +352,101 @@ export function createGame({ appEl, uiEl, api, bus = createBus(), win = globalTh
   };
 }
 
-// Friendly connect/retry screen shown while the engine is unreachable.
-function showConnectScreen(uiEl, { baseUrl, error, onRetry }) {
+// Boot screens own the page: no feature UI exists until boot passes, so the
+// panel is the only thing to click. Retry runs boot again; the next failure
+// (or success) replaces the screen, so it always matches the last error.
+function blockBoot(uiEl, ctx, error, { badKey = false } = {}) {
+  console.warn("[memory-keepers] boot refused:", error);
+  const retry = async (screen) => {
+    try {
+      await ctx.game.boot();
+    } catch (next) {
+      const sameKey = error?.code === "ACCESS_REQUIRED" && next?.code === "ACCESS_REQUIRED";
+      blockBoot(uiEl, ctx, next, { badKey: sameKey });
+    }
+    screen.close();
+  };
+  if (error?.code === "ACCESS_REQUIRED") showKeyScreen(uiEl, { api: ctx.api, badKey, retry });
+  else showErrorScreen(uiEl, { baseUrl: ctx.baseUrl, error, retry });
+}
+
+function openBootScreen(uiEl, { title, message }) {
   const doc = uiEl.ownerDocument;
   const screen = doc.createElement("div");
   screen.className = "center-screen";
-
   const panel = doc.createElement("div");
-  panel.className = "panel connect-panel";
-
-  const face = doc.createElement("div");
-  face.className = "face";
-  face.textContent = "( . _ . )";
-
-  const title = doc.createElement("h2");
-  title.className = "panel-title";
-  title.textContent = "The keepers are still asleep";
-
-  const message = doc.createElement("p");
-  const where = baseUrl || "this page's origin";
-  const detail = error instanceof ApiError && error.message ? ` (${error.message})` : "";
-  message.textContent = `Could not reach the engine at ${where}${detail}. Start it, or point me elsewhere with ?api=<url>.`;
-
-  const retry = doc.createElement("button");
-  retry.type = "button";
-  retry.className = "btn btn-primary";
-  retry.textContent = "Try again";
-  retry.addEventListener("click", async () => {
-    retry.disabled = true;
-    retry.textContent = "Knocking...";
-    try {
-      await onRetry();
-      screen.remove();
-    } catch {
-      retry.disabled = false;
-      retry.textContent = "Try again";
-    }
-  });
-
-  panel.appendChild(face);
-  panel.appendChild(title);
-  panel.appendChild(message);
-  panel.appendChild(retry);
+  panel.className = "panel boot-panel";
+  const heading = doc.createElement("h2");
+  heading.className = "panel-title";
+  heading.textContent = title;
+  const text = doc.createElement("p");
+  text.textContent = message;
+  panel.append(heading, text);
   screen.appendChild(panel);
   uiEl.appendChild(screen);
-  return screen;
+  return { doc, panel, close: () => screen.remove() };
+}
+
+// The action button of a boot screen: one click, busy until the retry settles
+// (the screen is replaced or removed by then).
+function bootButton(doc, { label, busy, action }) {
+  const button = doc.createElement("button");
+  button.type = "button";
+  button.className = "btn btn-primary";
+  button.textContent = label;
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    button.textContent = busy;
+    await action();
+  });
+  return button;
+}
+
+function bootErrorMessage(baseUrl, error) {
+  if (error?.code === "MODEL_DOWN") {
+    return `${error.message}. Start the model server, or edit .env (MODEL_TIER, LOCAL_MODEL_URL, LOCAL_MODEL_ID) and run docker compose up -d again.`;
+  }
+  const where = baseUrl || "this page's origin";
+  const detail = error instanceof ApiError && error.message ? ` (${error.message})` : "";
+  return `Could not reach the engine at ${where}${detail}. Start it with docker compose up -d, or point this page elsewhere with ?api=<url>.`;
+}
+
+// Error screen: the engine is unreachable or its health is not ok.
+function showErrorScreen(uiEl, { baseUrl, error, retry }) {
+  const screen = openBootScreen(uiEl, { title: "API ERROR", message: bootErrorMessage(baseUrl, error) });
+  screen.panel.appendChild(
+    bootButton(screen.doc, { label: "Try again", busy: "Knocking...", action: () => retry(screen) }),
+  );
 }
 
 // Key screen: the engine asked for the island key (ACCESS_CODE). Judges and
 // friends type it once; it is kept in localStorage and sent from then on.
-function showKeyScreen(uiEl, { api, onRetry }) {
-  const doc = uiEl.ownerDocument;
-  const screen = doc.createElement("div");
-  screen.className = "center-screen";
-
-  const panel = doc.createElement("div");
-  panel.className = "panel connect-panel";
-
-  const face = doc.createElement("div");
+function showKeyScreen(uiEl, { api, badKey, retry }) {
+  const screen = openBootScreen(uiEl, {
+    title: "This island asks for its key",
+    message: badKey ? "That key does not fit. Try again." : "Enter the access key to wake the keepers.",
+  });
+  const face = screen.doc.createElement("div");
   face.className = "face";
   face.textContent = "( ' _ ' )";
+  screen.panel.prepend(face);
 
-  const title = doc.createElement("h2");
-  title.className = "panel-title";
-  title.textContent = "This island asks for its key";
-
-  const message = doc.createElement("p");
-  message.textContent = "Enter the access key to wake the keepers.";
-
-  const input = doc.createElement("input");
+  const input = screen.doc.createElement("input");
   input.className = "input";
   input.type = "password";
   input.setAttribute("aria-label", "island key");
-
-  const enter = doc.createElement("button");
-  enter.type = "button";
-  enter.className = "btn btn-primary";
-  enter.textContent = "Enter";
-  enter.addEventListener("click", async () => {
-    enter.disabled = true;
-    enter.textContent = "Unlocking...";
-    api.setAccessCode(input.value.trim());
-    try {
-      await onRetry();
-      screen.remove();
-    } catch {
-      enter.disabled = false;
-      enter.textContent = "Enter";
-      message.textContent = "That key does not fit. Try again.";
-    }
+  const enter = bootButton(screen.doc, {
+    label: "Enter",
+    busy: "Unlocking...",
+    action: () => {
+      api.setAccessCode(input.value.trim());
+      return retry(screen);
+    },
   });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") enter.click();
   });
-
-  panel.appendChild(face);
-  panel.appendChild(title);
-  panel.appendChild(message);
-  panel.appendChild(input);
-  panel.appendChild(enter);
-  screen.appendChild(panel);
-  uiEl.appendChild(screen);
-  return screen;
+  screen.panel.append(input, enter);
 }
 
 async function bootInBrowser() {
@@ -468,12 +462,7 @@ async function bootInBrowser() {
   try {
     await game.boot();
   } catch (error) {
-    console.warn("[memory-keepers] engine unreachable:", error);
-    if (error?.code === "ACCESS_REQUIRED") {
-      showKeyScreen(uiEl, { api, onRetry: () => game.boot() });
-    } else {
-      showConnectScreen(uiEl, { baseUrl, error, onRetry: () => game.boot() });
-    }
+    blockBoot(uiEl, { game, api, baseUrl }, error);
   }
 }
 

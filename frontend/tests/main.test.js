@@ -13,6 +13,7 @@ const savedSceneModules = { ...config.sceneModules };
 
 function makeApi(server) {
   return {
+    health: vi.fn(async () => ({ status: "ok", tier: "fake", model: "ok" })),
     getState: vi.fn(async () => ({
       keepers: [...server.keepers],
       consolidation: { ...server.consolidation },
@@ -85,11 +86,13 @@ describe("createGame wiring", () => {
     expect(uiEl.querySelector(".toast-stack")).toBeTruthy();
   });
 
-  it("refuses to boot while the engine reports the model down", async () => {
-    const { game, api } = makeGame();
-    api.health = vi.fn(async () => ({ status: "degraded", tier: "local", model: "down" }));
+  it("refuses to boot while health is not ok: no state call, no feature UI to click", async () => {
+    const { game, api, uiEl } = makeGame();
+    api.health.mockResolvedValueOnce({ status: "degraded", tier: "local", model: "down" });
     await expect(game.boot()).rejects.toMatchObject({ code: "MODEL_DOWN" });
     expect(api.getState).not.toHaveBeenCalled();
+    expect(within(uiEl).queryByLabelText("game hud")).toBeNull();
+    expect(within(uiEl).queryByLabelText("minimap")).toBeNull();
   });
 
   it("house:enter switches to that keeper's interior and back on interior:exit", async () => {
@@ -320,10 +323,11 @@ describe("createGame wiring", () => {
     expect(api.getState).toHaveBeenCalledTimes(1); // only the boot call
   });
 
-  it("boot rejects when the engine is unreachable (connect screen path)", async () => {
-    const { game, api } = makeGame();
-    api.getState.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+  it("boot rejects when the engine is unreachable, mounting nothing", async () => {
+    const { game, api, uiEl } = makeGame();
+    api.health.mockRejectedValueOnce(new Error("ECONNREFUSED"));
     await expect(game.boot()).rejects.toThrow("ECONNREFUSED");
     expect(game.state.mode).toBe(null);
+    expect(within(uiEl).queryByLabelText("game hud")).toBeNull();
   });
 });

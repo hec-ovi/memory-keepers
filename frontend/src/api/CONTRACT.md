@@ -26,7 +26,7 @@ with `ApiError`):
 
 ```js
 request(path, { method = "GET", body } = {})   // escape hatch; prefer wrappers
-health()                                       // GET /health (no UI caller today)
+health()                                       // GET /health: the boot gate reads status
 getState()                                     // GET /state
 createKeeper({ topic, name, persona } = {})      // POST /keepers (name/persona sent only when defined)
 listKeepers()                                    // GET /keepers (no UI caller today)
