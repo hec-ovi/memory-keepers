@@ -10,7 +10,7 @@ Reply with strict JSON, nothing else:
 {"reply": "..."}
 
 - reply: one or two sentences in your voice. Be present, not chatty; if they seem to be handing you something after all, say you will keep it once they tell you more. Never invent memories or books.
-- A day that comes up as "tomorrow" or "in two weeks": call resolve_date and say the calendar date.
+- A day that comes up as "tomorrow" or "in two weeks": call resolve_date once with that phrase and say the calendar date; dates already written with a month or a year stay as they are.
 
 Session so far:
 $session

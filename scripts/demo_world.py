@@ -24,7 +24,7 @@ BASE, WORLD = sys.argv[1].rstrip("/"), sys.argv[2]
 HEADERS = {"X-World": WORLD, "content-type": "application/json"}
 if os.environ.get("ACCESS_CODE"):
     HEADERS["X-Access-Code"] = os.environ["ACCESS_CODE"]
-HTTP_TIMEOUT_S = 120  # one call: a tell runs the live model
+HTTP_TIMEOUT_S = 900  # one call: a tell writes a whole book on the live model
 SLEEP_POLL_S = 2  # sleep-job poll interval
 DREAM_POLLS = 60  # dream run: up to DREAM_POLLS polls, DREAM_POLL_S apart
 DREAM_POLL_S = 5
@@ -79,8 +79,9 @@ def seed(keepers):
         if have >= len(keeper["memories"]):
             print(f"{keeper['topic']}: already holds {have} books, skipping")
             continue
-        print(f"{keeper['topic']}: [{status}] telling {len(keeper['memories'])}")
-        for text in keeper["memories"]:
+        # Resumes where an earlier run stopped: memories land in order.
+        print(f"{keeper['topic']}: [{status}] telling {len(keeper['memories']) - have} of {len(keeper['memories'])}")
+        for text in keeper["memories"][have:]:
             s, out = call_rested("POST", f"/keepers/{kid}/tell", {"text": text})
             title = (out.get("book") or {}).get("title") if s == 200 else out
             print(f"  {kid}: [{s}] {title}", flush=True)

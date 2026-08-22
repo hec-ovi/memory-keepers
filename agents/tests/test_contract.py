@@ -91,6 +91,32 @@ async def test_passing_remarks_land_in_the_one_notes_book(api, library):
     assert library.get_keeper("w", keeper.id).book_count == count + 1  # one notes book, once
 
 
+async def test_a_model_that_keeps_calling_tools_stops_at_the_cap():
+    from typing import AsyncGenerator
+    from google.adk.models.base_llm import BaseLlm
+    from google.adk.models.llm_response import LlmResponse
+    from google.genai import types
+    from mk_agents.runtime import MAX_LLM_CALLS, build_agent, run_agent
+
+    calls = []
+
+    def ping(phrase: str) -> dict:
+        """Always a tool call, never an answer."""
+        calls.append(phrase)
+        return {"ok": False}
+
+    class LoopingLlm(BaseLlm):
+        model: str = "loop-1"
+
+        async def generate_content_async(self, llm_request, stream=False) -> AsyncGenerator[LlmResponse, None]:
+            yield LlmResponse(content=types.Content(role="model", parts=[
+                types.Part(function_call=types.FunctionCall(name="ping", args={"phrase": "again"}))]))
+
+    with pytest.raises(Exception):
+        await run_agent(build_agent("loop", LoopingLlm(), "loop forever", [ping]), "go")
+    assert len(calls) <= MAX_LLM_CALLS
+
+
 def test_wording_router_without_a_model():
     from mk_agents.fallbacks import route_by_wording
     assert route_by_wording("hello") == "talk"

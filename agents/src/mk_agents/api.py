@@ -36,14 +36,14 @@ class AgentsApi:
 
     def _date_tool(self) -> list:
         def resolve_date(phrase: str) -> dict:
-            """Turn a relative day phrase ("tomorrow", "in two weeks", "next
+            """Turn ONE relative day phrase ("tomorrow", "in two weeks", "next
             friday", "3 days ago", "march 3") into the calendar date it means,
-            counted from today. Write that date, never the phrase."""
+            counted from today. Call it once per phrase; dates already written
+            with a month or a year are not relative, write them as they are."""
             day = dates.resolve_phrase(phrase, date.today())
             if day is None:
                 return {"ok": False, "phrase": phrase, "today": _today(),
-                        "error": "phrase not understood; try tomorrow, in N days or "
-                                 "weeks, next <weekday>, N days ago, <month> <day>"}
+                        "error": "not a relative day; write it as it is and do not call again"}
             return {"ok": True, "phrase": phrase, "date": day.isoformat(),
                     "weekday": day.strftime("%A"), "today": _today()}
 

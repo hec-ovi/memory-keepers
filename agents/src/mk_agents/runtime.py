@@ -2,9 +2,16 @@
 return its final text plus token usage. Durable memory lives in the library,
 so every run gets a fresh in-memory session."""
 from google.adk.agents.llm_agent import LlmAgent
+from google.adk.agents.run_config import RunConfig
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.genai import types
+
+
+# One run is a handful of model calls (a lookup, a date, a book read, the
+# reply). A model that keeps calling tools stops here instead of grinding
+# hundreds of turns; the flow's deterministic fallback then answers.
+MAX_LLM_CALLS = 12
 
 
 def build_agent(name: str, model, instruction: str, tools: list) -> LlmAgent:
@@ -19,6 +26,7 @@ async def run_agent(agent: LlmAgent, user_text: str) -> tuple[str, int]:
     async for event in runner.run_async(
         user_id="player", session_id=session.id,
         new_message=types.Content(role="user", parts=[types.Part(text=user_text)]),
+        run_config=RunConfig(max_llm_calls=MAX_LLM_CALLS),
     ):
         usage = getattr(event, "usage_metadata", None)
         if usage and usage.total_token_count:
