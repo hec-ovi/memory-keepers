@@ -90,8 +90,8 @@ Files below are under `src/`. "watch" = `startConsolidationWatch` in
 | `interior:view` | `{ view: "main"\|"chairs"\|"shelf" }` | ui/interior_views (nav cluster; `main` while the main view is settled = the gentle "Back to Keeper" re-frame) | render/scene_interior |
 | `book:created` | `{ keeperId, book }` | ui/dialog (tell reply that carries a book; unconscious tells write none) | main.js, ui/hud, render/scene_interior |
 | `book:destroyed` | `{ keeperId, slug }` | ui/reader (Destroy) | main.js, ui/hud, render/scene_interior |
-| `book:open` | `{ keeperId, slug }` | ui/dialog (consulted book link), render/scene_interior (fetched book) | ui/reader (open) |
-| `memory:used` | `{ keeperId, slugs }` | ui/dialog (grounded ask reply: the consulted-book links appear) | render/scene_overworld (brief sparkle + tiny book sprite over her head) |
+| `book:open` | `{ keeperId, slug }` | ui/dialog (consulted book link; a ridge reply's source carries the shelf it lives on), render/scene_interior (fetched book) | ui/reader (open) |
+| `memory:used` | `{ keeperId, slugs }` | ui/dialog (grounded ask reply, or a ridge reply with sources: the consulted-book links appear) | render/scene_overworld (brief sparkle + tiny book sprite over her head) |
 | `keeper:sleep` | `{ keeperId }` | ui/dialog (Send to sleep, after api.sleep succeeds) | render/scene_overworld (walk home over the street graph + door fade + window dim + dream effect; ambient, no input lock), render/scene_interior (she returns to her chair and dozes: eyes shut, slow breathing, Zzz) |
 | `keeper:rested` | `{ keeperId }` | ui/dialog (sleep job polled to done, after the keeper record refresh) | main.js (refreshState -> state:loaded), render/scene_overworld (dream fades, she re-emerges rested with a sparkle), render/scene_interior (she wakes rested) |
 | `reader:closed` | none | ui/reader (every close) | render/scene_interior |

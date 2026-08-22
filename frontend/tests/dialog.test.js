@@ -461,6 +461,26 @@ describe("createDialog", () => {
     expect(form.classList.contains("holo-thinking")).toBe(false);
   });
 
+  it("a ridge reply lists the village books it opened, each link opening on its own shelf", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post(`${BASE}/keepers/still-water/say`, () =>
+        HttpResponse.json({
+          kind: "talk",
+          reply: "The deer keeps returning. Where does it touch you?",
+          sources: [{ keeper_id: "dreams", slug: "2026-07-02-the-deer", title: "The deer in the forest", tags: ["dream"] }],
+        }),
+      ),
+    );
+    const opened = vi.fn();
+    bus.on("book:open", opened);
+    bus.emit("keeper:selected", { keeperId: "still-water" });
+    await user.type(screen.getByRole("textbox", { name: /speak to the still water/i }), "why the deer?{Enter}");
+    const box = await screen.findByLabelText("consulted books");
+    await user.click(box.querySelector(".mk-dialog-book"));
+    expect(opened).toHaveBeenCalledWith({ keeperId: "dreams", slug: "2026-07-02-the-deer" });
+  });
+
   it("grounded ask: clickable book links under the reply, staggered glow, memory:used", async () => {
     const user = userEvent.setup();
     server.use(

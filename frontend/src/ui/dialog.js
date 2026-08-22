@@ -762,7 +762,8 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
       spine.style.setProperty("--mk-book-spine", bookSpineColor(source.tags));
       row.append(spine, el("span", "mk-dialog-booktitle", title));
       row.addEventListener("click", () => {
-        bus?.emit("book:open", { keeperId: keeper.id, slug: source.slug });
+        // A ridge keeper reads across the village: her sources name their shelf.
+        bus?.emit("book:open", { keeperId: source.keeper_id ?? keeper.id, slug: source.slug });
       });
       list.appendChild(row);
     });
@@ -912,7 +913,9 @@ export function createDialog({ root, state, bus, api, toasts, ui, sleepPollMs = 
             const replyBody = say(res?.answer ?? "", { md: true });
             renderAskResult(keeper, res, text, replyBody);
           } else {
-            say(res?.reply ?? "...", { md: true });
+            const replyBody = say(res?.reply ?? "...", { md: true });
+            // the ridge answers from books it opened across the village
+            if (res?.sources?.length) renderAskResult(keeper, res, text, replyBody);
           }
           if (res?.session) {
             session = { ...res.session };
