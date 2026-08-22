@@ -109,7 +109,8 @@ async def test_needs_sleep_gate_and_tired_dream(client, library):
 
 
 async def test_sleep_compacts_and_frees(client, library):
-    for i in range(3):
+    await client.post("/keepers/music/ask", json={"question": "what songs do I keep?"})
+    for i in range(2):
         await client.post("/keepers/music/tell", json={"text": f"Song number {i} stays."})
     job = (await client.post("/keepers/music/sleep")).json()
     assert job["status"] == "running"
@@ -120,7 +121,10 @@ async def test_sleep_compacts_and_frees(client, library):
 
     finished = await poll(done)
     assert finished["status"] == "done"
-    assert any(b["source"] == "sleep" for b in finished["books_written"])
+    sleep_books = [b for b in finished["books_written"] if b["source"] == "sleep"]
+    assert len(sleep_books) == 1
+    body = library.get_book("w-test", "music", sleep_books[0]["slug"]).body_md
+    assert "what songs do I keep" in body and "Song number 0" not in body  # told books are on the shelf already
     assert finished["session"]["tokens_used"] < BUDGET * 0.1
     session = library.session_read("w-test", "music")
     assert len(session.turns) <= 3 and session.sleep_count == 1

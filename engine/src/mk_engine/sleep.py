@@ -1,5 +1,6 @@
 """Sleep: the per-keeper compaction. Deterministic, always succeeds.
-Constraints are copied forward verbatim; dropped turns stay retrievable as a
+Constraints are copied forward verbatim; dropped turns that are not already
+on the shelf (a tell that wrote or grew a book is) stay retrievable as a
 sleep book; the meter resets to the compacted session's size."""
 import asyncio
 import json
@@ -17,17 +18,32 @@ CHARS_PER_TOKEN = 4  # the meter's rough estimate after compaction
 _JOBS: set[asyncio.Task] = set()  # keep sleep jobs referenced until they settle
 
 
+def unshelved_turns(turns: list) -> list:
+    """The turns a sleep book must keep: a user turn whose tell already wrote
+    or grew a book, and the keeper reply that followed it, are on the shelf."""
+    kept, skip_reply = [], False
+    for turn in turns:
+        if turn.role == "user":
+            skip_reply = bool(getattr(turn, "book", None))
+            if not skip_reply:
+                kept.append(turn)
+        elif not skip_reply:
+            kept.append(turn)
+    return kept
+
+
 def perform_sleep(library: Library, world: str, kid: str) -> list[dict]:
     session = library.session_read(world, kid)
     dropped = session.turns[:-VERBATIM_TAIL_TURNS]
+    unshelved = unshelved_turns(dropped)
     books_written = []
 
-    if dropped:
+    if unshelved:
         digests, fits = library.make_room(world, kid, incoming=1)
         books_written.extend(d.summary() for d in digests)
         if fits:
             today = date.today().isoformat()
-            body = "\n".join(f"- [{t.t}] {t.role}: {t.text}" for t in dropped)
+            body = "\n".join(f"- [{t.t}] {t.role}: {t.text}" for t in unshelved)
             book = library.write_book(
                 world, kid, title=f"Sleep notes, {today}", body_md=body, date=today,
                 source="sleep",

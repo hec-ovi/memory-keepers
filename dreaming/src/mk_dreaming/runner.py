@@ -31,6 +31,9 @@ async def _dream(library: Library, agents_api, world: str) -> dict:
     light_books = {k.id: library.list_books(world, k.id)
                    for k in keepers if k.side == "light"}
     graph, themes = link(light_books)
+    # The model keeps the themes that are about the person; tool names fall away.
+    kept = await agents_api.dream_select(themes[:DARK_CAP * 2], DARK_CAP)
+    themes = [t for t in themes if t["key"] in kept]
 
     dark = {k.topic: k for k in keepers if k.side == "dark"}
     created_keepers, created_books, skipped = [], [], []

@@ -23,6 +23,8 @@ def link(keepers_books: dict[str, list]) -> tuple[dict, list[dict]]:
                                   "label": kid, "keeper_id": kid,
                                   "weight": max(1, len(books))}
         for book in books:
+            if book.source == "sleep":
+                continue  # bookkeeping, never a theme
             bid = f"book:{kid}/{book.slug}"
             nodes[bid] = {"id": bid, "kind": "book", "label": book.title,
                           "keeper_id": kid, "weight": 1}

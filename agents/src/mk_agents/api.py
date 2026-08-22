@@ -18,6 +18,8 @@ from .runtime import build_agent, run_agent, run_flow
 
 log = logging.getLogger(__name__)
 SHORTLIST = 6
+SHORT_REMARK = 140  # chars: a single sentence the model failed on is a note, not a book
+TOOLS_MAX_CHARS = 2000  # tools serve a told message; a pasted document is kept as it is
 # A lookup family is offered only when the message names that kind of work,
 # so a model cannot wander the tools over companies, products or technologies.
 LOOKUP_CUES = {
@@ -78,7 +80,7 @@ class AgentsApi:
         phrase the user actually wrote, so a model cannot wander through
         phrases of its own (a month or a year alone is not a day to resolve)."""
         said = " ".join(text.lower().split())
-        if not dates.PHRASE_RE.search(said):
+        if len(said) > TOOLS_MAX_CHARS or not dates.PHRASE_RE.search(said):
             return []
 
         def resolve_date(phrase: str) -> dict:
@@ -139,6 +141,8 @@ class AgentsApi:
             return lookups.podcast_transcript(show, episode)
 
         said = text.lower()
+        if len(said) > TOOLS_MAX_CHARS:
+            return []
         return [tool for tool in (fetch_youtube_transcript, find_song_lyrics, find_movie_facts,
                                   find_movie_plot, find_song_facts, find_book_facts,
                                   find_podcast_transcript)
@@ -246,7 +250,11 @@ class AgentsApi:
             value = reply_data.get(key)
             if value:
                 fields[key] = value
+        failed = not reply_data
+        short = len(text.strip()) < SHORT_REMARK
         reply = reply_data.get("reply") or (
+            "I could not reach my words just now, so I kept yours on the loose pages."
+            if short else
             f"I could not reach my words just now, so I kept yours as they are: "
             f"{fields['title']}.")
         body = reply_data.get("body_md")  # the keeper authors the book
@@ -265,9 +273,10 @@ class AgentsApi:
                     # A follow-up grows the existing book instead of minting a new one.
                     grown = self.library.append_to_book(world, kid, extends,
                                                         note_md=body, date=_today())
-                elif reply_data.get("note") is True:
+                elif reply_data.get("note") is True or (failed and short):
                     # A passing remark lands in her one notes book, pointing at
-                    # the books it is about.
+                    # the books it is about; a short sentence the model failed on
+                    # goes there too, never a book of its own.
                     grown = self.library.append_note(world, kid, note_md=body, date=_today(),
                                                      tags=fields["tags"], about=about)
                 else:
@@ -278,7 +287,8 @@ class AgentsApi:
             except LibraryError as e:
                 error = e
                 reply = "My bookcase is full. Let me sleep to bind old books together."
-        self._record(world, kid, text, reply, tokens)
+        shelved = (book or grown).slug if (book or grown) else None
+        self._record(world, kid, text, reply, tokens, book=shelved)
         if error:
             raise error
         return {"reply": reply, "book": book.summary() if book else None,
@@ -381,9 +391,10 @@ class AgentsApi:
         reply = str(data.get("reply") or "").strip() or (
             f"I was born from what kept returning: {keeper.topic}. "
             "Where does it touch you these days?")
-        used = [s for s in (data.get("used_slugs") or []) if s in set(opened)]
+        used = {s for s in (data.get("used_slugs") or []) if s in set(opened)}
+        sources = [r for r in rows if f"{r['keeper_id']}/{r['slug']}" in used]
         self._record(world, kid, text, reply, tokens)
-        return {"reply": reply, "book": None, "book_grown": None, "sources": used}
+        return {"reply": reply, "book": None, "book_grown": None, "sources": sources}
 
     # -- monument -------------------------------------------------------------
     async def monument_chat(self, world: str, text: str) -> dict:
@@ -459,6 +470,29 @@ class AgentsApi:
             data = {}
         return {k: str(data.get(k) or fallback[k]) for k in fallback}
 
+    async def dream_select(self, themes: list[dict], cap: int) -> list[str]:
+        """Which of the linker's candidate themes deserve a keeper of the ridge:
+        the ones about the person, never tool or product names. Returns the
+        kept keys, strongest first; every candidate when the model fails."""
+        lines = []
+        for theme in themes:
+            evidence = "; ".join(f"{e['title']}: {e['body_md'][:160]}" for e in theme["evidence"][:3])
+            lines.append(f"key: {theme['key']} | {theme['kind']}: {theme['element']} | "
+                         f"cited by {theme['weight']} books across {len(theme['keepers'])} keepers | "
+                         f"evidence: {evidence}")
+        candidates = [t["key"] for t in themes]
+        try:
+            raw, _ = await run_agent(
+                build_agent("dream_select", self.gateway.model_for("dream"),
+                            prompt("dream_select", cap=cap), []), "\n".join(lines) or "no themes")
+            keep = (parse_json(raw) or {}).get("keep")
+            if isinstance(keep, list):
+                kept = [k for k in keep if isinstance(k, str) and k in candidates]
+                return list(dict.fromkeys(kept))[:cap]
+        except Exception:
+            log.exception("dream_select model failed, keeping every theme")
+        return candidates[:cap]
+
     async def dream_narrative(self, theme_keys: list[str]) -> str:
         message = "\n".join(f"theme: {k}" for k in theme_keys) or "no themes"
         try:
@@ -492,11 +526,11 @@ class AgentsApi:
         return [row for score, row in scored[:SHORTLIST] if score > 0] or \
                [row for _, row in scored[:SHORTLIST]]
 
-    def _record(self, world, kid, user_text, keeper_text, tokens):
+    def _record(self, world, kid, user_text, keeper_text, tokens, book=None):
         t = now_iso()
         self.library.session_append(
             world, kid,
-            [Turn(t=t, role="user", text=user_text.strip()[:TURN_TEXT_CAP]),
+            [Turn(t=t, role="user", text=user_text.strip()[:TURN_TEXT_CAP], book=book),
              Turn(t=t, role="keeper", text=keeper_text.strip()[:TURN_TEXT_CAP])],
             constraints=harvest_constraints(user_text))
         estimate = tokens or (len(user_text) + len(keeper_text)) // 4

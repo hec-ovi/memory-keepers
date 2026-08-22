@@ -86,6 +86,7 @@ class Turn:
     t: str                         # ISO datetime UTC
     role: str                      # "user" | "keeper"
     text: str
+    book: str | None = None        # user turns: the slug the tell wrote or grew, if any
 
 
 BLOCK_KEYS = ("constraints", "recent_topics")

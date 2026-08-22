@@ -96,6 +96,8 @@ def test_lookups_are_offered_only_for_the_kind_of_work_named(api):
     assert names("I worked at Ohara with SpacetimeDB and Phaser.") == []
     assert names("Watched Videodrome again last night.") == ["find_movie_facts", "find_movie_plot"]
     assert names('Keep the lyrics of "Money" for me.') == ["find_song_facts", "find_song_lyrics"]
+    assert names("I read this book tonight. " * 200) == []  # a pasted document keeps no tools
+    assert api._date_tool("tomorrow " * 400) == []
 
 
 def test_resolve_date_exists_only_for_messages_with_a_relative_day(api):
@@ -161,6 +163,21 @@ async def test_run_flow_writes_without_tools_after_a_looping_pass():
     text, _ = await run_flow("tell", ToolHappyLlm(), "write the book", [find_movie_facts], "Videodrome",
                              accept=lambda t: "reply" in t)
     assert '"reply": "written"' in text and '"seen": true' in text  # the lookup result reached the writing pass
+
+
+async def test_a_short_sentence_the_model_fails_on_becomes_a_note_not_a_book(api, library, monkeypatch):
+    import mk_agents.api as api_mod
+
+    async def broken(*args, **kwargs):
+        raise RuntimeError("model down")
+
+    monkeypatch.setattr(api_mod, "run_flow", broken)
+    count = library.get_keeper("w", "dreams").book_count
+    out = await api.keeper_tell("w", "dreams", "I still want to finish a degree some day")
+    assert out["book"] is None and out["book_grown"]["slug"] == "notes"
+    assert "loose pages" in out["reply"]
+    assert library.get_keeper("w", "dreams").book_count == count + 1  # the notes book itself
+    assert library.session_read("w", "dreams").turns[0].book == "notes"
 
 
 def test_wording_router_without_a_model():
@@ -263,7 +280,7 @@ async def test_ridge_keeper_reads_any_shelf_and_asks(api, library):
     out = await api.keeper_say("w", dark.id, "why does the deer keep coming back?")
     assert out["kind"] == "talk" and out["book"] is None
     assert out["reply"].rstrip().endswith("?")
-    assert out["sources"] == [f"dreams/{seeded.slug}"]  # opened across the village
+    assert [(s["keeper_id"], s["slug"]) for s in out["sources"]] == [("dreams", seeded.slug)]  # opened across the village
     assert library.get_keeper("w", dark.id).book_count == 1  # nothing written
 
 
@@ -278,6 +295,19 @@ async def test_monument_routes_to_keeper(api):
     out = await api.monument_chat("w", "ask my dreams shelf about the deer")
     assert out["created_keeper"] is None
     assert "deer" in out["reply"]  # the dreams keeper's deer book came back
+
+
+async def test_dream_select_keeps_only_candidate_keys(api, library, monkeypatch):
+    import mk_agents.api as api_mod
+
+    async def picky(agent, text):
+        return '{"keep": ["fear-of-water", "fastapi", "not-a-candidate"]}', 0
+
+    monkeypatch.setattr(api_mod, "run_agent", picky)
+    themes = [{"key": k, "kind": "tag", "element": k, "weight": 2, "keepers": ["a", "b"],
+               "evidence": [{"title": "t", "body_md": "b"}]} for k in ("fastapi", "fear-of-water")]
+    assert await api.dream_select(themes, cap=8) == ["fear-of-water", "fastapi"]
+    assert await api.dream_select(themes, cap=1) == ["fear-of-water"]
 
 
 async def test_dream_prose_shapes(api):

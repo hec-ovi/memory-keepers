@@ -77,13 +77,13 @@ def lookup_note(lookups: list[dict]) -> str:
 
 async def run_flow(name: str, model, instruction: str, tools: list, user_text: str,
                    accept=lambda text: bool(text.strip())) -> tuple[str, int]:
-    """One flow, end to end. With tools, the model gathers what it needs;
+    """One flow, end to end. The model gathers what it needs with its tools;
     when that pass does not end in an accepted answer (it looped, hit the cap,
     or wrote something else), the model writes once more without tools,
     carrying the lookups it made. The deterministic fallback stays with the
     caller, for a second failure."""
     text, tokens, lookups, stuck = await _run(build_agent(name, model, instruction, tools), user_text)
-    if not tools or (not stuck and accept(text)):
+    if not stuck and accept(text):
         return text, tokens
     again = build_agent(name, model, instruction + lookup_note(lookups), [])
     text2, tokens2 = await run_agent(again, user_text)

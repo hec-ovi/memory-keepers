@@ -15,6 +15,15 @@ def rig():
     return library, AgentsApi(library, ModelGateway(tier="fake"))
 
 
+def test_sleep_books_never_form_a_theme(rig):
+    library, _ = rig
+    for kid in ("dreams", "music"):
+        library.write_book("w", kid, title="Sleep notes", body_md="- heard", date="2026-08-01",
+                           source="sleep", one_liner="bookkeeping", tags=["sleep"], enforce_cap=False)
+    _, themes = link({k.id: library.list_books("w", k.id) for k in library.list_keepers("w")})
+    assert all(t["key"] != "sleep" for t in themes)
+
+
 def test_linking_finds_cross_keeper_themes(rig):
     library, _ = rig
     for kid in ("dreams", "music"):
@@ -77,6 +86,9 @@ async def test_failed_run_settles_as_failed(rig):
     library, _ = rig
 
     class Boom:  # the seeded world has themes, so dream_write is always reached
+        async def dream_select(self, themes, cap):
+            return [t["key"] for t in themes][:cap]
+
         async def dream_write(self, *a, **k):
             raise RuntimeError("boom")
 

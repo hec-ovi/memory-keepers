@@ -48,7 +48,7 @@ Statics are served `Cache-Control: no-cache` (etag revalidation, 304s): the SPA 
 ## Bookkeeping owned here
 
 - **Tiredness meter.** Adds agent-reported tokens per tell/ask into the library meter. Status: `rested < 0.70 <= unrested < 0.85 <= needs_sleep` of the session budget (env `SESSION_TOKEN_BUDGET`, default 32000). At `needs_sleep`, tell/ask return 409 until she sleeps, and a tired-keeper dream event is published.
-- **Sleep.** Background job per keeper: constraints carry over verbatim, the last user texts land in the `recent_topics` block, the last 3 turns stay verbatim; dropped detail lands as `sleep` books, meter resets to the compacted session's size. At the 24-book cap the two oldest `told`/`sleep` books merge into one digest book first, so nothing is ever lost and a slot stays free.
+- **Sleep.** Background job per keeper: constraints carry over verbatim, the last user texts land in the `recent_topics` block, the last 3 turns stay verbatim; dropped detail that is not on the shelf already lands as `sleep` books (a tell that wrote or grew a book, and its reply, are skipped; no sleep book when nothing else was dropped), meter resets to the compacted session's size. At the 24-book cap the two oldest `told`/`sleep` books merge into one digest book first, so nothing is ever lost and a slot stays free.
 - **Levels.** Derived from book count, returned on every Keeper payload.
 - **Jobs.** Slow work is 202 + poll; no streaming, no server push.
 

@@ -298,6 +298,10 @@ class FakeLlm(BaseLlm):
             "one_liner": f"A night reading about {head}.",
         })
 
+    def _dream_select(self, req, system) -> types.Content:
+        keys = re.findall(r"^key: (\S+)", self._last_user_text(req), re.M)
+        return self._text({"keep": keys})
+
     def _dream_narrative(self, req, system) -> types.Content:
         text = self._last_user_text(req)
         themes = re.findall(r"theme: ([^\n]+)", text)

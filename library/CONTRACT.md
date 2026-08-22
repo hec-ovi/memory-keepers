@@ -35,7 +35,7 @@ Class `Library(client=None, seed=None)`: `client` injected for tests, `seed` is 
 | `append_to_book(world, keeper, slug, note_md, date)` | a dated follow-up section | the grown `Book`: body extended, tier re-derived, count unchanged |
 | `append_note(world, keeper, note_md, date, tags?, about?)` | a passing remark, the slugs it is about | the keeper's notes book, born on the first entry (counts once, `LIBRARY_FULL` when no slot is left), entry appended under its date, tags and links merged, date set to the entry's |
 | `index_rows(world, keeper)` | | compact rows (slug, title, date, tags, entities, one_liner, tier) for prompts |
-| `session_read / session_append / session_replace` | `Turn` list + verbatim constraints / full `Session` | `Session` record |
+| `session_read / session_append / session_replace` | `Turn` list (`t, role, text, book?`: a user turn names the slug its tell wrote or grew) + verbatim constraints / full `Session` | `Session` record |
 | `meter_add / meter_reset` | token counts | running total (meter lives on the keeper doc) |
 | `make_room(world, keeper, incoming)` | slots needed | `(digests_written, fits)`: binds the two oldest `told`/`sleep` books into one digest per merge until `incoming` fit plus one spare; nothing a merged book held is lost |
 | `dream_start / dream_update / dream_get / dream_latest / list_dreams` | run fields; `dream_start(world, reason, status="running")` can pre-queue with `status="queued"` | `DreamRun` record; `list_dreams` all runs oldest first |
