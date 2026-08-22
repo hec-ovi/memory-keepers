@@ -126,9 +126,41 @@ async def test_a_model_that_keeps_calling_tools_stops_at_the_cap():
             yield LlmResponse(content=types.Content(role="model", parts=[
                 types.Part(function_call=types.FunctionCall(name="ping", args={"phrase": "again"}))]))
 
-    with pytest.raises(Exception):
-        await run_agent(build_agent("loop", LoopingLlm(), "loop forever", [ping]), "go")
+    text, _ = await run_agent(build_agent("loop", LoopingLlm(), "loop forever", [ping]), "go")
+    assert len(calls) <= 2  # the repeat of an identical call ends the run
     assert len(calls) <= MAX_LLM_CALLS
+
+
+async def test_run_flow_writes_without_tools_after_a_looping_pass():
+    from typing import AsyncGenerator
+    from google.adk.models.base_llm import BaseLlm
+    from google.adk.models.llm_response import LlmResponse
+    from google.genai import types
+    from mk_agents.runtime import run_flow
+
+    def find_movie_facts(title: str) -> dict:
+        """Canned lookup."""
+        return {"ok": True, "director": "David Cronenberg"}
+
+    class ToolHappyLlm(BaseLlm):
+        model: str = "loop-2"
+
+        async def generate_content_async(self, llm_request, stream=False) -> AsyncGenerator[LlmResponse, None]:
+            if llm_request.tools_dict:  # with tools it only ever calls them
+                yield LlmResponse(content=types.Content(role="model", parts=[types.Part(
+                    function_call=types.FunctionCall(name="find_movie_facts", args={"title": "Videodrome"}))]))
+            else:
+                system = llm_request.config.system_instruction or ""
+                yield LlmResponse(content=types.Content(role="model", parts=[
+                    types.Part(text='{"reply": "written", "seen": ' + json_dumps("Cronenberg" in str(system)) + "}")]))
+
+    def json_dumps(v):
+        import json
+        return json.dumps(v)
+
+    text, _ = await run_flow("tell", ToolHappyLlm(), "write the book", [find_movie_facts], "Videodrome",
+                             accept=lambda t: "reply" in t)
+    assert '"reply": "written"' in text and '"seen": true' in text  # the lookup result reached the writing pass
 
 
 def test_wording_router_without_a_model():

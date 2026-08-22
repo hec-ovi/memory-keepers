@@ -45,6 +45,33 @@ class AgentsApi:
         self.gateway = gateway
         self.lookups = lookups  # LookupsApi-shaped; optional, tools appear when present
 
+    DATE_RULE = ('- Dates: the user gave a day relative to today. Call resolve_date once with that '
+                 'phrase exactly as they wrote it and use the calendar date it returns, with its '
+                 'weekday, wherever the day is mentioned ("on 2026-09-05, Friday"), never the phrase. '
+                 'A date the user wrote with its month or year is already a date: keep it as given.')
+    NO_DATE_RULE = '- Dates: write them as the user gave them.'
+    LOOKUP_RULE = ('- The telling names a work ({kinds}) that can carry real facts: call the matching '
+                   'lookup once for that work ({tools}) and weave what comes back into the book: real '
+                   'facts, short quotes, never a full dump. Never look up companies, products, tools or '
+                   'technologies, and never repeat a lookup. What the telling says about why it matters '
+                   'belongs in the book as part of the memory, never as a story about today\'s request. '
+                   'A lookup that fails changes nothing: write the book from the memory alone.')
+    LOOKUP_KINDS = {"fetch_youtube_transcript": "a YouTube video", "find_song_lyrics": "a song",
+                    "find_song_facts": "a song", "find_book_facts": "a book",
+                    "find_podcast_transcript": "a podcast episode", "find_movie_facts": "a film",
+                    "find_movie_plot": "a film"}
+
+    def _rules(self, text: str) -> dict:
+        """The prompt lines for the tools actually offered on this message: a
+        prompt never names a tool that is not there."""
+        lookups = self._lookup_tools(text)
+        kinds = ", ".join(dict.fromkeys(self.LOOKUP_KINDS[t.__name__] for t in lookups))
+        return {
+            "date_rule": self.DATE_RULE if self._date_tool(text) else self.NO_DATE_RULE,
+            "lookup_rule": self.LOOKUP_RULE.format(kinds=kinds, tools=", ".join(t.__name__ for t in lookups))
+            if lookups else "- Write the book from the memory alone; there is nothing to look up.",
+        }
+
     def _date_tool(self, text: str) -> list:
         """resolve_date, bound to the user's message: present only when the
         message holds a day given relative to today, and answering only for a
@@ -185,11 +212,13 @@ class AgentsApi:
         rows = self.library.index_rows(world, kid)
         instruction = prompt("keeper_talk", persona=keeper.persona, topic=keeper.topic,
                              today=_today(), session=session_block(session),
-                             index=index_block(rows[:SHORTLIST]))
+                             index=index_block(rows[:SHORTLIST]),
+                             date_rule=self._rules(text)["date_rule"])
         reply, tokens = "", 0
         try:
             raw, tokens = await run_flow("keeper_talk", self.gateway.model_for("chat"),
-                                         instruction, self._date_tool(text), text)
+                                         instruction, self._date_tool(text), text,
+                                         accept=lambda t: parse_json(t) is not None)
             reply = str((parse_json(raw) or {}).get("reply") or "").strip()
         except Exception:
             log.exception("talk model failed, using fallback")
@@ -203,11 +232,12 @@ class AgentsApi:
         rows = self.library.index_rows(world, kid)
         instruction = prompt("keeper_tell", persona=keeper.persona, topic=keeper.topic,
                              today=_today(), session=session_block(session),
-                             index=index_block(rows[:SHORTLIST * 2]))
+                             index=index_block(rows[:SHORTLIST * 2]), **self._rules(text))
         reply_data, tokens = {}, 0
         try:
             raw, tokens = await run_flow("keeper_tell", self.gateway.model_for("chat"),
-                                         instruction, self._keeper_tools(text), text)
+                                         instruction, self._keeper_tools(text), text,
+                                         accept=lambda t: "body_md" in (parse_json(t) or {}))
             reply_data = parse_json(raw) or {}
         except Exception:
             log.exception("tell model failed, using fallbacks")
@@ -268,11 +298,13 @@ class AgentsApi:
                      f"({resolved[0]} to {resolved[1]}).\n") if resolved else ""
         instruction = prompt("keeper_ask", persona=keeper.persona, topic=keeper.topic,
                              today=_today(), index=index_block(shortlist),
-                             date_note=date_note, session=session_block(session))
+                             date_note=date_note, session=session_block(session),
+                             **self._rules(question))
         data, tokens = None, 0
         try:
             raw, tokens = await run_flow("keeper_ask", self.gateway.model_for("chat"), instruction,
-                                         [read_book, *self._keeper_tools(question)], question)
+                                         [read_book, *self._keeper_tools(question)], question,
+                                         accept=lambda t: "answer" in (parse_json(t) or {}))
             data = parse_json(raw)
         except Exception:
             log.exception("ask model failed, using fallbacks")
@@ -336,11 +368,13 @@ class AgentsApi:
                              element=keeper.topic, archetype=keeper.archetype or "unnamed",
                              today=_today(), reading=reading,
                              index=index_block_across(shortlist[:SHORTLIST * 2]),
-                             session=session_block(session))
+                             session=session_block(session),
+                             date_rule=self._rules(text)["date_rule"])
         data, tokens = {}, 0
         try:
             raw, tokens = await run_flow("dark_keeper", self.gateway.model_for("chat"), instruction,
-                                         [read_book, *self._date_tool(text)], text)
+                                         [read_book, *self._date_tool(text)], text,
+                                         accept=lambda t: "reply" in (parse_json(t) or {}))
             data = parse_json(raw) or {}
         except Exception:
             log.exception("dark keeper model failed, using fallback")
@@ -376,7 +410,8 @@ class AgentsApi:
         keeper_lines = "\n".join(
             f"- {k.name}: topic {k.topic}, {k.side} side, {k.book_count} books"
             for k in keepers) or "- none yet"
-        instruction = prompt("monument", today=_today(), keeper_lines=keeper_lines)
+        instruction = prompt("monument", today=_today(), keeper_lines=keeper_lines,
+                             date_rule=self._rules(text)["date_rule"])
         try:
             reply, _ = await run_agent(
                 build_agent("monument", self.gateway.model_for("chat"), instruction, tools),
@@ -395,7 +430,9 @@ class AgentsApi:
         read_book = self._read_book_tool(world, keeper.id)
         instruction = prompt("keeper_ask", persona=keeper.persona, topic=keeper.topic,
                              today=_today(), index=index_block(rows[:SHORTLIST]),
-                             date_note="", session="(asked by the monument)")
+                             date_note="", session="(asked by the monument)",
+                             date_rule=self.NO_DATE_RULE,
+                             lookup_rule="- Answer from the books; there is nothing to look up.")
         return build_agent(f"ask_{keeper.id.replace('-', '_')}",
                            self.gateway.model_for("chat"), instruction, [read_book])
 

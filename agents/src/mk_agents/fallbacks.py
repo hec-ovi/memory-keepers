@@ -23,7 +23,7 @@ def parse_json(text: str) -> dict | None:
                 depth -= 1
                 if depth == 0:
                     try:
-                        data = json.loads(text[start:i + 1])
+                        data = json.loads(text[start:i + 1], strict=False)  # raw newlines in strings
                         return data if isinstance(data, dict) else None
                     except ValueError:
                         break
