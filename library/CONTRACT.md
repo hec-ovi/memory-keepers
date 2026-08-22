@@ -17,7 +17,7 @@ worlds/{world_id}                     meta: created_at, seeded, dream_counter, l
 
 - `side`: `light` (user-created) or `dark` (dreaming-created only).
 - `archetype` (dark only): `desire | fear | ambition | obsession`.
-- `source` of a book: `told | dream | seed | sleep`.
+- `source` of a book: `told | dream | seed | sleep | notes` (one `notes` book per keeper, slug `notes`: passing remarks as dated entries, its `links` the slugs they are about; never bound away by `make_room`).
 - `tier` by body length: `small | medium | big | large` (the 3D spine size).
 - slug: `YYYY-MM-DD-<kebab-title>`, deduped with `-2`, `-3`.
 
@@ -32,6 +32,7 @@ Class `Library(client=None, seed=None)`: `client` injected for tests, `seed` is 
 | `create_keeper / get_keeper / list_keepers / update_keeper / delete_keeper` | profile fields | `Keeper` record; `payload(budget)` is the API shape (`budget=None` omits the session block, for report contexts) |
 | `write_book / get_book / list_books / delete_book` | book fields; `enforce_cap=False` only for sleep and dreaming digest writes | `Book` record, newest first listing |
 | `append_to_book(world, keeper, slug, note_md, date)` | a dated follow-up section | the grown `Book`: body extended, tier re-derived, count unchanged |
+| `append_note(world, keeper, note_md, date, tags?, about?)` | a passing remark, the slugs it is about | the keeper's notes book, born on the first entry (counts once, `LIBRARY_FULL` when no slot is left), entry appended under its date, tags and links merged, date set to the entry's |
 | `index_rows(world, keeper)` | | compact rows (slug, title, date, tags, entities, one_liner, tier) for prompts |
 | `session_read / session_append / session_replace` | `Turn` list + verbatim constraints / full `Session` | `Session` record |
 | `meter_add / meter_reset` | token counts | running total (meter lives on the keeper doc) |

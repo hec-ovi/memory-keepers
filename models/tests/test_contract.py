@@ -84,6 +84,20 @@ async def test_fake_say_route_is_deterministic():
     assert json.loads(resp.content.parts[0].text) == {"kind": "ask"}
     resp = await _run(model, _req("<!-- flow:say_route -->", "I saw a fox by the river."))
     assert json.loads(resp.content.parts[0].text) == {"kind": "tell"}
+    resp = await _run(model, _req("<!-- flow:say_route -->", "hello there"))
+    assert json.loads(resp.content.parts[0].text) == {"kind": "talk"}
+    resp = await _run(model, _req("<!-- flow:keeper_talk -->", "hello there"))
+    assert json.loads(resp.content.parts[0].text)["reply"]
+
+
+async def test_fake_tell_marks_short_remarks_as_notes_about_the_matching_book():
+    model = ModelGateway(tier="fake").model_for("chat")
+    system = "<!-- flow:keeper_tell -->\nindex:\n2026-08-05-inception-night"
+    resp = await _run(model, _req(system, "I liked the ending of Inception."))
+    data = json.loads(resp.content.parts[0].text)
+    assert data["note"] is True and data["about_slugs"] == ["2026-08-05-inception-night"]
+    resp = await _run(model, _req(system, "I dreamed of a harbor tower that hummed all night."))
+    assert "note" not in json.loads(resp.content.parts[0].text)
 
 
 async def test_fake_monument_creates_keeper():

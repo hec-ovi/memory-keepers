@@ -21,6 +21,10 @@ STOPWORDS = {"the", "and", "that", "with", "about", "this", "from", "have", "wha
 ASK_OPENERS = frozenset(
     "what when where who whom whose why how which did do does can could "
     "would should is are was were am will have has had remind tell show".split())
+# Keep identical to mk_agents.fallbacks.CAPTURE_CUES.
+CAPTURE_CUES = frozenset("save keep remember note shelve".split())
+REMARK_CUES = ("i liked", "i like", "i love", "i hate", "i did not like", "i didn't like",
+               "i don't like", "not my", "loved", "hated")
 SLUG_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}-[a-z0-9-]+\b")
 ENTITY_RE = re.compile(r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b")
 YOUTUBE_RE = re.compile(r"https?://\S*(?:youtube\.com|youtu\.be)/\S+")
@@ -136,11 +140,19 @@ class FakeLlm(BaseLlm):
         return ""
 
     def _say_route(self, req, system) -> types.Content:
+        # Mirrors mk_agents.fallbacks.route_by_wording.
         t = self._last_user_text(req).strip().lower()
-        first = re.split(r"[\s,]", t, maxsplit=1)[0] if t else ""
-        ask = t.endswith("?") or "?" in t.split("\n", 1)[0] or first in ASK_OPENERS
-        return types.Content(role="model", parts=[
-            types.Part(text=json.dumps({"kind": "ask" if ask else "tell"}))])
+        words = re.findall(r"[a-z']+", t)
+        if t.endswith("?") or "?" in t.split("\n", 1)[0] or (words and words[0] in ASK_OPENERS):
+            kind = "ask"
+        elif len(words) <= 3 and not CAPTURE_CUES & set(words):
+            kind = "talk"
+        else:
+            kind = "tell"
+        return self._text({"kind": kind})
+
+    def _keeper_talk(self, req, system) -> types.Content:
+        return self._text({"reply": "I hear you. Tell me something to keep, or ask me about the shelf."})
 
     def _keeper_tell(self, req, system) -> types.Content:
         text = self._last_user_text(req)
@@ -159,6 +171,15 @@ class FakeLlm(BaseLlm):
                 "title": title, "tags": tags, "entities": entities,
                 "one_liner": _first_sentence(text, 140) + ".",
                 "body_md": text, "extends_slug": extends,
+            })
+        if self._is_remark(text):
+            about = self._best_slug(text, system)
+            return self._text({
+                "reply": "Noted on the loose pages.",
+                "title": title, "tags": tags, "entities": entities,
+                "one_liner": _first_sentence(text, 140) + ".",
+                "body_md": text, "extends_slug": None,
+                "note": True, "about_slugs": [about] if about else [],
             })
         names = ", ".join(entities) if entities else "no one by name"
         body = "\n\n".join([
@@ -179,15 +200,24 @@ class FakeLlm(BaseLlm):
         })
 
     @staticmethod
-    def _extends_slug(text: str, system: str) -> str | None:
-        """A follow-up cue plus word overlap with a shelved slug = extension."""
-        lower = text.lower()
-        if not lower.startswith(("also", "and ", "yes", "one more")):
-            return None
+    def _best_slug(text: str, system: str) -> str | None:
+        """The shelved slug sharing the most words with the text, if any."""
         slugs = list(dict.fromkeys(SLUG_RE.findall(system)))
         scored = sorted(((len(_words(text) & _words(s.replace("-", " "))), s)
                          for s in slugs), key=lambda p: (-p[0], p[1]))
         return scored[0][1] if scored and scored[0][0] > 0 else None
+
+    def _extends_slug(self, text: str, system: str) -> str | None:
+        """A follow-up cue plus word overlap with a shelved slug = extension."""
+        if not text.lower().startswith(("also", "and ", "yes", "one more")):
+            return None
+        return self._best_slug(text, system)
+
+    @staticmethod
+    def _is_remark(text: str) -> bool:
+        """A short opinion or reaction = a note, not a book."""
+        lower = text.strip().lower()
+        return len(lower.split()) <= 12 and lower.startswith(REMARK_CUES)
 
     def _keeper_ask(self, req, system) -> types.Content:
         responses = self._function_responses(req)

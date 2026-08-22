@@ -66,6 +66,39 @@ async def test_follow_up_grows_the_same_book(api, library):
     assert library.get_keeper("w", keeper.id).book_count == count  # grew, not minted
 
 
+async def test_say_routes_small_talk_to_a_reply_without_a_book(api, library):
+    count = library.get_keeper("w", "dreams").book_count
+    out = await api.keeper_say("w", "dreams", "hello")
+    assert out["kind"] == "talk" and out["reply"] and out["book"] is None
+    assert library.get_keeper("w", "dreams").book_count == count
+    assert [t.role for t in library.session_read("w", "dreams").turns] == ["user", "keeper"]
+
+
+async def test_passing_remarks_land_in_the_one_notes_book(api, library):
+    keeper = library.create_keeper("w", "movies")
+    first = await api.keeper_tell(
+        "w", keeper.id, 'I watched the movie "Inception" yesterday and loved it.')
+    count = library.get_keeper("w", keeper.id).book_count
+
+    out = await api.keeper_tell("w", keeper.id, "I liked the spinning top in Inception.")
+    assert out["book"] is None and out["book_grown"]["slug"] == "notes"
+    again = await api.keeper_tell("w", keeper.id, "I hate slow openings.")
+    assert again["book_grown"]["slug"] == "notes"
+
+    notes = library.get_book("w", keeper.id, "notes")
+    assert notes.body_md.count("## 20") == 2 and "spinning top" in notes.body_md
+    assert notes.links == [first["book"]["slug"]]  # the remark points at the film's book
+    assert library.get_keeper("w", keeper.id).book_count == count + 1  # one notes book, once
+
+
+def test_wording_router_without_a_model():
+    from mk_agents.fallbacks import route_by_wording
+    assert route_by_wording("hello") == "talk"
+    assert route_by_wording("save this") == "tell"
+    assert route_by_wording("what did I dream?") == "ask"
+    assert route_by_wording("I want the summit today.") == "tell"
+
+
 async def test_ask_grounded_with_sources(api):
     out = await api.keeper_ask("w", "dreams", "what did I dream about the deer?")
     assert out["grounded"] and not out["followup"]

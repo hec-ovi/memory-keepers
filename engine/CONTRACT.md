@@ -15,7 +15,7 @@ The frontend sends `X-World: <id>` (generated once, kept in localStorage). First
 | `POST /keepers` | `{topic, name?, persona?}` | Keeper (201); 409 `KEEPER_EXISTS` / `KEEPERS_FULL` |
 | `GET /keepers` / `GET /keepers/{id}` | | Keeper list / one |
 | `DELETE /keepers/{id}` | | `{deleted: true}` (dark keepers too); 409 `SLEEP_RUNNING` while she sleeps |
-| `POST /keepers/{id}/say` | `{text}` | the model routes to tell or ask; that flow's response plus `{kind, session}`; same 409s |
+| `POST /keepers/{id}/say` | `{text}` | the model routes to tell, ask or talk (small talk: `{reply}` only, nothing written); that flow's response plus `{kind, session}`; same 409s |
 | `POST /keepers/{id}/tell` | `{text}` | `{reply, book?, book_grown?, session}`; 409 `LIBRARY_FULL` / `NEEDS_SLEEP` / `SLEEP_RUNNING` |
 | `POST /keepers/{id}/ask` | `{question}` | `{answer, sources, grounded, followup, session}`; same 409s |
 | `GET /keepers/{id}/books` / `GET .../books/{slug}` | | summaries newest first / full book |

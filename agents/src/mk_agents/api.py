@@ -98,6 +98,8 @@ class AgentsApi:
         kind = await self._route_say(text)
         if kind == "ask":
             out = await self.keeper_ask(world, kid, text)
+        elif kind == "talk":
+            out = await self.keeper_talk(world, kid, text)
         else:
             out = await self.keeper_tell(world, kid, text)
         return out | {"kind": kind}
@@ -109,11 +111,32 @@ class AgentsApi:
                             prompt("say_route"), []),
                 text)
             kind = (parse_json(raw) or {}).get("kind")
-            if kind in ("tell", "ask"):
+            if kind in ("tell", "ask", "talk"):
                 return kind
         except Exception:
             log.exception("say router failed, falling back to wording")
         return route_by_wording(text)
+
+    async def keeper_talk(self, world: str, kid: str, text: str) -> dict:
+        """Small talk: she answers in her voice, nothing is written; the turn
+        still lands in her session."""
+        keeper = self.library.get_keeper(world, kid)
+        session = self.library.session_read(world, kid)
+        rows = self.library.index_rows(world, kid)
+        instruction = prompt("keeper_talk", persona=keeper.persona, topic=keeper.topic,
+                             today=_today(), session=session_block(session),
+                             index=index_block(rows[:SHORTLIST]))
+        reply, tokens = "", 0
+        try:
+            raw, tokens = await run_agent(
+                build_agent("keeper_talk", self.gateway.model_for("chat"), instruction, []),
+                text)
+            reply = str((parse_json(raw) or {}).get("reply") or "").strip()
+        except Exception:
+            log.exception("talk model failed, using fallback")
+        reply = reply or "I am listening. Tell me something to keep, or ask me about the shelf."
+        self._record(world, kid, text, reply, tokens)
+        return {"reply": reply, "book": None, "book_grown": None}
 
     async def keeper_tell(self, world: str, kid: str, text: str) -> dict:
         keeper = self.library.get_keeper(world, kid)
@@ -136,25 +159,35 @@ class AgentsApi:
             value = reply_data.get(key)
             if value:
                 fields[key] = value
-        reply = reply_data.get("reply") or f"It is on the shelf now: {fields['title']}."
+        reply = reply_data.get("reply") or (
+            f"I could not reach my words just now, so I kept yours as they are: "
+            f"{fields['title']}.")
         body = reply_data.get("body_md")  # the keeper authors the book
         body = body.strip() if isinstance(body, str) and body.strip() else text
 
         book = None
         grown = None
         error = None
+        shelved = {r["slug"] for r in rows}
         extends = reply_data.get("extends_slug")
-        if (keeper.side == "light" and isinstance(extends, str)
-                and any(r["slug"] == extends for r in rows)):
-            # A follow-up grows the existing book instead of minting a new one.
-            grown = self.library.append_to_book(world, kid, extends,
-                                                note_md=body, date=_today())
-        elif keeper.side == "light":
+        about = [s for s in (reply_data.get("about_slugs") or [])
+                 if isinstance(s, str) and s in shelved]
+        if keeper.side == "light":  # dark keepers answer in archetype voice, never write
             try:
-                book = self.library.write_book(
-                    world, kid, title=fields["title"], body_md=body, date=_today(),
-                    source="told", one_liner=fields["one_liner"],
-                    tags=fields["tags"], entities=fields["entities"])
+                if isinstance(extends, str) and extends in shelved:
+                    # A follow-up grows the existing book instead of minting a new one.
+                    grown = self.library.append_to_book(world, kid, extends,
+                                                        note_md=body, date=_today())
+                elif reply_data.get("note") is True:
+                    # A passing remark lands in her one notes book, pointing at
+                    # the books it is about.
+                    grown = self.library.append_note(world, kid, note_md=body, date=_today(),
+                                                     tags=fields["tags"], about=about)
+                else:
+                    book = self.library.write_book(
+                        world, kid, title=fields["title"], body_md=body, date=_today(),
+                        source="told", one_liner=fields["one_liner"],
+                        tags=fields["tags"], entities=fields["entities"])
             except LibraryError as e:
                 error = e
                 reply = "My bookcase is full. Let me sleep to bind old books together."

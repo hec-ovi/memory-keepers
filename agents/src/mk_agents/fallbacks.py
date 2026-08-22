@@ -54,15 +54,22 @@ def harvest_constraints(text: str) -> list[str]:
 ASK_OPENERS = frozenset(
     "what when where who whom whose why how which did do does can could would "
     "should is are was were am will have has had remind tell show".split())
+# Keep identical to mk_models.fake_llm.CAPTURE_CUES.
+CAPTURE_CUES = frozenset("save keep remember note shelve".split())
 
 
 def route_by_wording(text: str) -> str:
-    """Deterministic tell/ask routing when no model is reachable."""
+    """Deterministic tell/ask/talk routing when no model is reachable: a
+    question asks, a few words with no capture cue are talk, the rest tells."""
     t = text.strip().lower()
     if t.endswith("?") or "?" in t.split("\n", 1)[0]:
         return "ask"
-    first = re.split(r"[\s,]", t, maxsplit=1)[0]
-    return "ask" if first in ASK_OPENERS else "tell"
+    words = re.findall(r"[a-z']+", t)
+    if words and words[0] in ASK_OPENERS:
+        return "ask"
+    if len(words) <= 3 and not CAPTURE_CUES & set(words):
+        return "talk"
+    return "tell"
 
 
 def dated_citation(row: dict) -> str:

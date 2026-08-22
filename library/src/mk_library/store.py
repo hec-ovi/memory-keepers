@@ -136,6 +136,38 @@ class Library:
         self.update_keeper(wid, kid, last_book_at=now_iso())
         return book
 
+    NOTES_SLUG = "notes"
+
+    def append_note(self, wid: str, kid: str, *, note_md: str, date: str,
+                    tags: list | None = None, about: list | None = None) -> Book:
+        """A passing remark lands as a dated entry in the keeper's one notes
+        book (slug "notes"), born on its first entry and never bound away. The
+        entry's `about` slugs join the book's links, its tags the book's tags;
+        the book's date follows its latest entry."""
+        ref = self._book(wid, kid, self.NOTES_SLUG)
+        snap = ref.get()
+        entry = f"## {date}\n\n{note_md.strip()}"
+        if snap.exists:
+            book = Book.from_doc(snap.to_dict())
+            book.body_md = f"{book.body_md.rstrip()}\n\n{entry}"
+            counted = {}
+        else:
+            keeper = self.get_keeper(wid, kid)
+            if len(self.list_books(wid, kid)) >= LIBRARY_CAP:
+                raise LibraryError("LIBRARY_FULL", kid)
+            book = Book(slug=self.NOTES_SLUG, title="Loose notes", date=date, source="notes",
+                        one_liner="Passing remarks, reactions and asides, each about "
+                                  "something this shelf keeps.",
+                        tier="small", body_md=entry)
+            counted = {"book_count": keeper.book_count + 1}
+        book.date = date
+        book.tags = sorted({*book.tags, *(tags or [])})[:8]
+        book.links = sorted({*book.links, *(about or [])})
+        book.tier = tier_for(book.body_md)
+        ref.set(book.to_doc())
+        self.update_keeper(wid, kid, last_book_at=now_iso(), **counted)
+        return book
+
     def get_book(self, wid: str, kid: str, slug: str) -> Book:
         snap = self._book(wid, kid, slug).get()
         if not snap.exists:

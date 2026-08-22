@@ -166,6 +166,29 @@ def test_append_to_book_grows_body_and_tier(library):
     assert library.get_keeper("w", keeper.id).book_count == 1
 
 
+def test_append_note_keeps_one_notes_book_per_keeper(library):
+    library.ensure_world("w")
+    keeper = library.create_keeper("w", "films")
+    film = library.write_book("w", keeper.id, title="Inception night", body_md="seen",
+                              date="2026-08-11", source="told", one_liner="a film")
+    note = library.append_note("w", keeper.id, note_md="Liked the ending.", date="2026-08-12",
+                               tags=["ending"], about=[film.slug])
+    assert (note.slug, note.source, note.links) == ("notes", "notes", [film.slug])
+    again = library.append_note("w", keeper.id, note_md="Slow openings bore me.",
+                                date="2026-08-13", tags=["pace"])
+    assert again.body_md.count("## 2026-08-1") == 2 and again.tags == ["ending", "pace"]
+    assert library.get_keeper("w", keeper.id).book_count == 2  # the notes book counts once
+    assert library.list_books("w", keeper.id)[0].slug == "notes"  # dated by its latest entry
+    for i in range(LIBRARY_CAP):
+        try:
+            library.write_book("w", keeper.id, title=f"filler {i}", body_md="x",
+                               date="2026-08-01", source="told", one_liner="f")
+        except LibraryError:
+            break
+    library.make_room("w", keeper.id, incoming=1)
+    assert library.get_book("w", keeper.id, "notes").links == [film.slug]  # never bound away
+
+
 def test_world_travel_round_trip(library, world):
     library.write_book(world, "dreams", title="Travel proof", body_md="carried",
                        date="2026-08-12", source="told", one_liner="travels")
