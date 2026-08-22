@@ -1,15 +1,13 @@
-"""Prompt loading: every instruction lives in prompts/*.md, filled via $tokens."""
+"""Prompt loading: every instruction lives in prompts/*.md, filled via $tokens.
+Read on every call, so an edited prompt is live on the next message."""
 from pathlib import Path
 from string import Template
 
 _DIR = Path(__file__).parent / "prompts"
-_CACHE: dict[str, Template] = {}
 
 
 def prompt(name: str, **values) -> str:
-    if name not in _CACHE:
-        _CACHE[name] = Template((_DIR / f"{name}.md").read_text())
-    return _CACHE[name].substitute(**values)
+    return Template((_DIR / f"{name}.md").read_text()).substitute(**values)
 
 
 def session_block(session) -> str:
