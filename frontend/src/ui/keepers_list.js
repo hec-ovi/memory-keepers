@@ -24,12 +24,21 @@
 
 import { createHoloPanel, ensureHoloStyles, injectStyle, makeEl } from "./holo/holo.js";
 
-// session.status -> what the player reads on the tiredness dot.
+// session.status -> what the player reads on the tiredness dot. rank orders
+// the rows: the ones who need to dream come first.
 export function restHint(session = null) {
   const status = session?.status;
-  if (status === "needs_sleep") return { tone: "red", label: "needs to dream" };
-  if (status === "unrested") return { tone: "amber", label: "getting tired" };
-  return { tone: "cyan", label: "rested" };
+  if (status === "needs_sleep") return { tone: "red", label: "needs to dream", rank: 0 };
+  if (status === "unrested") return { tone: "amber", label: "getting tired", rank: 1 };
+  return { tone: "cyan", label: "rested", rank: 2 };
+}
+
+// Tired first, then getting tired, then rested; ties keep the island's order.
+export function byTiredness(keepers) {
+  return keepers
+    .map((keeper, i) => ({ keeper, i, rank: restHint(keeper.session).rank }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .map((x) => x.keeper);
 }
 
 // Island capacities, mirroring the library caps (library/CONTRACT.md):
@@ -150,9 +159,9 @@ export function createKeepersList({ root, state, bus } = {}) {
     const lightTotal = all.filter((a) => a.kind !== "unconscious").length;
     const darkTotal = all.length - lightTotal;
     const groups = [
-      ["the village", keepers.filter((a) => a.kind !== "unconscious"),
+      ["the village", byTiredness(keepers.filter((a) => a.kind !== "unconscious")),
         `${lightTotal}/${LIGHT_CAP}`],
-      ["across the ridge", keepers.filter((a) => a.kind === "unconscious"),
+      ["across the ridge", byTiredness(keepers.filter((a) => a.kind === "unconscious")),
         `${darkTotal}/${DARK_CAP}`],
     ];
     for (const [title, members, tally] of groups) {

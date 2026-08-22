@@ -81,6 +81,22 @@ describe("createKeepersList", () => {
     expect(screen.getByRole("button", { name: "view The Still Water" })).toBeTruthy();
   });
 
+  it("orders each group by tiredness: needs to dream first, then getting tired, then rested", () => {
+    list.dispose();
+    root.remove();
+    build([
+      { ...dreamsKeeper(), session: { tokens_used: 100, budget: 1000, status: "rested" } },
+      { ...meetingsKeeper(), session: { tokens_used: 600, budget: 1000, status: "unrested" } },
+      { ...dreamsKeeper(), id: "walks", name: "Keeper of Walks", session: { status: "needs_sleep" } },
+      unconsciousKeeper(),
+    ]);
+    bus.emit("keepers_list:open");
+    const names = [...root.querySelectorAll(".holo-list")[0].querySelectorAll("button")].map(
+      (b) => b.getAttribute("aria-label"),
+    );
+    expect(names).toEqual(["view Keeper of Walks", "view Keeper of Meetings", "view Keeper of Dreams"]);
+  });
+
   it("shows a tiredness dot per row (cyan rested, red needs to dream)", () => {
     bus.emit("keepers_list:open");
     const dreams = screen.getByRole("button", { name: "view Keeper of Dreams" });
@@ -214,10 +230,10 @@ describe("createKeepersList", () => {
 
 describe("restHint (pure)", () => {
   it("maps session status to a warm dot", () => {
-    expect(restHint({ status: "rested" })).toEqual({ tone: "cyan", label: "rested" });
-    expect(restHint({ status: "unrested" })).toEqual({ tone: "amber", label: "getting tired" });
-    expect(restHint({ status: "needs_sleep" })).toEqual({ tone: "red", label: "needs to dream" });
-    expect(restHint(null)).toEqual({ tone: "cyan", label: "rested" });
-    expect(restHint(undefined)).toEqual({ tone: "cyan", label: "rested" });
+    expect(restHint({ status: "rested" })).toEqual({ tone: "cyan", label: "rested", rank: 2 });
+    expect(restHint({ status: "unrested" })).toEqual({ tone: "amber", label: "getting tired", rank: 1 });
+    expect(restHint({ status: "needs_sleep" })).toEqual({ tone: "red", label: "needs to dream", rank: 0 });
+    expect(restHint(null)).toEqual({ tone: "cyan", label: "rested", rank: 2 });
+    expect(restHint(undefined)).toEqual({ tone: "cyan", label: "rested", rank: 2 });
   });
 });
