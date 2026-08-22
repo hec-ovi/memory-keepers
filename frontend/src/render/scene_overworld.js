@@ -72,6 +72,7 @@ import {
   cottageObstacles,
   makeCobbleTexture,
   makeSandPathTexture,
+  bakeSolids,
 } from "./props.js";
 import { overworldFlags, createBloomPipeline } from "./fx.js";
 import { clamp01, envAt, easeBlend, createDistrictTracker } from "./blend.js";
@@ -718,6 +719,10 @@ export function createOverworldScene(ctx = {}) {
       else for (const m of built.glowMats) m.emissiveIntensity = 0.3;
       if (built.floaty) floaters.push({ group: built.group, baseY: prop.y, phase: prop.rotation });
     }
+    // Trees, bushes, rocks, flowers, stumps and garden bits bake into one
+    // world shell per surface kind; crystals (pulsing) and wisps (floating)
+    // stay their own meshes.
+    bakeSolids(worldGroup);
 
     populationKey = populationKeyOf();
 

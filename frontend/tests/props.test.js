@@ -1,3 +1,4 @@
+import * as THREE from "three";
 // Street ribbon geometry tests (no WebGL: BufferGeometry math only).
 // Regression: the ribbon triangles must wind counter-clockwise seen from
 // above (+y). A flipped winding gets backface-culled by the play camera,
@@ -470,25 +471,23 @@ import { buildCottage, flagTexture } from "../src/render/props.js";
 describe("buildCottage topic flag", () => {
   const keeper = { id: "dreams", topic: "dreams", name: "Keeper of Dreams", palette: { primary: "#f8a7c0" } };
 
-  it("flies a banner with the topic, readable from both sides via one shared texture", () => {
+  it("flies a banner with the topic: one mesh whose two faces look opposite ways, one shared texture", () => {
     const { group } = buildCottage({ keeper });
-    const pole = group.children.find((c) => c.name === "topic-flag-pole");
-    const front = group.children.find((c) => c.name === "topic-flag-front");
-    const back = group.children.find((c) => c.name === "topic-flag-back");
-    expect(pole).toBeTruthy();
-    expect(front).toBeTruthy();
-    expect(back).toBeTruthy();
-    expect(front.material).toBe(back.material);
-    expect(front.material.map).toBeTruthy();
-    // back face looks the opposite way so the text reads on both sides
-    expect(Math.abs(back.rotation.y - Math.PI)).toBeLessThan(1e-9);
+    const flag = group.children.find((c) => c.name === "topic-flag");
+    expect(flag).toBeTruthy();
+    expect(flag.material.map).toBeTruthy();
+    const normal = flag.geometry.attributes.normal;
+    const facing = new Set();
+    for (let i = 0; i < normal.count; i++) facing.add(Math.sign(Math.round(normal.getZ(i) * 1000)));
+    expect(facing).toEqual(new Set([1, -1])); // text reads on both sides
     // the flag flies above the walls
-    expect(front.position.y).toBeGreaterThan(1.6);
+    flag.geometry.computeBoundingBox();
+    expect(flag.geometry.boundingBox.min.y).toBeGreaterThan(1.6);
   });
 
   it("skips the flag when there is no topic, and never breaks the door pick", () => {
     const { group, door } = buildCottage({ keeper: { id: "x", topic: "", name: "" } });
-    expect(group.children.find((c) => c.name === "topic-flag-front")).toBeFalsy();
+    expect(group.children.find((c) => c.name === "topic-flag")).toBeFalsy();
     expect(door.userData.pick).toBe("door");
   });
 
@@ -499,10 +498,11 @@ describe("buildCottage topic flag", () => {
 });
 
 // ---------------------------------------------------------------------------
-// House pick (clicking any cottage part selects the owner, BACKLOG 13)
+// House pick (clicking any cottage part selects the owner, BACKLOG 13) and the
+// baked shell (static parts in a few draw calls, tints as vertex colours)
 // ---------------------------------------------------------------------------
 
-describe("buildCottage house pick", () => {
+describe("buildCottage house pick and shell", () => {
   it("the whole group picks as the owner's house; the door keeps its enter pick", () => {
     const { group, door } = buildCottage({ keeper: { id: "dreams" } });
     expect(group.userData.pick).toBe("house");
@@ -515,12 +515,66 @@ describe("buildCottage house pick", () => {
       if (o !== group && o.userData?.pick === "door") doorPicks.push(o);
     });
     expect(doorPicks.length).toBeGreaterThanOrEqual(2); // door + knob
-    // walls and roof carry no pick of their own: they bubble up to "house"
-    let unpicked = 0;
-    group.traverse((o) => {
-      if (o !== group && !o.userData?.pick) unpicked++;
-    });
-    expect(unpicked).toBeGreaterThan(5);
+  });
+
+  it("walls, roof and yard bake into shell meshes: vertex colours carry the palette, shadows on, no pick of their own", () => {
+    const keeper = { id: "dreams", topic: "dreams", palette: { primary: "#f8a7c0" } };
+    const { group } = buildCottage({ keeper });
+    const shells = group.children.filter((c) => c.name === "shell");
+    expect(shells.length).toBeGreaterThanOrEqual(1);
+    const tints = new Set();
+    for (const shell of shells) {
+      expect(shell.userData.pick).toBeUndefined(); // bubbles up to "house"
+      expect(shell.material.vertexColors).toBe(true);
+      expect(shell.material.flatShading).toBe(true);
+      expect(shell.castShadow && shell.receiveShadow).toBe(true);
+      const { position, color } = shell.geometry.attributes;
+      expect(color.count).toBe(position.count);
+      for (let i = 0; i < color.count; i++) tints.add(new THREE.Color(color.getX(i), color.getY(i), color.getZ(i)).getHexString());
+    }
+    const pal = cottagePalette(keeper.palette, false, cottageVariant(keeper.id));
+    expect(tints.has(new THREE.Color(pal.wall).getHexString())).toBe(true);
+    expect(tints.has(new THREE.Color(pal.roof).getHexString())).toBe(true);
+    // what is left apart from the shells: door, knob, window panes, lantern head, flag
+    const rest = group.children.filter((c) => c.isMesh && c.name !== "shell");
+    expect(rest.map((c) => c.name || c.userData.pick).sort()).toEqual(["door", "door", "lantern", "topic-flag", "windows"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// World bake: static props under a container fold into one shell in place
+// ---------------------------------------------------------------------------
+
+import { buildProp, bakeSolids } from "../src/render/props.js";
+
+describe("bakeSolids", () => {
+  it("folds plain props at any depth into one shell in container space; glowing and floating props stay, empty groups go", () => {
+    const world = new THREE.Group();
+    const nested = new THREE.Group();
+    nested.position.set(10, 0, 0);
+    world.add(nested);
+    const rock = buildProp({ kind: "rock", x: 2, z: 3, scale: 1, rotation: 0 });
+    const bush = buildProp({ kind: "bush", x: -4, z: 1, scale: 1, rotation: 0.5 });
+    const crystal = buildProp({ kind: "crystal", x: 0, z: 0, scale: 1, rotation: 0 }, true);
+    const wisp = buildProp({ kind: "wisp", x: 1, z: 1, scale: 1, rotation: 0 }, true);
+    world.add(rock.group, crystal.group, wisp.group);
+    nested.add(bush.group);
+
+    bakeSolids(world);
+
+    const shells = world.children.filter((c) => c.name === "shell");
+    expect(shells).toHaveLength(1);
+    const shell = shells[0];
+    shell.geometry.computeBoundingBox();
+    const box = shell.geometry.boundingBox;
+    expect(box.min.x).toBeLessThan(2.5); // the rock at x=2
+    expect(box.max.x).toBeGreaterThan(5); // the bush at x=-4 inside the group at x=10
+    expect(shell.castShadow && shell.receiveShadow).toBe(true);
+    expect(shell.material.vertexColors).toBe(true);
+    expect(world.children.includes(rock.group)).toBe(false); // emptied, dropped
+    expect(nested.children.includes(bush.group)).toBe(false);
+    expect(crystal.group.children.filter((c) => c.isMesh)).toHaveLength(2); // pulsing: untouched
+    expect(wisp.group.children.filter((c) => c.isMesh)).toHaveLength(1); // floating: untouched
   });
 });
 

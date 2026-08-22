@@ -322,6 +322,8 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
   group.userData.pick = "house";
   group.userData.keeperId = keeper.id;
 
+  // Static solids bake into shell meshes at the end (see bakeSolids); parts
+  // that take a pick of their own (door, knob) stay separate.
   const solid = (geo, hex, opts = {}) => {
     const mesh = new THREE.Mesh(
       geo,
@@ -329,6 +331,7 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
     );
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    mesh.userData.bake = true;
     group.add(mesh);
     return mesh;
   };
@@ -397,7 +400,7 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
   solid(new THREE.BoxGeometry(0.64, 0.1, 0.4), darkenHex(pal.plinth, 0.15)).position.set(0, 0.05, 1.05);
 
   // Windows: variant layout, emissive at night. One material per cottage so
-  // the scene can drive the glow.
+  // the scene can drive the glow; the panes merge into one mesh on it.
   const windowMat = new THREE.MeshStandardMaterial({
     color: 0x2c2c3a,
     emissive: new THREE.Color(pal.glow),
@@ -406,6 +409,7 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
   });
   const paneGeo = new THREE.PlaneGeometry(0.3, 0.3);
   const frameGeo = new THREE.BoxGeometry(0.42, 0.42, 0.08);
+  const panes = [];
   const addWindow = (x, y, z, rotY = 0) => {
     const f = solid(frameGeo, pal.frame);
     f.position.set(x, y, z);
@@ -414,7 +418,7 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
     const off = 0.055;
     pane.position.set(x + Math.sin(rotY) * off, y, z + Math.cos(rotY) * off);
     pane.rotation.y = rotY;
-    group.add(pane);
+    panes.push(pane);
   };
   if (variant.frontWindows === 1) {
     addWindow(0.5 * (rng() < 0.5 ? -1 : 1), 1.05, 0.81);
@@ -426,6 +430,9 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
   for (const sx of sides) {
     addWindow(0.96 * sx, 1.0, -0.15, (Math.PI / 2) * sx);
   }
+  const windows = new THREE.Mesh(mergeParts(localParts(panes)), windowMat);
+  windows.name = "windows";
+  group.add(windows);
 
   // Yard: a lantern by the door plus one seeded extra.
   const lanternMat = new THREE.MeshStandardMaterial({
@@ -438,6 +445,7 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
   const pole = solid(new THREE.CylinderGeometry(0.03, 0.045, 0.78, 6), 0x4a4038);
   pole.position.set(1.05 * lanternSide, 0.39, 0.8);
   const head = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.17, 0.15), lanternMat);
+  head.name = "lantern";
   head.position.set(1.05 * lanternSide, 0.84, 0.8);
   group.add(head);
 
@@ -489,17 +497,103 @@ export function buildCottage({ keeper = {}, dark = false } = {}) {
     const flagMat = new THREE.MeshBasicMaterial({ map: flagTexture(topic, keeper.palette?.primary) });
     const flagGeo = new THREE.PlaneGeometry(0.85, 0.3);
     const front = new THREE.Mesh(flagGeo, flagMat);
-    front.name = "topic-flag-front";
     front.position.set(1.25 - 0.445, 2.28, 0.75 + 0.011);
     const back = new THREE.Mesh(flagGeo, flagMat);
-    back.name = "topic-flag-back";
     back.position.set(1.25 - 0.445, 2.28, 0.75 - 0.011);
     back.rotation.y = Math.PI;
-    group.add(front);
-    group.add(back);
+    const flag = new THREE.Mesh(mergeParts(localParts([front, back])), flagMat);
+    flag.name = "topic-flag";
+    group.add(flag);
   }
 
+  bakeSolids(group);
   return { group, door, windowMats: [windowMat], lanternMats: [lanternMat] };
+}
+
+// Bakes the static solids under a container (any depth) into one shell mesh
+// per surface kind (side, roughness, metalness), placed directly in the
+// container. Each part's tint rides in a vertex colour, so flat shading reads
+// exactly as the separate meshes did, while the main pass and the shadow pass
+// each spend a few draw calls instead of one per box. Parts carrying a pick
+// of their own (door, knob) and anything unflagged (glowing, floating,
+// animated) stay as they are; prop groups left empty are dropped.
+export function bakeSolids(container) {
+  container.updateMatrixWorld(true);
+  const toLocal = container.matrixWorld.clone().invert();
+  const parts = [];
+  container.traverse((o) => {
+    if (o.isMesh && o.userData.bake && !o.userData.pick) parts.push(o);
+  });
+  const buckets = new Map();
+  for (const mesh of parts) {
+    const { side, roughness, metalness } = mesh.material;
+    const key = `${side}|${roughness}|${metalness}`;
+    if (!buckets.has(key)) buckets.set(key, { side, roughness, metalness, parts: [] });
+    buckets.get(key).parts.push({
+      geometry: mesh.geometry,
+      matrix: new THREE.Matrix4().multiplyMatrices(toLocal, mesh.matrixWorld),
+      color: mesh.material.color,
+    });
+    const parent = mesh.parent;
+    mesh.removeFromParent();
+    if (parent !== container && parent.children.length === 0) parent.removeFromParent();
+    mesh.material.dispose();
+  }
+  for (const { side, roughness, metalness, parts: bucket } of buckets.values()) {
+    const shell = new THREE.Mesh(
+      mergeParts(bucket, { tint: true }),
+      new THREE.MeshStandardMaterial({ flatShading: true, vertexColors: true, roughness, metalness, side }),
+    );
+    shell.name = "shell";
+    shell.castShadow = true;
+    shell.receiveShadow = true;
+    container.add(shell);
+    for (const part of bucket) part.geometry.dispose();
+  }
+}
+
+// Parts of meshes that sit directly in their group: local transform, own colour.
+function localParts(meshes) {
+  return meshes.map((mesh) => {
+    mesh.updateMatrix();
+    return { geometry: mesh.geometry, matrix: mesh.matrix, color: mesh.material.color };
+  });
+}
+
+// One non-indexed geometry from parts [{ geometry, matrix, color }], each
+// baked under its matrix. With tint, a vertex colour attribute carries each
+// part's colour (linear, as the material holds it).
+function mergeParts(parts, { tint = false } = {}) {
+  const chunks = { position: [], normal: [], uv: [], color: [] };
+  for (const { geometry, matrix, color } of parts) {
+    const g = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+    g.applyMatrix4(matrix);
+    chunks.position.push(g.attributes.position.array);
+    chunks.normal.push(g.attributes.normal.array);
+    chunks.uv.push(g.attributes.uv.array);
+    if (tint) {
+      const c = new Float32Array(g.attributes.position.count * 3);
+      for (let i = 0; i < c.length; i += 3) {
+        c[i] = color.r;
+        c[i + 1] = color.g;
+        c[i + 2] = color.b;
+      }
+      chunks.color.push(c);
+    }
+    g.dispose();
+  }
+  const merged = new THREE.BufferGeometry();
+  for (const [name, list] of Object.entries(chunks)) {
+    if (!list.length) continue;
+    const out = new Float32Array(list.reduce((n, a) => n + a.length, 0));
+    let offset = 0;
+    for (const a of list) {
+      out.set(a, offset);
+      offset += a.length;
+    }
+    merged.setAttribute(name, new THREE.BufferAttribute(out, name === "uv" ? 2 : 3));
+  }
+  return merged;
 }
 
 // ---------------------------------------------------------------------------
@@ -1166,11 +1260,14 @@ export function buildProp(prop, dark = false) {
   const glowMats = [];
   let floaty = false;
 
+  // Plain parts bake into the world shell (bakeSolids); glowing ones keep
+  // their own material so the scene can pulse them.
   const mk = (geo, hex, opts = {}) => {
     const m = new THREE.MeshStandardMaterial({ color: hex, flatShading: true, roughness: 0.9, ...opts });
     const mesh = new THREE.Mesh(geo, m);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    mesh.userData.bake = !opts.emissive;
     group.add(mesh);
     return mesh;
   };

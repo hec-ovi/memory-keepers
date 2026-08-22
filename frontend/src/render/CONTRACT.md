@@ -344,10 +344,12 @@ w, h, bg, ink, frame, font}`, `drawVacantSign(ctx, spec)` (draws on any
 
 Builders:
 
-- `buildCottage({keeper, dark}) -> {group, door, windowMats, lanternMats}`;
-  when `keeper.topic` (or name) is non-empty the group also carries a topic
-  flag: `topic-flag-pole` plus `topic-flag-front`/`topic-flag-back` meshes
-  (one shared MeshBasic canvas texture, readable from both sides).
+- `buildCottage({keeper, dark}) -> {group, door, windowMats, lanternMats}`.
+  The walls, roof, trims and yard bake into `shell` meshes (one per surface
+  kind, tints as vertex colours, shadows on), the window panes into one
+  `windows` mesh on the shared glow material, the lantern head is `lantern`,
+  and when `keeper.topic` (or name) is non-empty a `topic-flag` mesh flies
+  both faces of one MeshBasic canvas texture, readable from both sides.
   The GROUP picks as the owner's house (`userData.pick "house"` +
   `keeperId`): clicking any cottage part selects her; the door mesh AND its
   knob keep their own `"door"` pick, so a door click still enters the
@@ -375,6 +377,11 @@ Builders:
   sim/world.js but draws NO ribbon texture. Call with OCCUPIED plots only.
 - `buildTrees({trees}) -> {group}` (max 2 instanced draws per species),
   `buildProp(prop, dark) -> {group, glowMats, floaty}`,
+  `bakeSolids(container)`: folds every plain prop part under the container
+  (any depth; not crystals, wisps or picks) into one `shell` mesh per surface
+  kind in container space and drops the emptied groups. The overworld calls
+  it once after placing props and gardens, so the static island draws in a
+  few calls per pass (main and shadow alike) at the same pixels.
   `makeCobbleTexture()`, `makeSandPathTexture()`.
 
 ### Bus events
