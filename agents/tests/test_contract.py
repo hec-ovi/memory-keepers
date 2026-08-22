@@ -91,11 +91,11 @@ async def test_passing_remarks_land_in_the_one_notes_book(api, library):
     assert library.get_keeper("w", keeper.id).book_count == count + 1  # one notes book, once
 
 
-def test_resolve_date_answers_only_for_phrases_the_user_wrote(api):
+def test_resolve_date_exists_only_for_messages_with_a_relative_day(api):
+    assert api._date_tool("I worked at Ohara from Mar 2025 to Jan 2026.") == []  # nothing to resolve
     resolve_date = api._date_tool("the interview is tomorrow, remember it")[0]
     assert resolve_date("tomorrow")["date"] == (date.today() + timedelta(days=1)).isoformat()
     assert resolve_date("next friday")["ok"] is False  # not in the message
-    assert resolve_date("Mar 2025")["ok"] is False  # not a relative day
 
 
 async def test_a_model_that_keeps_calling_tools_stops_at_the_cap():

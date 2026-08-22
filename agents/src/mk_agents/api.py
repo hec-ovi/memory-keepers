@@ -35,10 +35,13 @@ class AgentsApi:
         self.lookups = lookups  # LookupsApi-shaped; optional, tools appear when present
 
     def _date_tool(self, text: str) -> list:
-        """resolve_date, bound to the user's message: it answers only for a
-        relative-day phrase the user actually wrote, so a model cannot wander
-        through phrases of its own."""
+        """resolve_date, bound to the user's message: present only when the
+        message holds a day given relative to today, and answering only for a
+        phrase the user actually wrote, so a model cannot wander through
+        phrases of its own (a month or a year alone is not a day to resolve)."""
         said = " ".join(text.lower().split())
+        if not dates.PHRASE_RE.search(said):
+            return []
 
         def resolve_date(phrase: str) -> dict:
             """Calendar date for a day the user gave relative to today, quoted
