@@ -5,9 +5,13 @@ verifies the whole loop: one grounded ask per keeper, a dream run to
 completion, and a graph summary. Seeding is idempotent: a keeper that
 already holds its memories is not re-told.
 
-  ACCESS_CODE=... python3 scripts/demo_world.py <base_url> <world> [--verify]
+  ACCESS_CODE=... python3 scripts/demo_world.py <base_url> <world> [--verify] [--memories file.json]
 
-Exit code 0 when every ask is grounded and the dream settles as done.
+The memories file (default scripts/demo_world_memories.json) lists keepers with
+"memories" (told, one book each), optional "remarks" (sent through /say, so the
+router files them: notes, extensions or books) and an "ask" to verify.
+Exit code 0 when every ask is grounded, sessions replay, the dream settles as
+done, bubbles come from books and the ridge answers.
 """
 import json
 import os
@@ -79,9 +83,15 @@ def seed(keepers):
         for text in keeper["memories"]:
             s, out = call_rested("POST", f"/keepers/{kid}/tell", {"text": text})
             title = (out.get("book") or {}).get("title") if s == 200 else out
-            print(f"  {kid}: [{s}] {title}")
+            print(f"  {kid}: [{s}] {title}", flush=True)
             if s != 200:
                 failures.append(f"tell {kid}: {out}")
+        for text in keeper.get("remarks", []):
+            s, out = call_rested("POST", f"/keepers/{kid}/say", {"text": text})
+            landed = (out.get("book_grown") or out.get("book") or {}).get("slug") if s == 200 else out
+            print(f"  {kid}: [{s}] {out.get('kind')} -> {landed}", flush=True)
+            if s != 200:
+                failures.append(f"say {kid}: {out}")
 
 
 def verify(keepers):
@@ -98,7 +108,11 @@ def verify(keepers):
             failures.append(f"ask {kid}: {out}")
         if ask["expect"].lower() not in str(out.get("answer", "")).lower():
             mark += " (answer misses the expected word)"
-        print(f"ask {kid}: {mark} -> {str(out.get('answer'))[:90]}")
+        print(f"ask {kid}: {mark} -> {str(out.get('answer'))[:90]}", flush=True)
+        _, chat = call("GET", f"/keepers/{kid}/chat")
+        turns = chat.get("turns") if isinstance(chat, dict) else None
+        if not turns:
+            failures.append(f"chat {kid}: the session replays nothing")
 
     status, out = call("POST", "/dream", {})
     if status == 409:  # a run is already going; watch that one instead
@@ -118,10 +132,25 @@ def verify(keepers):
     print(f"  narrative: {str(run.get('narrative'))[:160]}")
     if run.get("status") != "done":
         failures.append(f"dream: {run.get('status')} {run.get('error')}")
+    # bubbles come from books now; the ridge answers across the village
+    _, state = call("GET", "/state")
+    for k in state.get("keepers", []):
+        _, bubble = call("GET", f"/keepers/{k['id']}/chatter")
+        if bool(bubble.get("line")) != (k.get("book_count", 0) > 0):
+            failures.append(f"chatter {k['id']}: line={bubble.get('line')!r} books={k.get('book_count')}")
+    dark = [k for k in state.get("keepers", []) if k.get("kind") == "unconscious" or k.get("side") == "dark"]
+    for k in dark[:2]:
+        s, out = call_rested("POST", f"/keepers/{k['id']}/say",
+                             {"text": "why do you think this keeps coming back to me?"})
+        ok = s == 200 and out.get("reply")
+        print(f"ridge {k['id']}: {'ok' if ok else 'NO REPLY'} -> {str(out.get('reply'))[:120]}", flush=True)
+        if not ok:
+            failures.append(f"ridge {k['id']}: {out}")
 
 
-data = json.load(open(os.path.join(os.path.dirname(__file__),
-                                   "demo_world_memories.json")))
+memories_file = (sys.argv[sys.argv.index("--memories") + 1] if "--memories" in sys.argv
+                 else os.path.join(os.path.dirname(__file__), "demo_world_memories.json"))
+data = json.load(open(memories_file))
 seed(data["keepers"])
 if "--verify" in sys.argv:
     verify(data["keepers"])
