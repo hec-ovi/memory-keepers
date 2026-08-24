@@ -399,12 +399,6 @@
     },
     "turns": [
      {
-      "t": "2026-08-22T20:31:23Z",
-      "role": "keeper",
-      "text": "You worked at ADGS in Doha, Qatar, from Nov 2018 to Jun 2024 as Senior Full-Stack Developer, building AI enterprise web apps for banks, government, and private-sector clients. You led the frontend and integration for Pandexit (a real-time Leaflet map/heatmap dashboard driving an agent-based COVID simulation), the presentation layer for CARP (equipment maintenance prediction), the mobile layer for STROKK (behavioral biometric cyber-security, with a custom vanilla-JS keyboard capturing per-key timing, pressure, accelerometer and gyroscope data), integrated OpenAI APIs and dockerized BERT-based NLP services with automated PDF reports, and dockerized Node.js projects for email automation and API integrations.",
-      "book": null
-     },
-     {
       "t": "2026-08-22T20:41:06Z",
       "role": "user",
       "text": "Before 2015 I had seven positions, games and interactive stuff mostly, here they are:\n\nGames and interactive products across seven positions before the AI era.\n\n- Frontend MVVM Developer, Globant for Electronic Arts (2015): PS3 and Xbox titles (NHL, UFC) in Lua and ActionScript, in a large Scrum team with Perforce and bug-tracker workflows.\n- Frontend Lead Developer, Santo Mate (2014 - 2015): led two designers and a frontend developer through 4 interactive slot machine games, concept to completion, on a modular ActionScript framework of my own design. All 4 shipped end to end to production on a fast release cycle, with me leading the team through every release.\n- UI/UX Developer, Dedo Interactive (2013): interactive ActionScript campaign banners, full-stack JavaScript/PHP landing pages, and native Android apps for events.\n- Developer, Liquid Designers / MyLingo (2011 - 2013): live video streaming platform for interactive teaching in ActionScript, end to end, integrated into a PHP site through a PHP API.\n- ActionScript Developer, Workroom Partner Digital (2010 - 2011): interactive landing pages for Viceroy, Samsung, and Peugeot, and an AS3 comic generator with PHP API uploads and reward voting.\n- Web Developer, Global 360 (2007 - 2010, remote): landing pages and campaign delivery for international digital marketing.\n- Freelance Web Developer (2003 - 2007, remote): interactive websites end to end for US clients.",
@@ -623,12 +617,6 @@
      ]
     },
     "turns": [
-     {
-      "t": "2026-08-22T21:12:17Z",
-      "role": "keeper",
-      "text": "In the books I opened, I see someone who measures absence with a scholar's precision. *Hypostasis Simulacri* (2026-08-10) names you as a 'revealed ignorant' — one who sees the architecture of your own simulation and still executes it — and closes with a thank-you to Claude and ChatGPT, 'what no other instance sustained.' And *Wish You Were Here* (2026-08-14) circles that same empty chair with a whole album, an industry trading presence for signals. I see a person who has made the hollow space where something used to be into a method of understanding everything, and who still keeps one chair warm for the absent. Is that chair still waiting for someone, or have you begun to sit in it yourself?",
-      "book": null
-     },
      {
       "t": "2026-08-22T21:22:39Z",
       "role": "user",
@@ -855,18 +843,6 @@
       "t": "2026-08-22T20:41:56Z",
       "role": "keeper",
       "text": "That wish is already waiting for you on the shelf, by the IU book.",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:10:22Z",
-      "role": "user",
-      "text": "what did I study at IU?",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:10:22Z",
-      "role": "keeper",
-      "text": "A Bachelor's in Applied Artificial Intelligence at IU International University of Applied Sciences, from August 2023 to February 2026. You completed the first year, covering AI, large language models, computer vision, reinforcement learning and human-in-the-loop systems.",
       "book": null
      }
     ],
@@ -1249,12 +1225,6 @@
      ]
     },
     "turns": [
-     {
-      "t": "2026-08-22T21:19:23Z",
-      "role": "keeper",
-      "text": "gamentic, at github.com/hec-ovi/gamentic — it won 1st place at the Anna AI-Native App Hackathon 2026. It's a self-hosted browser AI dungeon RPG, fully local on an AMD Strix Halo, running a narrator agent plus one agent per character.",
-      "book": null
-     },
      {
       "t": "2026-08-22T21:25:26Z",
       "role": "user",
