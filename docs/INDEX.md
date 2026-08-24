@@ -17,4 +17,4 @@ Deployment: one Cloud Run service (engine + frontend statics). Dreaming rides Pu
 
 Reading order for a fresh session: this file, then the CONTRACT.md of the box being changed.
 
-Google Cloud architecture (product icons, print to PDF): `docs/diagrams/google-stack.html`
+Google Cloud architecture (product icons, print to PDF): `docs/diagrams/google-stack.html`. Console click-through: `docs/console-dive.html`.
