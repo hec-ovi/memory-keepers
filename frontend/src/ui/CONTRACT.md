@@ -133,7 +133,8 @@ per session at most) and never breaks the dialog.
 Holo frame + amber header (book title); the BODY stays a light paper page
 (paper tint, ink text, drop cap) for legibility. Meta chips, linked books
 (cross-keeper `parseBookLink`), Destroy behind confirm.
-- listens `book:open` {keeperId, slug}
+- listens `book:open` {keeperId, slug}; `mode:changed` interior:* -> overworld
+  closes the panel (Back to the island while a book is open)
 - emits `book:destroyed` {keeperId, slug}, `reader:closed` (every close)
 
 ### create_keeper.js: modal form (holo panel in `.overlay-backdrop`)
@@ -231,7 +232,8 @@ Keeper (view `main`) / Sit beside her (`chairs`) / Bookshelf (`shelf`) / Back
 to the island. View buttons emit `interior:view` {view}; the exit button
 emits `interior:exit` (it replaced the interior scene's old back button).
 `setActive(view)` mirrors the scene (active view button = holo-btn--primary
-+ aria-pressed; the exit button carries neither).
++ aria-pressed; the exit button carries neither). Inactive view buttons use
+the same glass fill as the readout (`rgba(20,10,4,.72)`).
 `createInteriorReadout({ root, bus, state, keeperId, capacity = LIBRARY_CAP })`;
 a small role="status" card bottom-left: her name, `LV n`, `<n> of <cap>
 shelved`, rest in warm words (`restWording`: rested / getting tired / needs

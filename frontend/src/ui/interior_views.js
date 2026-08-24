@@ -63,6 +63,8 @@ const CSS = `
 .mk-interior-views{position:absolute;right:16px;bottom:18px;z-index:20;display:flex;flex-direction:row;justify-content:flex-end;align-items:center;gap:8px;}
 .mk-interior-views .mk-view-btn{pointer-events:auto;}
 .mk-interior-views .mk-view-exit{margin-left:6px;}
+.mk-interior-views .mk-view-btn:not(.holo-btn--primary){background:rgba(20,10,4,.72);}
+.mk-interior-views .mk-view-btn:not(.holo-btn--primary):hover{background:rgba(20,10,4,.82);}
 .mk-interior-readout{position:absolute;left:16px;bottom:18px;z-index:20;display:flex;flex-direction:column;gap:2px;padding:8px 12px;pointer-events:none;background:rgba(20,10,4,.72);border:1px solid var(--holo-amber-dim,rgba(255,166,64,.45));border-radius:6px;box-shadow:0 0 14px rgba(255,150,40,.14);font-family:var(--holo-font,inherit);}
 .mk-interior-readout strong{font-size:.82rem;color:var(--holo-amber-hi,#ffd9a0);letter-spacing:.04em;}
 .mk-interior-readout span{font-size:.7rem;color:var(--holo-text,#ffe9d2);opacity:.9;}

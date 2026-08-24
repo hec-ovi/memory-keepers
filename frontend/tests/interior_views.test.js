@@ -47,9 +47,12 @@ describe("createInteriorViews", () => {
     }
     expect(VIEW_BUTTONS.map((b) => b.view)).toEqual(["main", "chairs", "shelf"]);
     expect(EXIT_LABEL).toBe("Back to the island");
-    // the cluster stacks vertically (top button = first in DOM order)
     const css = document.getElementById("mk-interior-views-style").textContent;
     expect(css).toMatch(/\.mk-interior-views\{[^}]*flex-direction:row/);
+    expect(css).toMatch(/\.mk-interior-readout\{[^}]*background:rgba\(20,10,4,\.72\)/);
+    expect(css).toMatch(
+      /\.mk-interior-views \.mk-view-btn:not\(\.holo-btn--primary\)\{background:rgba\(20,10,4,\.72\)/,
+    );
   });
 
   it("injects the holo kit styles and its own placement styles", () => {

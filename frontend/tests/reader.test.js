@@ -202,4 +202,26 @@ describe("createReader", () => {
     await user.click(screen.getByRole("button", { name: /close reader/i }));
     expect(closed).toHaveBeenCalledTimes(1);
   });
+
+  it("closes when the player leaves the instance back to the island", async () => {
+    server.use(serveBook(flyingBook()));
+    const closed = vi.fn();
+    bus.on("reader:closed", closed);
+    bus.emit("book:open", { keeperId: "dreams", slug: flyingBook().slug });
+    await screen.findByRole("heading", { name: "Flying over water" });
+    expect(reader.isOpen()).toBe(true);
+
+    bus.emit("mode:changed", { mode: "overworld", prev: "interior:dreams" });
+    expect(reader.isOpen()).toBe(false);
+    expect(closed).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog", { name: "book reader" })).toBeNull();
+  });
+
+  it("stays open when the mode change is not leaving an instance", async () => {
+    server.use(serveBook(flyingBook()));
+    bus.emit("book:open", { keeperId: "dreams", slug: flyingBook().slug });
+    await screen.findByRole("heading", { name: "Flying over water" });
+    bus.emit("mode:changed", { mode: "interior:dreams", prev: "overworld" });
+    expect(reader.isOpen()).toBe(true);
+  });
 });

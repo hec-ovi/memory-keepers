@@ -9,6 +9,8 @@
 //
 // Bus wiring:
 //   listens "book:open"      { keeperId, slug }  -> fetches and shows the book
+//   listens "mode:changed"   interior:* -> overworld closes the panel (Back
+//           to the island while a book is open)
 //   emits   "book:destroyed" { keeperId, slug }  after a confirmed destroy
 //   emits   "reader:closed"  whenever the panel closes (the interior scene
 //           returns the floating book to its shelf and walks the keeper home)
@@ -210,6 +212,13 @@ export function createReader({ root, state, bus, api, toasts, confirm, ui } = {}
   }
 
   offs.push(bus?.on?.("book:open", (p) => open(p?.keeperId, p?.slug)) ?? (() => {}));
+  // Back to the island (or any leave of her room) closes the book with the
+  // room: the panel belongs to the instance, not the overworld.
+  offs.push(
+    bus?.on?.("mode:changed", ({ mode, prev } = {}) => {
+      if (holo && String(prev ?? "").startsWith("interior:") && mode === "overworld") close();
+    }) ?? (() => {}),
+  );
 
   return {
     open,
