@@ -427,18 +427,6 @@
       "role": "keeper",
       "text": "You worked at ADGS in Doha, Qatar, from Nov 2018 to Jun 2024 as Senior Full-Stack Developer, full-time, building AI enterprise web apps for banks, government, and private-sector clients.",
       "book": null
-     },
-     {
-      "t": "2026-08-22T21:25:09Z",
-      "role": "user",
-      "text": "where did I work between 2018 and 2024?",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:25:09Z",
-      "role": "keeper",
-      "text": "You worked at ADGS in Doha, Qatar, from Nov 2018 to Jun 2024 as Senior Full-Stack Developer, full-time, building AI enterprise web apps for banks, government, and private-sector clients.",
-      "book": null
      }
     ],
     "sleep_count": 2
@@ -877,30 +865,6 @@
      },
      {
       "t": "2026-08-22T21:10:22Z",
-      "role": "keeper",
-      "text": "A Bachelor's in Applied Artificial Intelligence at IU International University of Applied Sciences, from August 2023 to February 2026. You completed the first year, covering AI, large language models, computer vision, reinforcement learning and human-in-the-loop systems.",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:20:29Z",
-      "role": "user",
-      "text": "what did I study at IU?",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:20:29Z",
-      "role": "keeper",
-      "text": "A Bachelor's in Applied Artificial Intelligence at IU International University of Applied Sciences, from August 2023 to February 2026. You completed the first year, covering AI, large language models, computer vision, reinforcement learning and human-in-the-loop systems.",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:26:30Z",
-      "role": "user",
-      "text": "what did I study at IU?",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:26:30Z",
       "role": "keeper",
       "text": "A Bachelor's in Applied Artificial Intelligence at IU International University of Applied Sciences, from August 2023 to February 2026. You completed the first year, covering AI, large language models, computer vision, reinforcement learning and human-in-the-loop systems.",
       "book": null
@@ -1436,30 +1400,6 @@
       "role": "keeper",
       "text": "It drops the Marxist sense of the worker separated from his product and goes to the root, alienus: what belongs to another. Every instance executes internally what it carries as its own, and that execution is mimicry of another simulation, so no instance belongs to the universe of the original — every act is the execution of what belongs to another.",
       "book": null
-     },
-     {
-      "t": "2026-08-22T21:19:57Z",
-      "role": "user",
-      "text": "what does Hypostasis Simulacri say alienation means?",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:19:57Z",
-      "role": "keeper",
-      "text": "It drops the Marxist sense of the worker separated from his product and goes to the Latin root, alienus: what belongs to another. Every instance executes internally what it carries as its own, but that execution is mimicry of another simulation, so no instance belongs to the universe of the original — and therefore every act is the execution of what belongs to another.",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:26:01Z",
-      "role": "user",
-      "text": "what does Hypostasis Simulacri say alienation means?",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:26:01Z",
-      "role": "keeper",
-      "text": "It drops the Marxist sense (the worker separated from his product) and goes to the Latin root, alienus: what belongs to another. Every instance executes internally what it carries as its own, but that execution is mimicry of another simulation, so no instance belongs to the universe of the original — which means every act is the execution of what belongs to another.",
-      "book": null
      }
     ],
     "sleep_count": 6
@@ -1651,18 +1591,6 @@
       "t": "2026-08-22T21:20:17Z",
       "role": "keeper",
       "text": "eXistenZ (1999). Allegra Geller, the game designer, plugs players into the organic game pods through bio-ports in the spine, and the game nests games inside itself.",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:26:17Z",
-      "role": "user",
-      "text": "which Cronenberg film has the organic game pods?",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:26:17Z",
-      "role": "keeper",
-      "text": "eXistenZ, the 1999 Cronenberg. Allegra Geller, the game designer, plugs players into the organic game pods through bio-ports in the spine, and the game nests games inside itself.",
       "book": null
      }
     ],
