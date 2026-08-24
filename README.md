@@ -8,6 +8,8 @@ Built for the All Things Agentic Hackathon (The Collaborative Partner track).
 
 Interactive architecture map: [hec-ovi.github.io/memory-keepers](https://hec-ovi.github.io/memory-keepers/)
 
+Google Cloud architecture (official product icons, print to PDF): [docs/diagrams/google-stack.html](docs/diagrams/google-stack.html)
+
 ## Why
 
 Most AI still lives in chatbots: a text box that waits. The question behind this project is how interacting with an AI can feel natural, carry real meaning, and cover the whole spectrum of what you do, instead of solving one narrow problem. We are, in the end, a collection of memories and the events that happened to us, so the app points at life and memory itself.
@@ -18,15 +20,35 @@ Privacy first: the same code runs against Gemini on Vertex AI or entirely on you
 
 ## Stack
 
-- Gemini on Vertex AI: keeper replies, synthesis, dream prose
-- Google ADK + GenAI SDK: monument root agent, one agent per keeper (call-and-return tools), dream agents
-- Cloud Run: one service, engine plus frontend
-- Firestore: worlds, keepers, books, sessions, dream runs
-- Pub/Sub + Cloud Scheduler: the nightly dream sweep
-- Cloud Text-to-Speech and Speech-to-Text: keeper voices and the talk key
-- Gemma on llama.cpp: the local model tier
-- Keeper tools: YouTube and podcast transcripts, song facts (MusicBrainz) and lyrics (LRCLIB), book facts and public-domain texts (Gutendex), movie facts and plots (OMDb, Wikidata, Wikipedia). `resolve_date` turns "tomorrow" or "in two weeks" into the calendar date before anything is written, in every keeper flow, the main agent and the ridge
-- three.js frontend (no build step), FastAPI engine, Docker
+Google products, official names:
+
+- Gemini 3.5 Flash on Vertex AI (global endpoint): keeper replies, synthesis, dream prose
+- Agent Development Kit (Python) and Google GenAI SDK: monument root, one AgentTool per keeper (call-and-return), ridge keepers, dream agents
+- Cloud Run: one service, engine plus the three.js island
+- Firestore: the only store (worlds, keepers, books, sessions, dream runs)
+- Pub/Sub and Cloud Scheduler: nightly dream sweep and tired-keeper events
+- Cloud Text-to-Speech and Cloud Speech-to-Text: keeper voice and hold T
+- Gemma open weights: local tier, same code, MODEL_TIER=local
+- Cloud Build, Artifact Registry, Cloud Logging, Cloud Billing: deploy, image, logs, spend cap
+
+Keeper lookup tools (not Google): YouTube and podcast transcripts, song facts (MusicBrainz) and lyrics (LRCLIB), book facts (Gutendex), movie facts and plots (OMDb, Wikidata, Wikipedia). `resolve_date` turns "tomorrow" or "in two weeks" into the calendar date before anything is written.
+
+three.js frontend (no build step), FastAPI engine, Docker.
+
+## Hackathon requirements
+
+All Things Agentic, track The Collaborative Partner. How the stack hits the published rules:
+
+- **Gemini 3.5 or newer:** Gemini 3.5 Flash through Vertex AI, not a stub.
+- **Google Agent Framework:** ADK plus GenAI SDK. One required, both present. Keepers are AgentTool so the root can fan out and come back.
+- **Google Cloud infrastructure:** Cloud Run, Firestore, and Pub/Sub. One required. Scheduler, speech, and Build sit on top of that.
+- **Collaborative Partner:** keepers remember per life layer, ask from real books, ridge keepers guide. Nightly dreaming is the unattended improvement.
+- **Innovation (40%):** not a chat box. Books, grounded ask, knowledge graph, dark keepers from what returns.
+- **Architecture (30%):** contract boxes, store vs session split, Pub/Sub dreaming because Cloud Run throttles CPU after the response, meters and an island key.
+- **Demo (30%):** Cloud Run URL, README spin-up (compose and from-zero deploy), architecture diagram above, contract tests on the real app.
+- **Bonus models (0.6 cap):** Gemma (named in the rules), Cloud Text-to-Speech, Cloud Speech-to-Text. Gemini is the required model, not a bonus.
+- **Bonus publications (0.4):** blog and #AllThingsAgenticHackathon post still to publish.
+- **Video (still to record):** max 4 minutes, live island, say Gemini 3.5 and ADK, show Cloud Console or the `.run` URL.
 
 ## Content and sources
 

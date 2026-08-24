@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Memory Keepers · Google Cloud architecture</title>
+<meta name="description" content="Google Cloud architecture diagram and All Things Agentic Hackathon requirements coverage for Memory Keepers.">
+<style>
+  :root {
+    --blue: #1a73e8;
+    --blue-50: #e8f0fe;
+    --green: #137333;
+    --green-50: #e6f4ea;
+    --text: #202124;
+    --muted: #5f6368;
+    --line: #dadce0;
+    --paper: #fff;
+    --page: #f8f9fa;
+    --ink: #3c4043;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 }
+  html { background: var(--page) }
+  body {
+    color: var(--text);
+    font-family: "Noto Sans", Roboto, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .bar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding: 10px 24px;
+    background: var(--paper); border-bottom: 1px solid var(--line);
+  }
+  .bar b { color: var(--blue); letter-spacing: .08em; font-size: 12px }
+  .bar button {
+    background: var(--blue); color: #fff; border: 0;
+    padding: 8px 14px; font: 650 13px/1 inherit; cursor: pointer;
+  }
+  .bar button:hover { filter: brightness(1.05) }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 24px 64px }
+  .sheet {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    padding: 36px 40px 28px;
+    margin-bottom: 28px;
+  }
+  .kick { color: var(--blue); font-weight: 700; letter-spacing: .28em; font-size: 11px }
+  h1 { font-size: 32px; font-weight: 700; letter-spacing: -.02em; margin: 6px 0 4px; line-height: 1.15 }
+  .lede { color: var(--muted); font-size: 15px; max-width: 72ch }
+  h2 {
+    font-size: 13px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--blue); margin: 28px 0 12px; font-weight: 700;
+  }
+  h3 { font-size: 15px; font-weight: 700; margin: 0 0 6px }
+
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch }
+  .zone {
+    border: 1px dashed #aecbfa;
+    background: var(--blue-50);
+    padding: 14px 14px 16px;
+    flex: 1 1 280px;
+  }
+  .zone.green { border-color: #a8dab5; background: var(--green-50) }
+  .zone.white { background: #fff; border-color: var(--line) }
+  .zone header {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    font-weight: 700; color: var(--blue); margin-bottom: 10px;
+  }
+  .zone.green header { color: var(--green) }
+
+  .prod {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #fff; border: 1px solid var(--line);
+    padding: 10px 12px; min-width: 210px; flex: 1 1 210px;
+  }
+  .prod img { width: 40px; height: 40px; flex: none }
+  .prod strong { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.25 }
+  .prod span { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.4; margin-top: 2px }
+
+  .flow {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 12px; letter-spacing: .04em;
+    padding: 4px 0;
+  }
+  .flow::before, .flow::after {
+    content: ""; flex: 1; height: 1px; background: var(--line); margin: 0 12px;
+  }
+
+  .agents { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px }
+  .agents p {
+    background: #fff; border: 1px solid var(--line);
+    padding: 8px 10px; font-size: 12.5px; color: var(--ink);
+  }
+  .agents b { display: block; color: var(--text); font-size: 12.5px }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+  th { color: var(--muted); font-weight: 650; font-size: 11px; letter-spacing: .08em; text-transform: uppercase }
+  td.ok { color: var(--green); font-weight: 700; white-space: nowrap; width: 7.5em }
+  td.open { color: #b06000; font-weight: 700; white-space: nowrap; width: 7.5em }
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 10px; max-width: 90ch }
+
+  .foot {
+    display: flex; justify-content: space-between; gap: 16px;
+    margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 11.5px;
+  }
+
+  @media print {
+    .bar { display: none }
+    html, body { background: #fff }
+    .wrap { max-width: none; padding: 0; margin: 0 }
+    .sheet {
+      border: 0; margin: 0; padding: 12mm 14mm;
+      break-after: page; page-break-after: always;
+    }
+    .sheet:last-child { break-after: auto; page-break-after: auto }
+    @page { size: A3 landscape; margin: 10mm }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact }
+  }
+</style>
+<body>
+<div class="bar">
+  <b>GOOGLE CLOUD ARCHITECTURE</b>
+  <button type="button" onclick="window.print()">Print / Save as PDF</button>
+</div>
+<div class="wrap">
+
+<section class="sheet">
+  <div class="kick">ALL THINGS AGENTIC HACKATHON · THE COLLABORATIVE PARTNER</div>
+  <h1>Memory Keepers</h1>
+  <p class="lede">Google Cloud architecture. Product names and icons follow the Google Cloud icon library. One Cloud Run service holds the island and the agents. Firestore is the only store. Dreaming is Pub/Sub and Cloud Scheduler, not a background thread.</p>
+
+  <h2>Request path</h2>
+  <div class="row">
+    <figure class="prod">
+      <img src="icons/user_preferences.svg" alt="">
+      <figcaption>
+        <strong>User</strong>
+        <span>walks the island, types or holds T to talk</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/cloud_run.svg" alt="">
+      <figcaption>
+        <strong>Cloud Run</strong>
+        <span>one service: three.js island + FastAPI engine, HTTPS</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/identity_and_access_management.svg" alt="">
+      <figcaption>
+        <strong>Island key</strong>
+        <span>ACCESS_CODE on Cloud Run. Anonymous traffic never reaches a model</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="flow">inside the Cloud Run service</div>
+
+  <div class="row">
+    <div class="zone" style="flex: 1.15">
+      <header>Agent Development Kit + Google GenAI SDK</header>
+      <div class="row">
+        <figure class="prod">
+          <img src="icons/advanced_agent_modeling.svg" alt="">
+          <figcaption>
+            <strong>Agent Development Kit</strong>
+            <span>Python ADK. Keepers are AgentTool, call-and-return. The root never transfers control</span>
+          </figcaption>
+        </figure>
+      </div>
+      <div class="agents">
+        <p><b>Monument</b>root agent. Holds no corpus. Routes, creates keepers, synthesizes across shelves</p>
+        <p><b>Keeper agents</b>one agent per topic. Tell, ask, talk, notes. Tools only when the message names that work</p>
+        <p><b>Ridge keepers</b>born by dreaming. Read any village book. Therapeutic, no writes</p>
+        <p><b>Dream agents</b>theme select, dark-keeper prose, night narrative</p>
+      </div>
+    </div>
+    <div class="zone" style="flex: .85">
+      <header>Models</header>
+      <div class="row">
+        <figure class="prod">
+          <img src="icons/vertexai.svg" alt="">
+          <figcaption>
+            <strong>Vertex AI</strong>
+            <span>Gemini 3.5 Flash, global endpoint. Replies, synthesis, dream prose</span>
+          </figcaption>
+        </figure>
+        <figure class="prod">
+          <img src="icons/ai_platform.svg" alt="">
+          <figcaption>
+            <strong>Gemma</strong>
+            <span>open weights on the operator's machine. Same code, MODEL_TIER=local</span>
+          </figcaption>
+        </figure>
+      </div>
+      <p class="note" style="margin-top:12px">The engine, agents and dreaming never see which tier is live. Cloud is the hosted path. Local is privacy. A fake tier keeps every test offline.</p>
+    </div>
+  </div>
+
+  <div class="flow">state, night, and speech</div>
+
+  <div class="row">
+    <figure class="prod">
+      <img src="icons/firestore.svg" alt="">
+      <figcaption>
+        <strong>Firestore</strong>
+        <span>the only store: worlds, keepers, books, sessions, dream runs</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/pubsub.svg" alt="">
+      <figcaption>
+        <strong>Pub/Sub</strong>
+        <span>topic dream-runs. Push into /internal/dream-run. Tired keepers publish here</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/cloud_scheduler.svg" alt="">
+      <figcaption>
+        <strong>Cloud Scheduler</strong>
+        <span>nightly POST /internal/nightly. Every world dreams unattended</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/text-to-speech.svg" alt="">
+      <figcaption>
+        <strong>Cloud Text-to-Speech</strong>
+        <span>keeper voice. One voice per kind: light, dark, monument</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/speech-to-text.svg" alt="">
+      <figcaption>
+        <strong>Cloud Speech-to-Text</strong>
+        <span>hold T. latest_short, en-US. Nothing stored</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <h2>Deploy and ops</h2>
+  <div class="row">
+    <figure class="prod">
+      <img src="icons/cloud_build.svg" alt="">
+      <figcaption>
+        <strong>Cloud Build</strong>
+        <span>Dockerfile at repo root. Cloud Run source deploy</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/artifact_registry.svg" alt="">
+      <figcaption>
+        <strong>Artifact Registry</strong>
+        <span>the image Cloud Run serves</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/cloud_logging.svg" alt="">
+      <figcaption>
+        <strong>Cloud Logging</strong>
+        <span>Vertex calls and dream runs visible in Console</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/billing.svg" alt="">
+      <figcaption>
+        <strong>Cloud Billing</strong>
+        <span>budget at $5. A cap function detaches billing at the line</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/secret_manager.svg" alt="">
+      <figcaption>
+        <strong>Env on the service</strong>
+        <span>INTERNAL_TOKEN, ACCESS_CODE. Never in the repo</span>
+      </figcaption>
+    </figure>
+    <figure class="prod">
+      <img src="icons/project.svg" alt="">
+      <figcaption>
+        <strong>Project</strong>
+        <span>memory-keepers-504915 · us-central1 · Vertex location global</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="zone white" style="margin-top:16px">
+    <header>Not Google (lookups only, never stored as copies)</header>
+    <p class="note" style="margin:0">YouTube transcripts, podcast transcripts, MusicBrainz song facts, LRCLIB lyrics, Gutendex book facts, OMDb / Wikidata / Wikipedia movie facts. Fetched into the model context while a book is written. The book holds facts, short quotes, and the user's relationship with the work.</p>
+  </div>
+
+  <div class="foot">
+    <div>github.com/hec-ovi/memory-keepers · hosted on Cloud Run</div>
+    <div>Product icons: Google Cloud icon library. Architecture page 1 of 2</div>
+  </div>
+</section>
+
+<section class="sheet">
+  <div class="kick">ALL THINGS AGENTIC HACKATHON</div>
+  <h1>Requirements coverage</h1>
+  <p class="lede">Mapped to the live Devpost page (What to Build, What to Submit, Judging Criteria, Bonus Points). Nothing here is claimed that the repo does not do. Bonus publications are still open.</p>
+
+  <h2>Mandatory technology (every project, every track)</h2>
+  <table>
+    <thead><tr><th>Rule</th><th>Status</th><th>How this project meets it</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Gemini 3.5 or newer, Gemini API or Vertex AI</td>
+        <td class="ok">Covered</td>
+        <td>Gemini 3.5 Flash on Vertex AI, global endpoint. Env GEMINI_MODEL, GOOGLE_GENAI_USE_VERTEXAI=TRUE. Cloud is the hosted brain.</td>
+      </tr>
+      <tr>
+        <td>At least one Google Agent Framework: ADK, GenAI SDK, Antigravity SDK, or GenKit</td>
+        <td class="ok">Covered</td>
+        <td>Google ADK (Python) plus Google GenAI SDK types. Monument root, per-keeper AgentTool, ridge, dream agents. Two frameworks where one is required.</td>
+      </tr>
+      <tr>
+        <td>At least one Google Cloud infrastructure service (Cloud Run, Cloud SQL, Firestore, GKE, or Pub/Sub)</td>
+        <td class="ok">Covered</td>
+        <td>Cloud Run, Firestore, and Pub/Sub. Also Cloud Scheduler, Cloud Text-to-Speech, Cloud Speech-to-Text, Cloud Build. One required, several in production.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Track: The Collaborative Partner</h2>
+  <table>
+    <thead><tr><th>Track ask</th><th>Status</th><th>Where it lives</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Interactive expert that guides, asks, and remembers</td>
+        <td class="ok">Covered</td>
+        <td>Each keeper is an expert on one life layer. Ask is grounded in opened books. Ridge keepers ask one real question. Monument routes across shelves.</td>
+      </tr>
+      <tr>
+        <td>Gets better every time it is used</td>
+        <td class="ok">Covered</td>
+        <td>Every tell writes or grows a book. Sleep binds leftover conversation. Nightly dreaming builds the graph and births ridge keepers from what keeps returning. Unattended.</td>
+      </tr>
+      <tr>
+        <td>Autonomous action, not only chat (judges reward this)</td>
+        <td class="ok">Covered</td>
+        <td>Dreaming is Pub/Sub + Cloud Scheduler. Tired keepers publish. The island consolidates while the user is away. That is the autonomous pass.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Judging criteria (0–10 scale, weights as published)</h2>
+  <table>
+    <thead><tr><th>Criterion</th><th>Weight</th><th>How the work answers it</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Innovation and operational utility</td>
+        <td>40%</td>
+        <td>Memories scatter across life. The product is not a chatbot: keepers write books, answers are grounded, night builds a knowledge graph and names what you avoid. Dreaming is the high-value action that runs without hand-holding.</td>
+      </tr>
+      <tr>
+        <td>Architectural discipline and tech stack</td>
+        <td>30%</td>
+        <td>Boxes with contracts. ADK AgentTool not transfer, so the root can synthesize. Firestore owns the library, sessions stay on the keeper. Cloud Run CPU throttle made dreaming Pub/Sub. Meters, caps, island key, billing detach. Failures fall back; the game does not die on a model error.</td>
+      </tr>
+      <tr>
+        <td>Demo and production readiness</td>
+        <td>30%</td>
+        <td>Hosted Cloud Run URL. README spin-up from zero and docker compose locally. This architecture diagram. Contract tests on the real FastAPI app and ADK runner. Video must still show Console, Vertex logs, and the .run URL.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What to submit</h2>
+  <table>
+    <thead><tr><th>Field</th><th>Status</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Category</td><td class="ok">Chosen</td><td>The Collaborative Partner</td></tr>
+      <tr><td>Hosted project URL</td><td class="ok">Live</td><td>Cloud Run service, island key in Devpost testing credentials</td></tr>
+      <tr><td>Text description</td><td class="ok">Drafted</td><td>README + Devpost About</td></tr>
+      <tr><td>Code repository</td><td class="ok">Public</td><td>github.com/hec-ovi/memory-keepers</td></tr>
+      <tr><td>Spin-up instructions in README.md</td><td class="ok">Present</td><td>Run locally (compose) and Deploy to Google Cloud (from zero)</td></tr>
+      <tr><td>Architecture diagram</td><td class="ok">This file</td><td>How Gemini, ADK, Cloud Run, Firestore, Pub/Sub, speech, and Gemma connect</td></tr>
+      <tr><td>Demo video, max 4 min, live app, Google Cloud backend visible, name Gemini + ADK</td><td class="open">To record</td><td>Shot list in the private walkthrough. Placeholder is not the submission video</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Bonus points (1.0 cap)</h2>
+  <table>
+    <thead><tr><th>Bonus</th><th>Points</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Additional Google AI models, 0.2 each, 0.6 cap. Rules name Gemma; "such as" is not a closed list</td>
+        <td>0.6</td>
+        <td class="ok">Integrated: Gemma (named), Cloud Text-to-Speech, Cloud Speech-to-Text. Gemini 3.5 is the required model, not a bonus</td>
+      </tr>
+      <tr>
+        <td>Public blog, podcast, or video that says it was created for entering this hackathon</td>
+        <td>0.2</td>
+        <td class="open">Not published yet</td>
+      </tr>
+      <tr>
+        <td>Social post with #AllThingsAgenticHackathon on X or LinkedIn</td>
+        <td>0.2</td>
+        <td class="open">Not posted yet</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="note">Gemma is the bonus the rules name. TTS and STT are Google AI models used end to end; whether judges count them is their call. They are in the product either way (hold T, spoken replies).</p>
+
+  <h2>Twist language on the rules page (older track names)</h2>
+  <table>
+    <thead><tr><th>Published twist</th><th>How it shows up here</th></tr></thead>
+    <tbody>
+      <tr><td>Bring Your Own Friction: a personal, messy problem</td><td>Memories across work, habits, and hobbies. The user is the corpus.</td></tr>
+      <tr><td>Synthesize or mutate data, not only read it</td><td>Dreaming links shelves, writes ridge keepers, builds the graph.</td></tr>
+      <tr><td>Multi-agent, specialized delegates, unlikely hero</td><td>Monument routes. Each keeper is one AgentTool. The island is a personal librarian, not an enterprise bot.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <div>Print: Chrome, Save as PDF, A3 landscape, Background graphics on</div>
+    <div>Product icons: Google Cloud icon library. Architecture page 2 of 2</div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
