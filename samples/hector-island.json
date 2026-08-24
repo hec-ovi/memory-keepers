@@ -1564,12 +1564,6 @@
     },
     "turns": [
      {
-      "t": "2026-08-22T21:09:50Z",
-      "role": "keeper",
-      "text": "eXistenZ, the 1999 Cronenberg. Allegra Geller plugs players into the organic game pods through bio-ports in the spine, and the game nests games inside it.",
-      "book": null
-     },
-     {
       "t": "2026-08-22T21:17:12Z",
       "role": "user",
       "text": "eXistenZ, Cronenberg 1999, rewatched it this week. Allegra Geller the game designer plugs players into organic game pods through bio-ports in the spine, the game contains games, and by the end nobody can say if they are still inside one. Those nested realities are exactly what my books call instances executing what belongs to another. To me it is the playable version of Hypostasis Simulacri.",
@@ -1579,18 +1573,6 @@
       "t": "2026-08-22T21:17:12Z",
       "role": "keeper",
       "text": "Shelved: your eXistenZ rewatch, and the nested game pods as the playable version of Hypostasis Simulacri.",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:20:17Z",
-      "role": "user",
-      "text": "which Cronenberg film has the organic game pods?",
-      "book": null
-     },
-     {
-      "t": "2026-08-22T21:20:17Z",
-      "role": "keeper",
-      "text": "eXistenZ (1999). Allegra Geller, the game designer, plugs players into the organic game pods through bio-ports in the spine, and the game nests games inside itself.",
       "book": null
      }
     ],
