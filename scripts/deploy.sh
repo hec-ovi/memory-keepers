@@ -4,7 +4,7 @@
 # Prereqs: gcloud auth login, billing on the project, INTERNAL_TOKEN set.
 set -euo pipefail
 
-PROJECT="${PROJECT:-memory-keepers-504915}"
+PROJECT="${PROJECT:-memory-keepers-506517}"
 REGION="${REGION:-us-central1}"
 SERVICE="${SERVICE:-memory-keepers}"
 TOPIC="${DREAM_TOPIC:-dream-runs}"
@@ -18,7 +18,20 @@ VERTEX_LOCATION="${VERTEX_LOCATION:-global}"
 gcloud config set project "$PROJECT"
 gcloud services enable run.googleapis.com firestore.googleapis.com \
   pubsub.googleapis.com aiplatform.googleapis.com texttospeech.googleapis.com \
-  speech.googleapis.com cloudscheduler.googleapis.com cloudbuild.googleapis.com
+  speech.googleapis.com cloudscheduler.googleapis.com cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com
+
+# Cloud Build on new projects runs as the Compute Engine default SA, which
+# starts without Cloud Build or source-bucket rights. roles/run.builder is
+# the Cloud Run docs role; cloudbuild.builds.builder is what source deploy
+# actually checks for this error.
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
+BUILD_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+for role in roles/run.builder roles/cloudbuild.builds.builder roles/storage.objectViewer; do
+  gcloud projects add-iam-policy-binding "$PROJECT" \
+    --member="serviceAccount:${BUILD_SA}" --role="$role" \
+    --condition=None --quiet >/dev/null
+done
 
 gcloud firestore databases create --location="$REGION" 2>/dev/null || true
 

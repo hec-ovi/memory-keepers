@@ -134,7 +134,7 @@ Four steps from a blank Google account to your own island; `scripts/deploy.sh` d
 
 4. Open the URL the script prints. Done: the script enabled the APIs and created the Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler dream sweep.
 
-No permissions to grant by hand: you created the project, so you own it, and Cloud Run runs as the project's default service account, which on a personal project already reaches Firestore, Vertex AI, and the speech APIs. Inside a company organization with hardened defaults, give that service account `roles/datastore.user` and `roles/aiplatform.user`.
+The script grants Cloud Run Builder, Cloud Build Builder, and Storage Object Viewer to the project's default Compute Engine service account. Cloud Build uses that account for `--source` deploys, and a new project does not give it those rights on its own. You own the project, so you do not grant anything by hand. Inside a company organization with hardened defaults, also give that service account `roles/datastore.user` and `roles/aiplatform.user`.
 
 Optional env before step 3: `ACCESS_CODE=<island key>` gates the API behind `X-Access-Code` (visitors enter it once, or open a `?key=` link; anonymous traffic never reaches a model). `OMDB_KEY=<free key>` adds IMDb ratings to movie lookups. `MIN_INSTANCES=1 CPU_ALWAYS=1` keeps one instance warm for demo days. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
