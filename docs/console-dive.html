@@ -388,7 +388,7 @@ export ACCESS_CODE='paste from .env'</pre>
   --allow-unauthenticated \\
   --min-instances 1 --no-cpu-throttling \\
   --memory 1Gi --timeout 300 --max-instances 2 \\
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=TRUE,MODEL_TIER=cloud,DREAM_DISPATCH=pubsub,DREAM_TOPIC=dream-runs,INTERNAL_TOKEN=${INTERNAL_TOKEN},ACCESS_CODE=${ACCESS_CODE}"</pre>
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=TRUE,MODEL_TIER=cloud,DREAM_DISPATCH=pubsub,DREAM_TOPIC=dream-runs,INTERNAL_TOKEN=$INTERNAL_TOKEN,ACCESS_CODE=$ACCESS_CODE"</pre>
     <p>If Cloud Shell asks to create the Artifact Registry repo <code>cloud-run-source-deploy</code>, say yes.</p>
     <p class="wait">Building Container takes several minutes. Leave it. Do not close Cloud Shell.</p>
   `
@@ -516,7 +516,9 @@ function show(n) {
   prev.disabled = i === 0;
   next.disabled = i === steps.length - 1;
   nav.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.ch === s.ch));
-  history.replaceState(null, "", "#" + (i + 1));
+  if (location.protocol !== "file:") {
+    try { history.replaceState(null, "", "#" + (i + 1)); } catch (e) {}
+  }
   pane.scrollTop = 0;
 }
 prev.onclick = () => show(i - 1);
