@@ -132,7 +132,7 @@ Four steps from a blank Google account to your own island; `./deploy.sh PROJECT_
    ./deploy.sh my-island-4821
    ```
 
-4. Open the URL the script prints. Done: the script loaded `.env`, granted Cloud Build rights, enabled the APIs, and created the Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler dream sweep. One instance stays warm (no cold start). After demo days, `./deploy.sh my-island-4821 --scale-to-zero`.
+4. Open the URL the script prints. Done: the script loaded `.env`, granted Cloud Build rights, enabled the APIs, and created the Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler dream sweep. One instance stays warm (no cold start).
 
 The script grants Cloud Run Builder, Cloud Build Builder, and Storage Object Viewer to the project's default Compute Engine service account. Cloud Build uses that account for `--source` deploys, and a new project does not give it those rights on its own. You own the project, so you do not grant anything by hand. Inside a company organization with hardened defaults, also give that service account `roles/datastore.user` and `roles/aiplatform.user`.
 
