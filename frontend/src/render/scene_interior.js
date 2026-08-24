@@ -1132,7 +1132,7 @@ export function createInteriorScene(ctx = {}) {
   plant.position.set(-2.85, 0, -3.05);
   scene.add(plant);
 
-  // floor books: a little stack and a stray one
+  // floor books: a little stack by the fireplace
   const clutter = new THREE.Group();
   const stackColors = [0x7c5cad, 0xc9737f, 0x4a8a7d];
   for (let i = 0; i < 3; i++) {
@@ -1141,12 +1141,8 @@ export function createInteriorScene(ctx = {}) {
     b.rotation.y = (i - 1) * 0.35;
     clutter.add(b);
   }
-  clutter.position.set(1.3, 0, -2.95); // a little stack by the fireplace
+  clutter.position.set(1.3, 0, -2.95);
   scene.add(clutter);
-  const stray = box(0.3, 0.055, 0.24, 0xa85b66, { roughness: 0.7 });
-  stray.position.set(-1.15, 0.028, 1.35);
-  stray.rotation.y = 0.9;
-  scene.add(stray);
 
   // --- the bookcase along the left wall ---
   const caseWood = night ? 0x554975 : 0x7a5c40;

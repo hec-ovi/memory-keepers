@@ -149,8 +149,8 @@ Emitted:
 - `"book:open"` `{ keeperId, slug }` when the fetched book floats out (the view
   is forced to `main` first; the pre-pick view is remembered). While she
   dozes, a pick opens the reader directly without waking her (no fetch).
-- `"keeper:selected"` `{ keeperId }` when the empty-library hint book OR the keeper
-  herself is clicked (same talk panel as the overworld).
+- `"keeper:selected"` `{ keeperId }` when the keeper herself is clicked
+  (same talk panel as the overworld).
 - `"interior:exit"` on Esc from the settled main view (the scene no longer
   has its own back button and no longer emits `mode:set`).
 
@@ -177,7 +177,7 @@ island" (and calls `onExit()`); the readout consumes `"state:loaded"`.
   wall re-render upscaled (`shelfLabelSizing`, cap 3x, never downscaled) so
   the close-up stays crisp.
 - The guest armchair and the bookcase are raycast hotspots (hover cursor +
-  soft emissive highlight); books and the hint book always win the raycast
+  soft emissive highlight); books always win the raycast
   over hotspots; a hotspot for the view you are in does nothing. The keeper's
   body meshes are raycast targets too (`userData.pick === "keeper"`).
 - The silent memory fetch NEVER opens the reader or changes the camera view;
@@ -186,7 +186,7 @@ island" (and calls `onExit()`); the readout consumes `"state:loaded"`.
 - Memory fetches drain from the queue only when she is awake, seated and the
   reader is closed; `memory:used` for other keepers / unknown slugs is dropped.
 - Everything from before the views feature is unchanged: sit/fetch machine
-  timeline, empty-library hint book, window sky, procedural textures,
+  timeline, window sky, procedural textures,
   `dispose()` releases every geometry/material/texture and all listeners.
 
 ### How to test
