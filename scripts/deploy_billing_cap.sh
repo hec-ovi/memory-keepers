@@ -4,7 +4,7 @@
 #   gcloud billing projects link $PROJECT --billing-account=$BILLING_ACCOUNT
 set -euo pipefail
 
-PROJECT="${PROJECT:-memory-keepers-506517}"
+PROJECT="${PROJECT:-memory-keepers-506518}"
 REGION="${REGION:-us-central1}"
 BILLING_ACCOUNT="${BILLING_ACCOUNT:?export BILLING_ACCOUNT=<id> first}"
 BUDGET_ID="${BUDGET_ID:?export BUDGET_ID=<budget id on that account> first}"

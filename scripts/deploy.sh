@@ -40,7 +40,8 @@ gcloud services enable run.googleapis.com firestore.googleapis.com \
 # Cloud Build on new projects runs as the Compute Engine default SA, which
 # starts without Cloud Build or source-bucket rights. roles/run.builder is
 # the Cloud Run docs role; cloudbuild.builds.builder is what source deploy
-# actually checks for this error.
+# actually checks for this error. The source zip lives in a GCS bucket whose
+# default ACL only lists projectEditor, so name the SA on that bucket too.
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
 BUILD_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 for role in roles/run.builder roles/cloudbuild.builds.builder roles/storage.objectViewer; do
@@ -48,6 +49,14 @@ for role in roles/run.builder roles/cloudbuild.builds.builder roles/storage.obje
     --member="serviceAccount:${BUILD_SA}" --role="$role" \
     --condition=None --quiet >/dev/null
 done
+SOURCE_BUCKET="run-sources-${PROJECT}-${REGION}"
+if ! gcloud storage buckets describe "gs://${SOURCE_BUCKET}" >/dev/null 2>&1; then
+  gcloud storage buckets create "gs://${SOURCE_BUCKET}" \
+    --project="$PROJECT" --location="$REGION" --uniform-bucket-level-access
+fi
+gcloud storage buckets add-iam-policy-binding "gs://${SOURCE_BUCKET}" \
+  --member="serviceAccount:${BUILD_SA}" --role="roles/storage.objectAdmin" \
+  --quiet >/dev/null
 
 gcloud firestore databases create --location="$REGION" 2>/dev/null || true
 
