@@ -108,7 +108,7 @@ Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites 
 
 ## Deploy to Google Cloud (from zero)
 
-Four steps from a blank Google account to your own island; `scripts/deploy.sh` does the heavy lifting.
+Four steps from a blank Google account to your own island; `./deploy.sh PROJECT_ID` does the heavy lifting.
 
 1. Install the [gcloud CLI](https://cloud.google.com/sdk/docs/install) and sign in:
 
@@ -128,15 +128,15 @@ Four steps from a blank Google account to your own island; `scripts/deploy.sh` d
 
    ```
    git clone https://github.com/hec-ovi/memory-keepers && cd memory-keepers
-   export INTERNAL_TOKEN=$(openssl rand -hex 16)
-   PROJECT=my-island-4821 scripts/deploy.sh
+   printf 'INTERNAL_TOKEN=%s\n' "$(openssl rand -hex 16)" > .env
+   ./deploy.sh my-island-4821
    ```
 
-4. Open the URL the script prints. Done: the script enabled the APIs and created the Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler dream sweep.
+4. Open the URL the script prints. Done: the script loaded `.env`, granted Cloud Build rights, enabled the APIs, and created the Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler dream sweep. One instance stays warm (no cold start). After demo days, `./deploy.sh my-island-4821 --scale-to-zero`.
 
 The script grants Cloud Run Builder, Cloud Build Builder, and Storage Object Viewer to the project's default Compute Engine service account. Cloud Build uses that account for `--source` deploys, and a new project does not give it those rights on its own. You own the project, so you do not grant anything by hand. Inside a company organization with hardened defaults, also give that service account `roles/datastore.user` and `roles/aiplatform.user`.
 
-Optional env before step 3: `ACCESS_CODE=<island key>` gates the API behind `X-Access-Code` (visitors enter it once, or open a `?key=` link; anonymous traffic never reaches a model). `OMDB_KEY=<free key>` adds IMDb ratings to movie lookups. `MIN_INSTANCES=1 CPU_ALWAYS=1` keeps one instance warm for demo days. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
+Optional lines in `.env` before step 3: `ACCESS_CODE=<island key>` gates the API behind `X-Access-Code` (visitors enter it once, or open a `?key=` link; anonymous traffic never reaches a model). `OMDB_KEY=<free key>` adds IMDb ratings to movie lookups. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
 ### Or let Gemini set it up
 
