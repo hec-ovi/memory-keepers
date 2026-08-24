@@ -45,7 +45,7 @@ All Things Agentic, track The Collaborative Partner. How the stack hits the publ
 - **Collaborative Partner:** keepers remember per life layer, ask from real books, ridge keepers guide. Nightly dreaming is the unattended improvement.
 - **Innovation (40%):** not a chat box. Books, grounded ask, knowledge graph, dark keepers from what returns.
 - **Architecture (30%):** contract boxes, store vs session split, Pub/Sub dreaming because Cloud Run throttles CPU after the response, meters and an island key.
-- **Demo (30%):** Cloud Run URL, README spin-up (compose and from-zero deploy), architecture diagram above, contract tests on the real app.
+- **Demo (30%):** Cloud Run URL, README spin-up (compose and Cloud Shell / gcloud), architecture diagram above, contract tests on the real app.
 - **Bonus models (0.6 cap):** Gemma (named in the rules), Cloud Text-to-Speech, Cloud Speech-to-Text. Gemini is the required model, not a bonus.
 - **Bonus publications (0.4):** blog and #AllThingsAgenticHackathon post still to publish.
 - **Video (still to record):** max 4 minutes, live island, say Gemini 3.5 and ADK, show Cloud Console or the `.run` URL.
@@ -106,48 +106,32 @@ docker compose run --rm test-frontend   # frontend (693 tests)
 
 Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set); frontend on vitest + jsdom + Testing Library + MSW.
 
-## Deploy to Google Cloud (from zero)
+## Deploy to Google Cloud
 
-Four steps from a blank Google account to your own island; `./deploy.sh PROJECT_ID` does the heavy lifting.
+The tool is [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud`). Cloud Shell already has it. Every step is also a Console click.
 
-1. Install the [gcloud CLI](https://cloud.google.com/sdk/docs/install) and sign in:
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.png)](https://ssh.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/hec-ovi/memory-keepers&cloudshell_tutorial=docs/cloud-shell.md)
 
-   ```
-   gcloud auth login
-   ```
+The walkthrough is [docs/cloud-shell.md](docs/cloud-shell.md) (same commands if you already have `gcloud` locally):
 
-2. Create a project and link your billing account (project ids are global, pick any unique suffix):
+1. Create a project and link billing.
+2. Enable Cloud Run, Firestore, Pub/Sub, Vertex AI, Cloud Text-to-Speech, Cloud Speech-to-Text, Cloud Scheduler, Cloud Build, Artifact Registry.
+3. Grant the default Compute Engine service account Cloud Run Builder, Cloud Build Builder, and Storage Object Viewer, and Storage Object Admin on the `run-sources-PROJECT-us-central1` bucket (new projects do not give Cloud Build those rights).
+4. Create a Firestore Native database in `us-central1`.
+5. `gcloud run deploy memory-keepers --source .` in `us-central1`, allow unauthenticated, one warm instance. Env: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION=global`, `GOOGLE_GENAI_USE_VERTEXAI=TRUE`, `MODEL_TIER=cloud`, `DREAM_DISPATCH=pubsub`, `DREAM_TOPIC=dream-runs`, `INTERNAL_TOKEN` (required). Optional: `ACCESS_CODE` (island key gate), `OMDB_KEY`.
+6. Pub/Sub topic `dream-runs` with a push subscription to `/internal/dream-run?token=...`, and Cloud Scheduler job `nightly-dream` (`0 3 * * *`) posting `/internal/nightly?token=...`.
 
-   ```
-   gcloud projects create my-island-4821
-   gcloud billing accounts list
-   gcloud billing projects link my-island-4821 --billing-account=<ACCOUNT_ID from the list>
-   ```
-
-3. Clone and deploy:
-
-   ```
-   git clone https://github.com/hec-ovi/memory-keepers && cd memory-keepers
-   printf 'INTERNAL_TOKEN=%s\n' "$(openssl rand -hex 16)" > .env
-   ./deploy.sh my-island-4821
-   ```
-
-4. Open the URL the script prints. Done: the script loaded `.env`, granted Cloud Build rights, enabled the APIs, and created the Cloud Run service (engine + frontend), Firestore, the `dream-runs` Pub/Sub topic with its push subscription, and the nightly Cloud Scheduler dream sweep. One instance stays warm (no cold start).
-
-The script grants Cloud Run Builder, Cloud Build Builder, and Storage Object Viewer to the project's default Compute Engine service account. Cloud Build uses that account for `--source` deploys, and a new project does not give it those rights on its own. You own the project, so you do not grant anything by hand. Inside a company organization with hardened defaults, also give that service account `roles/datastore.user` and `roles/aiplatform.user`.
-
-Optional lines in `.env` before step 3: `ACCESS_CODE=<island key>` gates the API behind `X-Access-Code` (visitors enter it once, or open a `?key=` link; anonymous traffic never reaches a model). `OMDB_KEY=<free key>` adds IMDb ratings to movie lookups. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
+Open the URL `gcloud` prints. With an island key, `/?key=` on that URL. Inside a company organization with hardened defaults, also grant that service account `roles/datastore.user` and `roles/aiplatform.user`. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
 ### Or let Gemini set it up
 
-The same four steps, driven by [Gemini CLI](https://github.com/google-gemini/gemini-cli):
+The same steps, driven by [Gemini CLI](https://github.com/google-gemini/gemini-cli):
 
 ```
 npm install -g @google/gemini-cli
 gemini
-> Clone https://github.com/hec-ovi/memory-keepers and follow the "Deploy to Google
-> Cloud (from zero)" steps in its README: create a project, link my billing account,
-> deploy with a random INTERNAL_TOKEN, and tell me the URL when done.
+> Clone https://github.com/hec-ovi/memory-keepers and follow docs/cloud-shell.md:
+> create a project, link my billing account, run the gcloud steps, tell me the URL.
 ```
 
 ## Layout

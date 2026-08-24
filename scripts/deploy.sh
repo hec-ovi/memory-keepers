@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# One-shot Google Cloud deployment: Cloud Run (engine + frontend), Firestore,
-# Pub/Sub dreaming, nightly Cloud Scheduler sweep.
-# usage: ./deploy.sh PROJECT_ID
+# Same gcloud sequence as docs/cloud-shell.md, for a local one-shot.
+# Public path is Cloud Shell / gcloud, not this file.
+# usage: scripts/deploy.sh PROJECT_ID
 # Loads .env from the repo root. INTERNAL_TOKEN is required; ACCESS_CODE and
 # OMDB_KEY are optional. One warm instance, CPU always on.
 set -euo pipefail
@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 if [[ $# -ne 1 || "$1" == -* ]]; then
-  echo "usage: ./deploy.sh PROJECT_ID" >&2
+  echo "usage: scripts/deploy.sh PROJECT_ID" >&2
   exit 1
 fi
 CLI_PROJECT="$1"

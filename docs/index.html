@@ -599,7 +599,7 @@ a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s 
         details:['A cold start lands on a seeded demo world, so every visitor sees a living island.']},
       {id:'cloudrun',x:COL(1),y:220,kind:'Cloud Run',lane:'steel',label:'one service',
         summary:'One Cloud Run service carries everything: the FastAPI engine plus the frontend statics.',
-        details:['<code>scripts/deploy.sh</code> creates the whole stack: service, topic, subscription, scheduler job.','Scales to zero between demos.']},
+        details:['<code>gcloud run deploy --source .</code> plus Firestore, Pub/Sub, Scheduler (docs/cloud-shell.md).','One instance stays warm.']},
       {id:'vertex',x:COL(2),y:40,kind:'Vertex AI',lane:'green',label:'Gemini',
         summary:'Gemini for chat and dream prose; the model is env-selected.',
         details:['<code>GEMINI_MODEL</code>, default <code>gemini-3.5-flash</code>; <code>GOOGLE_GENAI_USE_VERTEXAI=TRUE</code>.','Per-role override: <code>MODEL_TIER_CHAT</code> / <code>MODEL_TIER_DREAM</code>.']},
@@ -641,7 +641,7 @@ a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s 
   function gcText(){
     return '<p class="lede"><strong>One container in the cloud, the same stack on the desk.</strong> A single Cloud Run service serves the game and the API; Firestore holds everything; Pub/Sub and Cloud Scheduler drive the dreams; Vertex AI and Cloud Speech give the keepers a mind and a voice. Local dev runs the identical code on the official emulators for free.</p>'
       +'<div class="doc-section"><div class="ds-head"><h3>Managed services</h3></div><div class="cardgrid">'
-      +el.card({label:'Cloud Run',tag:'compute',color:LANE.steel,sum:'One service: engine + frontend statics, one URL, no CORS. <code>scripts/deploy.sh</code> creates the whole stack.'})
+      +el.card({label:'Cloud Run',tag:'compute',color:LANE.steel,sum:'One service: engine + frontend statics, one URL, no CORS. <code>gcloud run deploy --source .</code> plus Firestore, Pub/Sub, Scheduler.'})
       +el.card({label:'Firestore',tag:'store',color:LANE.green,sum:'The only store: worlds, keepers, books, sessions, dream runs.'})
       +el.card({label:'Pub/Sub',tag:'events',color:LANE.green,sum:'Topic <code>dream-runs</code>; a push subscription delivers every trigger into the token-gated <code>/internal/dream-run</code>.'})
       +el.card({label:'Cloud Scheduler',tag:'cron',color:LANE.green,sum:'Nightly 03:00 (<code>0 3 * * *</code>) posts <code>/internal/nightly</code>; every world dreams.'})
