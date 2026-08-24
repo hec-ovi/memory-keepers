@@ -65,6 +65,8 @@ describe("boot screens (real page entry)", () => {
     await screen.findByRole("heading", { name: "This island asks for its key" });
     expect(screen.queryByRole("heading", { name: "API ERROR" })).toBeNull();
     expect(screen.queryByLabelText("game hud")).toBeNull();
+    const keyInput = screen.getByLabelText("island key");
+    expect(keyInput.nextElementSibling).toBe(screen.getByRole("button", { name: "Enter" }));
 
     routes["/state"] = () => reply(200, { keepers: [], dream: { latest_run_id: null, running: false } });
     await userEvent.type(screen.getByLabelText("island key"), "open-sesame{Enter}");
