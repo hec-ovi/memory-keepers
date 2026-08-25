@@ -123,15 +123,23 @@ The walkthrough is [docs/cloud-shell.md](docs/cloud-shell.md) (same commands if 
 
 Open the URL `gcloud` prints. With an island key, `/?key=` on that URL. Inside a company organization with hardened defaults, also grant that service account `roles/datastore.user` and `roles/aiplatform.user`. `scripts/deploy_billing_cap.sh` adds a hard spend stop: a budget event detaches billing at the line.
 
-### Or let Gemini set it up
+### Or let an agent do it
 
-The same steps, driven by [Gemini CLI](https://github.com/google-gemini/gemini-cli):
+`AGENTS.md` at the repo root tells any shell-capable agent what to check (gcloud, git, login, billing), what to write (`.env`), what to run (`./deploy.sh PROJECT_ID`) and how to validate the result. With [Gemini CLI](https://github.com/google-gemini/gemini-cli) (`GEMINI.md` points it there):
 
 ```
 npm install -g @google/gemini-cli
+git clone https://github.com/hec-ovi/memory-keepers && cd memory-keepers
 gemini
-> Clone https://github.com/hec-ovi/memory-keepers and follow docs/cloud-shell.md:
-> create a project, link my billing account, run the gcloud steps, tell me the URL.
+> Deploy this repo to Google Cloud following AGENTS.md. Ask me for anything only I can do.
+```
+
+### Or run the script yourself
+
+With `gcloud` logged in, a project with billing linked, and `INTERNAL_TOKEN` in `.env`:
+
+```
+./deploy.sh PROJECT_ID
 ```
 
 ## Layout
