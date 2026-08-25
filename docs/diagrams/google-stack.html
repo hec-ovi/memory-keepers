@@ -111,10 +111,12 @@
     html, body { background: #fff }
     .wrap { max-width: none; padding: 0; margin: 0 }
     .sheet {
-      border: 0; margin: 0; padding: 12mm 14mm;
-      break-after: page; page-break-after: always;
+      border: 0; margin: 0; padding: 8mm 10mm;
+      break-after: auto; page-break-after: auto;
     }
-    .sheet:last-child { break-after: auto; page-break-after: auto }
+    .sheet + .sheet { break-before: page; page-break-before: always }
+    .sheet:first-of-type { zoom: 0.78 }
+    .sheet:last-of-type { zoom: 0.62 }
     @page { size: A3 landscape; margin: 10mm }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact }
   }
@@ -299,7 +301,7 @@
 <section class="sheet">
   <div class="kick">ALL THINGS AGENTIC HACKATHON</div>
   <h1>Requirements coverage</h1>
-  <p class="lede">Mapped to the live Devpost page (What to Build, What to Submit, Judging Criteria, Bonus Points). Nothing here is claimed that the repo does not do. Bonus publications are still open.</p>
+  <p class="lede">Mapped to the live Devpost page (What to Build, What to Submit, Judging Criteria, Bonus Points). Nothing here is claimed that the repo does not do.</p>
 
   <h2>Mandatory technology (every project, every track)</h2>
   <table>
@@ -377,12 +379,12 @@
     <thead><tr><th>Field</th><th>Status</th><th>Where</th></tr></thead>
     <tbody>
       <tr><td>Category</td><td class="ok">Chosen</td><td>The Collaborative Partner</td></tr>
-      <tr><td>Hosted project URL</td><td class="ok">Live</td><td>Cloud Run service, island key in Devpost testing credentials</td></tr>
-      <tr><td>Text description</td><td class="ok">Drafted</td><td>README + Devpost About</td></tr>
+      <tr><td>Hosted project URL</td><td class="ok">Live</td><td>Cloud Run, europe-west1, serving 0.9; island key in the Devpost testing credentials</td></tr>
+      <tr><td>Text description</td><td class="ok">Written</td><td>README + Devpost About</td></tr>
       <tr><td>Code repository</td><td class="ok">Public</td><td>github.com/hec-ovi/memory-keepers</td></tr>
       <tr><td>Spin-up instructions in README.md</td><td class="ok">Present</td><td>Run locally (compose) and Deploy to Google Cloud (gcloud / Cloud Shell)</td></tr>
       <tr><td>Architecture diagram</td><td class="ok">This file</td><td>How Gemini, ADK, Cloud Run, Firestore, Pub/Sub, speech, and Gemma connect</td></tr>
-      <tr><td>Demo video, max 4 min, live app, Google Cloud backend visible, name Gemini + ADK</td><td class="open">To record</td><td>Under 4 minutes, public YouTube</td></tr>
+      <tr><td>Demo video, max 4 min, live app, Google Cloud backend visible, name Gemini + ADK</td><td class="ok">Recorded</td><td>3:22, narrated, public YouTube</td></tr>
     </tbody>
   </table>
 
@@ -414,8 +416,7 @@
     <thead><tr><th>Published twist</th><th>How it shows up here</th></tr></thead>
     <tbody>
       <tr><td><b>Collaborative Partner (this track)</b>: synthesize or mutate data rather than read it; ingest messy, unstructured streams</td><td>Sources become authored books; dreaming turns cross-shelf patterns into ridge keepers and a knowledge graph. Streams: YouTube and podcast transcripts, lyrics, film plots, spoken input.</td></tr>
-      <tr><td>Taskmaster: Bring Your Own Friction, background workflow with no hand-holding</td><td>Other track. The nightly dream is still unattended work.</td></tr>
-      <tr><td>Fortified Enterprise Fleet: specialized delegates, unlikely hero</td><td>Other track. Monument routes to one AgentTool per keeper; the hero is a person, not an enterprise.</td></tr>
+
     </tbody>
   </table>
 
