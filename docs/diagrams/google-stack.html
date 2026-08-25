@@ -129,7 +129,7 @@
 <section class="sheet">
   <div class="kick">ALL THINGS AGENTIC HACKATHON · THE COLLABORATIVE PARTNER</div>
   <h1>Memory Keepers</h1>
-  <p class="lede">Google Cloud architecture. Product names and icons follow the Google Cloud icon library. One Cloud Run service holds the island and the agents. Firestore is the only store. Dreaming is Pub/Sub and Cloud Scheduler, not a background thread.</p>
+  <p class="lede">Google Cloud architecture. Product names and icons follow the Google Cloud icon library. One Cloud Run service holds the island and the agents. Firestore is the only store. Dreaming arrives through Pub/Sub, published by Cloud Scheduler, tired keepers, and the Dreaming button.</p>
 
   <h2>Request path</h2>
   <div class="row">
@@ -148,10 +148,10 @@
       </figcaption>
     </figure>
     <figure class="prod">
-      <img src="icons/identity_and_access_management.svg" alt="">
+      <img src="icons/cloud_run.svg" alt="">
       <figcaption>
         <strong>Island key</strong>
-        <span>ACCESS_CODE on Cloud Run. Anonymous traffic never reaches a model</span>
+        <span>optional ACCESS_CODE, checked by the engine as the X-Access-Code header; internal routes need INTERNAL_TOKEN. Anonymous traffic never reaches a model</span>
       </figcaption>
     </figure>
   </div>
@@ -195,7 +195,7 @@
           </figcaption>
         </figure>
       </div>
-      <p class="note" style="margin-top:12px">The engine, agents and dreaming never see which tier is live. Cloud is the hosted path. Local is privacy. A fake tier keeps every test offline.</p>
+      <p class="note" style="margin-top:12px">The engine, agents and dreaming never see which tier is live. Cloud is the hosted path. Local is privacy. A fake tier keeps every test offline. docker compose runs the same engine on the official Firestore emulator; dream dispatch runs inline there.</p>
     </div>
   </div>
 
@@ -213,14 +213,14 @@
       <img src="icons/pubsub.svg" alt="">
       <figcaption>
         <strong>Pub/Sub</strong>
-        <span>topic dream-runs. Push into /internal/dream-run. Tired keepers publish here</span>
+        <span>topic dream-runs, one message per world. Push subscription into /internal/dream-run, redelivered on failure. Producers: the nightly sweep, tired keepers, the Dreaming button</span>
       </figcaption>
     </figure>
     <figure class="prod">
       <img src="icons/cloud_scheduler.svg" alt="">
       <figcaption>
         <strong>Cloud Scheduler</strong>
-        <span>nightly POST /internal/nightly. Every world dreams unattended</span>
+        <span>0 3 * * * POST /internal/nightly, which publishes one dream per world. Every world dreams unattended</span>
       </figcaption>
     </figure>
     <figure class="prod">
@@ -245,7 +245,7 @@
       <img src="icons/cloud_build.svg" alt="">
       <figcaption>
         <strong>Cloud Build</strong>
-        <span>Dockerfile at repo root. Cloud Run source deploy</span>
+        <span>Dockerfile at repo root. Source deploy through the run-sources bucket in Cloud Storage; the compute service account holds Cloud Run Builder and Cloud Build Builder</span>
       </figcaption>
     </figure>
     <figure class="prod">
@@ -259,35 +259,35 @@
       <img src="icons/cloud_logging.svg" alt="">
       <figcaption>
         <strong>Cloud Logging</strong>
-        <span>Vertex calls and dream runs visible in Console</span>
+        <span>Cloud Run request and application logs in Logs Explorer: model calls, dream runs, failures</span>
       </figcaption>
     </figure>
     <figure class="prod">
       <img src="icons/billing.svg" alt="">
       <figcaption>
         <strong>Cloud Billing</strong>
-        <span>budget at $5. A cap function detaches billing at the line</span>
+        <span>a budget notification lands on topic billing-cap; a Cloud Functions (2nd gen, Eventarc) function detaches billing at the line</span>
       </figcaption>
     </figure>
     <figure class="prod">
-      <img src="icons/secret_manager.svg" alt="">
+      <img src="icons/identity_and_access_management.svg" alt="">
       <figcaption>
-        <strong>Env on the service</strong>
-        <span>INTERNAL_TOKEN, ACCESS_CODE. Never in the repo</span>
+        <strong>Credentials</strong>
+        <span>INTERNAL_TOKEN and ACCESS_CODE set on the service at deploy, never in the repo. Vertex and speech use the service identity, no keys on disk</span>
       </figcaption>
     </figure>
     <figure class="prod">
       <img src="icons/project.svg" alt="">
       <figcaption>
         <strong>Project</strong>
-        <span>memory-keepers-506518 · us-central1 · Vertex location global</span>
+        <span>memory-keepers-506520 · europe-west1 · Vertex location global · Cloud Run 1 GiB, min 1, max 2, no CPU throttling</span>
       </figcaption>
     </figure>
   </div>
 
   <div class="zone white" style="margin-top:16px">
     <header>Not Google (lookups only, never stored as copies)</header>
-    <p class="note" style="margin:0">YouTube transcripts, podcast transcripts, MusicBrainz song facts, LRCLIB lyrics, Gutendex book facts, OMDb / Wikidata / Wikipedia movie facts. Fetched into the model context while a book is written. The book holds facts, short quotes, and the user's relationship with the work.</p>
+    <p class="note" style="margin:0">YouTube transcripts, podcast transcripts (feeds found through iTunes Search), MusicBrainz song facts, LRCLIB and lyrics.ovh lyrics, Gutendex book facts, OMDb / Wikidata / Wikipedia movie facts. Fetched into the model context while a book is written. The book holds facts, short quotes, and the user's relationship with the work.</p>
   </div>
 
   <div class="foot">
@@ -313,7 +313,7 @@
       <tr>
         <td>At least one Google Agent Framework: ADK, GenAI SDK, Antigravity SDK, or GenKit</td>
         <td class="ok">Covered</td>
-        <td>Google ADK (Python) plus Google GenAI SDK types. Monument root, per-keeper AgentTool, ridge, dream agents. Two frameworks where one is required.</td>
+        <td>Google ADK (Python): monument root, per-keeper AgentTool, ridge and dream agents. GenAI SDK types carry the runner messages.</td>
       </tr>
       <tr>
         <td>At least one Google Cloud infrastructure service (Cloud Run, Cloud SQL, Firestore, GKE, or Pub/Sub)</td>
@@ -338,6 +338,11 @@
         <td>Every tell writes or grows a book. Sleep binds leftover conversation. Nightly dreaming builds the graph and births ridge keepers from what keeps returning. Unattended.</td>
       </tr>
       <tr>
+        <td>Asks clarifying questions, takes notes, captures feedback</td>
+        <td class="ok">Covered</td>
+        <td>Ask replies end with a follow-up question. Passing remarks land dated in the keeper's notes book. Ridge keepers reflect and ask one real question back.</td>
+      </tr>
+      <tr>
         <td>Autonomous action, not only chat (judges reward this)</td>
         <td class="ok">Covered</td>
         <td>Dreaming is Pub/Sub + Cloud Scheduler. Tired keepers publish. The island consolidates while the user is away. That is the autonomous pass.</td>
@@ -345,7 +350,7 @@
     </tbody>
   </table>
 
-  <h2>Judging criteria (0–10 scale, weights as published)</h2>
+  <h2>Judging criteria (1 to 5 per criterion, bonuses lift the final to 6)</h2>
   <table>
     <thead><tr><th>Criterion</th><th>Weight</th><th>How the work answers it</th></tr></thead>
     <tbody>
@@ -357,7 +362,7 @@
       <tr>
         <td>Architectural discipline and tech stack</td>
         <td>30%</td>
-        <td>Boxes with contracts. ADK AgentTool not transfer, so the root can synthesize. Firestore owns the library, sessions stay on the keeper. Cloud Run CPU throttle made dreaming Pub/Sub. Meters, caps, island key, billing detach. Failures fall back; the game does not die on a model error.</td>
+        <td>Boxes with contracts. ADK AgentTool, not transfer, so the root can synthesize. Firestore owns libraries and sessions (worlds, keepers, books, session, dreams). Dreaming is a Pub/Sub delivery run in-request and retried by the subscription. Runs are bounded (12 model calls, stop on a repeated call), every flow has a deterministic fallback. Meters, caps, island key, deploy token, billing detach.</td>
       </tr>
       <tr>
         <td>Demo and production readiness</td>
@@ -377,7 +382,7 @@
       <tr><td>Code repository</td><td class="ok">Public</td><td>github.com/hec-ovi/memory-keepers</td></tr>
       <tr><td>Spin-up instructions in README.md</td><td class="ok">Present</td><td>Run locally (compose) and Deploy to Google Cloud (gcloud / Cloud Shell)</td></tr>
       <tr><td>Architecture diagram</td><td class="ok">This file</td><td>How Gemini, ADK, Cloud Run, Firestore, Pub/Sub, speech, and Gemma connect</td></tr>
-      <tr><td>Demo video, max 4 min, live app, Google Cloud backend visible, name Gemini + ADK</td><td class="open">To record</td><td>Shot list in the private walkthrough. Placeholder is not the submission video</td></tr>
+      <tr><td>Demo video, max 4 min, live app, Google Cloud backend visible, name Gemini + ADK</td><td class="open">To record</td><td>Under 4 minutes, public YouTube</td></tr>
     </tbody>
   </table>
 
@@ -404,13 +409,13 @@
   </table>
   <p class="note">Gemma is the bonus the rules name. TTS and STT are Google AI models used end to end; whether judges count them is their call. They are in the product either way (hold T, spoken replies).</p>
 
-  <h2>Twist language on the rules page (older track names)</h2>
+  <h2>The Twist, per track (rules page, Innovation criterion)</h2>
   <table>
     <thead><tr><th>Published twist</th><th>How it shows up here</th></tr></thead>
     <tbody>
-      <tr><td>Bring Your Own Friction: a personal, messy problem</td><td>Memories across work, habits, and hobbies. The user is the corpus.</td></tr>
-      <tr><td>Synthesize or mutate data, not only read it</td><td>Dreaming links shelves, writes ridge keepers, builds the graph.</td></tr>
-      <tr><td>Multi-agent, specialized delegates, unlikely hero</td><td>Monument routes. Each keeper is one AgentTool. The island is a personal librarian, not an enterprise bot.</td></tr>
+      <tr><td><b>Collaborative Partner (this track)</b>: synthesize or mutate data rather than read it; ingest messy, unstructured streams</td><td>Sources become authored books; dreaming turns cross-shelf patterns into ridge keepers and a knowledge graph. Streams: YouTube and podcast transcripts, lyrics, film plots, spoken input.</td></tr>
+      <tr><td>Taskmaster: Bring Your Own Friction, background workflow with no hand-holding</td><td>Other track. The nightly dream is still unattended work.</td></tr>
+      <tr><td>Fortified Enterprise Fleet: specialized delegates, unlikely hero</td><td>Other track. Monument routes to one AgentTool per keeper; the hero is a person, not an enterprise.</td></tr>
     </tbody>
   </table>
 

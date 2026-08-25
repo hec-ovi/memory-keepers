@@ -398,7 +398,7 @@ a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s 
       ['boxes','Boxes','Seven plug-and-play boxes, one folder and one CONTRACT.md each.',LANE.steel],
       ['memory','Memory loop','Tell writes a book, ask reads the shelf, sleep compacts, the monument synthesizes.',LANE.gold],
       ['dreaming','Dreaming','The nightly consolidation that links every shelf and wakes the dark side.',LANE.violet],
-      ['cloud','Google Cloud','Cloud Run, Firestore, Pub/Sub, Scheduler, Vertex AI, Speech; emulators for free local dev.',LANE.green]
+      ['cloud','Google Cloud','Cloud Run, Firestore, Pub/Sub, Scheduler, Vertex AI, Speech; the Firestore emulator for free local dev.',LANE.green]
     ].map(function(c){
       return '<a class="ocard" href="#" data-goto="'+c[0]+'"><span class="otop"><span class="dot" style="background:'+c[3]+'"></span><span class="otitle">'+c[1]+'</span></span><span class="odesc">'+c[2]+'</span><span class="ogo">Open &rarr;</span></a>';
     }).join('');
@@ -460,7 +460,7 @@ a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s 
       +el.card({label:'dreaming',tag:'job',color:LANE.violet,sum:'Consolidation job: Pub/Sub triggered, builds the knowledge graph and the dark keepers.',extra:'<div class="row"><span class="lbl">depends on</span></div>'+el.chips(['agents','library'],true)})
       +el.card({label:'voice',tag:'speech',color:LANE.green,sum:'Speech: Cloud Text-to-Speech and Speech-to-Text routers.'})
       +'</div>'
-      +'<div class="callout"><b>Deployment.</b> One Cloud Run service (engine + frontend statics). Dreaming rides Pub/Sub: Cloud Scheduler hits <code>/internal/nightly</code>, tired keepers publish events, and a push subscription delivers both into <code>/internal/dream-run</code>. Firestore is the only store; <code>docker-compose.yml</code> runs the same stack locally on the official emulators at zero cost.</div>'
+      +'<div class="callout"><b>Deployment.</b> One Cloud Run service (engine + frontend statics). Dreaming rides Pub/Sub: Cloud Scheduler hits <code>/internal/nightly</code>, tired keepers publish events, and a push subscription delivers both into <code>/internal/dream-run</code>. Firestore is the only store; <code>docker-compose.yml</code> runs the same stack locally on the official Firestore emulator at zero cost. Google Cloud product diagram: <a href="diagrams/google-stack.html">diagrams/google-stack.html</a>.</div>'
       +'</div>';
   }
 
@@ -535,7 +535,7 @@ a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s 
         details:['<code>library.list_worlds()</code> drives the sweep; each world gets its own Pub/Sub message.']},
       {id:'pubsub',x:COL(1),y:270,kind:'topic dream-runs',lane:'green',label:'Pub/Sub',
         summary:'Every trigger lands here as {world_id, reason}; a push subscription delivers it back to the engine.',
-        details:['One topic, three producers: the HUD, tired keepers, the nightly sweep.','Locally the official Pub/Sub emulator plays the same role.']},
+        details:['One topic, three producers: the HUD, tired keepers, the nightly sweep.','Locally dream dispatch runs inline in the engine, no broker.']},
       {id:'dreamrun',x:COL(2),y:270,kind:'push target',lane:'steel',label:'/internal/dream-run',
         summary:'Token-gated push endpoint; the dream runs in-request so Cloud Run keeps the CPU allocated.',
         details:['403 unless the <code>token</code> query param matches <code>INTERNAL_TOKEN</code>.','Dev and tests call <code>run_dream</code> directly: same function, no Pub/Sub needed.','The run ends <code>done</code> or <code>failed</code>, never hangs.']},
@@ -617,7 +617,7 @@ a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s 
         details:['Cron <code>0 3 * * *</code>, token-gated like every internal route.']},
       {id:'compose',x:COL(0),y:610,kind:'docker-compose',lane:'steel',label:'compose',
         summary:'The identical stack runs locally at zero cost on the official Google emulators.',
-        details:['Engine :8000 with live reload.','Firestore emulator :8480, Pub/Sub emulator :8485.','Emulator Suite UI at :4000 to browse the database live.']},
+        details:['Engine :8000 with live reload.','Firestore emulator :8480; dream dispatch inline.','Emulator Suite UI at :4000 to browse the database live.']},
       {id:'gemma',x:COL(1),y:610,kind:'llama.cpp /v1',lane:'gold',label:'local Gemma',
         summary:'MODEL_TIER=local points LiteLLM at an OpenAI-compatible llama.cpp server serving Gemma on the host.',
         details:['<code>LOCAL_MODEL_URL</code> and <code>LOCAL_MODEL_ID</code>; a real model in the loop with zero cloud cost.']},
@@ -639,7 +639,7 @@ a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s 
     ]
   };
   function gcText(){
-    return '<p class="lede"><strong>One container in the cloud, the same stack on the desk.</strong> A single Cloud Run service serves the game and the API; Firestore holds everything; Pub/Sub and Cloud Scheduler drive the dreams; Vertex AI and Cloud Speech give the keepers a mind and a voice. Local dev runs the identical code on the official emulators for free.</p>'
+    return '<p class="lede"><strong>One container in the cloud, the same stack on the desk.</strong> A single Cloud Run service serves the game and the API; Firestore holds everything; Pub/Sub and Cloud Scheduler drive the dreams; Vertex AI and Cloud Speech give the keepers a mind and a voice. Local dev runs the identical code on the official Firestore emulator for free.</p>'
       +'<div class="doc-section"><div class="ds-head"><h3>Managed services</h3></div><div class="cardgrid">'
       +el.card({label:'Cloud Run',tag:'compute',color:LANE.steel,sum:'One service: engine + frontend statics, one URL, no CORS. <code>gcloud run deploy --source .</code> plus Firestore, Pub/Sub, Scheduler.'})
       +el.card({label:'Firestore',tag:'store',color:LANE.green,sum:'The only store: worlds, keepers, books, sessions, dream runs.'})
@@ -654,7 +654,7 @@ a.ocard{transition:transform .15s ease, border-color .15s ease, background .15s 
       +el.card({label:'local',tag:'Gemma',color:LANE.gold,sum:'Gemma on llama.cpp (OpenAI-compatible <code>/v1</code>) through LiteLLM; a real model at zero cloud cost.'})
       +el.card({label:'fake',tag:'offline',color:LANE.faint,sum:'Deterministic FakeLlm: valid JSON and real function calls per flow; the test suite runs on it.'})
       +'</div>'
-      +'<div class="callout"><b>Free local stack.</b> <code>docker-compose up</code> runs the engine (:8000) against the official Firestore emulator (:8480) and Pub/Sub emulator (:8485), with the Emulator Suite UI at :4000 to browse the database live. Same code path as production.</div>'
+      +'<div class="callout"><b>Free local stack.</b> <code>docker-compose up</code> runs the engine (:8000) against the official Firestore emulator (:8480), with the Emulator Suite UI at :4000 to browse the database live. Same code path as production.</div>'
       +'</div>';
   }
 
