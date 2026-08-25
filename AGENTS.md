@@ -40,7 +40,7 @@ OMDB_KEY=<optional, movie facts>
 
 ## 5. Health validation
 
-1. `curl -s URL/health` returns `{"status":"ok","version":"...","tier":"cloud","model":"ok"}`. `degraded` or `model` not `ok`: Vertex AI is not reachable; confirm the `aiplatform.googleapis.com` API is enabled and `GOOGLE_CLOUD_LOCATION=global` is set on the service (`gcloud run services describe memory-keepers --region REGION`).
+1. `curl -s URL/health` returns `{"status":"ok","version":"...","tier":"cloud","model":"ok"}`. `degraded` or `model` not `ok`: Vertex AI is not reachable; confirm the `aiplatform.googleapis.com` API is enabled (in the Console Library it is listed as "Agent Platform API", the former Vertex AI API) and `GOOGLE_CLOUD_LOCATION=global` is set on the service (`gcloud run services describe memory-keepers --region REGION`).
 2. `gcloud pubsub subscriptions describe dream-runs-push` and `gcloud scheduler jobs describe nightly-dream --location REGION` both exist.
 3. Open the URL in a browser. With `ACCESS_CODE` set, `URL/?key=ACCESS_CODE`. Tell the human the URL and, separately, that the key lives in `.env`.
 

@@ -15,6 +15,8 @@ gcloud config set project "$PROJECT"
 
 ## Enable APIs
 
+In the Console Library, `aiplatform.googleapis.com` is listed as "Agent Platform API" (the former Vertex AI API).
+
 ```sh
 gcloud services enable run.googleapis.com firestore.googleapis.com \
   pubsub.googleapis.com aiplatform.googleapis.com texttospeech.googleapis.com \

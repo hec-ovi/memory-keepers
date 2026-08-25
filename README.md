@@ -115,7 +115,7 @@ The tool is [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gclo
 The walkthrough is [docs/cloud-shell.md](docs/cloud-shell.md) (same commands if you already have `gcloud` locally):
 
 1. Create a project and link billing.
-2. Enable Cloud Run, Firestore, Pub/Sub, Vertex AI, Cloud Text-to-Speech, Cloud Speech-to-Text, Cloud Scheduler, Cloud Build, Artifact Registry.
+2. Enable Cloud Run, Firestore, Pub/Sub, Agent Platform API (the former Vertex AI API), Cloud Text-to-Speech, Cloud Speech-to-Text, Cloud Scheduler, Cloud Build, Artifact Registry.
 3. Grant the default Compute Engine service account Cloud Run Builder, Cloud Build Builder, and Storage Object Viewer, and Storage Object Admin on the `run-sources-PROJECT-us-central1` bucket (new projects do not give Cloud Build those rights).
 4. Create a Firestore Native database in `us-central1`.
 5. `gcloud run deploy memory-keepers --source .` in `us-central1`, allow unauthenticated, one warm instance. Env: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION=global`, `GOOGLE_GENAI_USE_VERTEXAI=TRUE`, `MODEL_TIER=cloud`, `DREAM_DISPATCH=pubsub`, `DREAM_TOPIC=dream-runs`, `INTERNAL_TOKEN` (required). Optional: `ACCESS_CODE` (island key gate), `OMDB_KEY`.
