@@ -100,8 +100,8 @@ Export island then saves it as one file.
 ## Tests
 
 ```
-docker compose run --rm test            # python boxes (79 tests)
-docker compose run --rm test-frontend   # frontend (693 tests)
+docker compose run --rm test            # python boxes (97 tests)
+docker compose run --rm test-frontend   # frontend (705 tests)
 ```
 
 Real FastAPI app, real ADK runner and tools, fake Firestore client (same suites pass against the emulator when `FIRESTORE_EMULATOR_HOST` is set); frontend on vitest + jsdom + Testing Library + MSW.

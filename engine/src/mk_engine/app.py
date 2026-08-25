@@ -16,7 +16,7 @@ from mk_models import ModelGateway
 from .events import DreamDispatcher
 from .sleep import start_sleep_job
 
-VERSION = "0.8"
+VERSION = "0.9"
 ERROR_STATUS = {
     "WORLD_NOT_FOUND": 404, "KEEPER_NOT_FOUND": 404, "BOOK_NOT_FOUND": 404,
     "DREAM_NOT_FOUND": 404, "SLEEP_NOT_FOUND": 404,
