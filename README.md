@@ -6,6 +6,8 @@ A 3D game where keepers (small blob librarians) guard your memories. Each keeper
 
 Built for the All Things Agentic Hackathon, track The Collaborative Partner.
 
+- Demo video, 3 minutes: [youtu.be/2m9c1UvCAdA](https://youtu.be/2m9c1UvCAdA)
+- Full Google Cloud setup, click by click: [youtu.be/-5D4t0W_PBM](https://youtu.be/-5D4t0W_PBM)
 - Live island: [memory-keepers on Cloud Run](https://memory-keepers-1079248358049.europe-west1.run.app) (island key in the Devpost testing credentials)
 - Interactive architecture map: [hec-ovi.github.io/memory-keepers](https://hec-ovi.github.io/memory-keepers/)
 - Google Cloud diagram, official product icons: [docs/diagrams/google-stack.html](docs/diagrams/google-stack.html) ([PDF](docs/diagrams/google-stack.pdf))
@@ -123,7 +125,7 @@ gemini
 ./deploy.sh PROJECT_ID
 ```
 
-**Click through the Console.** The walkthrough is [docs/cloud-shell.md](docs/cloud-shell.md) (Cloud Shell button below opens it as a tutorial) and [docs/console-dive.html](docs/console-dive.html) shows every click with screenshots:
+**Click through the Console.** Every click is on video: [youtu.be/-5D4t0W_PBM](https://youtu.be/-5D4t0W_PBM) (7 minutes, empty project to live island). The written walkthrough is [docs/cloud-shell.md](docs/cloud-shell.md) (the Cloud Shell button below opens it as a tutorial) and [docs/console-dive.html](docs/console-dive.html) shows every click with screenshots:
 
 [![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.png)](https://ssh.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/hec-ovi/memory-keepers&cloudshell_tutorial=docs/cloud-shell.md)
 
@@ -147,7 +149,7 @@ All Things Agentic, track The Collaborative Partner. How the project meets the p
 - **Asks, takes notes, adapts:** grounded answers end with a follow-up question, passing remarks land in each keeper's notes book, and ridge keepers reflect and ask one real question back.
 - **Innovation (40%):** books instead of chat logs, grounded ask, nightly consolidation, dark keepers born from what returns.
 - **Architecture (30%):** contract boxes, AgentTool over transfer, one-switch model gateway, Pub/Sub dreaming, bounded runs with deterministic fallbacks, island key and deploy token, billing kill switch.
-- **Demo (30%):** hosted Cloud Run URL, reproducible spin-up above, architecture diagram, 802 contract tests on the real app.
+- **Demo (30%):** hosted Cloud Run URL, the 3 minute demo video, a 7 minute Console walkthrough, reproducible spin-up above, architecture diagram, 802 contract tests on the real app.
 - **Bonus models:** Gemma (the local tier), Cloud Text-to-Speech, Cloud Speech-to-Text. Gemini is the required model, not a bonus.
 
 ## Tests
