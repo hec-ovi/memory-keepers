@@ -6,8 +6,13 @@ A 3D game where keepers (small blob librarians) guard your memories. Each keeper
 
 Built for the All Things Agentic Hackathon, track The Collaborative Partner.
 
-- Demo video, 3 minutes: [youtu.be/2m9c1UvCAdA](https://youtu.be/2m9c1UvCAdA)
-- Full Google Cloud setup, click by click: [youtu.be/-5D4t0W_PBM](https://youtu.be/-5D4t0W_PBM)
+<table>
+<tr>
+<td width="50%"><a href="https://youtu.be/2m9c1UvCAdA"><img src="docs/thumbs/video-demo.jpg" alt="Watch the 3 minute demo"></a><br><b>The demo, 3 minutes</b><br>The island, the keepers, the nightly dream, live on Google Cloud.</td>
+<td width="50%"><a href="https://youtu.be/-5D4t0W_PBM"><img src="docs/thumbs/video-guide.jpg" alt="Watch the full Google Cloud setup"></a><br><b>The setup guide, 7 minutes</b><br>Every Console click, from an empty project to a living island.</td>
+</tr>
+</table>
+
 - Live island: [memory-keepers on Cloud Run](https://memory-keepers-1079248358049.europe-west1.run.app) (island key in the Devpost testing credentials)
 - Interactive architecture map: [hec-ovi.github.io/memory-keepers](https://hec-ovi.github.io/memory-keepers/)
 - Google Cloud diagram, official product icons: [docs/diagrams/google-stack.html](docs/diagrams/google-stack.html) ([PDF](docs/diagrams/google-stack.pdf))
