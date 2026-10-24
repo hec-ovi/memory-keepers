@@ -1,0 +1,36 @@
+# Full local stack: the engine serves the island and the API, the library is
+# one SQLite file in ./.data on the host (gitignored, survives rebuilds).
+# Model tiers: fake (default, deterministic), local (Qwen on llama.cpp on the host).
+services:
+  engine:
+    build: { context: ., target: dev }
+    command: /opt/venv/bin/uvicorn mk_engine.main:app --host 0.0.0.0 --port 8000 --reload
+    ports: ["8000:8000"]
+    volumes: [".:/app"]
+    environment:
+      LIBRARY_DB: /app/.data/memory-keepers.db
+      MODEL_TIER: ${MODEL_TIER:-fake}
+      LOCAL_MODEL_URL: ${LOCAL_MODEL_URL:-http://host.docker.internal:8080/v1}
+      LOCAL_MODEL_ID: ${LOCAL_MODEL_ID:-qwen3.6-35b-a3b}
+      DREAM_AT: ${DREAM_AT:-03:00}
+      ACCESS_CODE: ${ACCESS_CODE:-}
+      OMDB_KEY: ${OMDB_KEY:-}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  # docker compose run --rm test
+  test:
+    build: { context: ., target: dev }
+    command: /opt/venv/bin/pytest -q
+    volumes: [".:/app"]
+    profiles: ["test"]
+
+  # docker compose run --rm test-frontend
+  test-frontend:
+    image: node:24-slim
+    working_dir: /app/frontend
+    command: sh -c "[ -x node_modules/.bin/vitest ] || npm install --no-audit --no-fund --no-package-lock; npx vitest run"
+    volumes: [".:/app", "mk-node-modules:/app/frontend/node_modules"]
+    profiles: ["test"]
+
+volumes:
+  mk-node-modules:

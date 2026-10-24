@@ -1,0 +1,23 @@
+[project]
+name = "mk-engine"
+version = "0.1.0"
+description = "FastAPI surface: routes, meters, jobs, world scoping, frontend statics"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141",
+    "uvicorn>=0.34",
+    "mk-library", "mk-agents", "mk-dreaming", "mk-lookups",
+]
+
+[tool.uv.sources]
+mk-library = { workspace = true }
+mk-agents = { workspace = true }
+mk-dreaming = { workspace = true }
+mk-lookups = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.11"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mk_engine"

@@ -1,0 +1,485 @@
+/* memory-keepers design system: HOLOGRAPHIC. Dark warm base, amber/orange trim
+   and type, cyan selection accents, thin scan lines (ui-style reference).
+   The authoritative holo styling lives in src/ui/holo/holo.js (injected
+   stylesheet, holo-* classes); this file re-themes the legacy shared classes
+   to the same language so non-kit surfaces (HUD, minimap, toasts, connect
+   screen) match. Legacy variable NAMES are kept so older module CSS keeps
+   working; their VALUES are holo now (--pink is amber, --lavender is cyan).
+   Shared classes: .panel .btn .btn-primary .btn-ghost .input .chip
+   Overlay building blocks: .toast-stack .toast .overlay-backdrop .dialog
+   Motion helpers: .stat-pop .skeleton
+   Tooltip: any element with [data-tooltip] grows a hover/focus bubble.
+   Canvas cursors: #app is grab, .is-grabbing / .is-orbiting while dragging. */
+
+:root {
+  /* palette (holo) */
+  --bg-deep: #0b0703;
+  --bg-panel: rgba(26, 13, 4, 0.86);
+  --bg-input: rgba(10, 5, 2, 0.75);
+  --line: rgba(255, 166, 64, 0.35);
+  --line-strong: rgba(255, 166, 64, 0.6);
+  --text: #ffd3a1;
+  --text-dim: #c99a66;
+  --pink: #ffb658;          /* legacy name: primary accent, now holo amber */
+  --lavender: #3fe0ff;      /* legacy name: secondary accent, now holo cyan */
+  --peach: #ffd9a0;
+  --danger: #ff7a5c;
+  --paper: #f7eedd;
+  --paper-ink: #43334c;
+
+  /* type: body stays readable, headings use the holo condensed face */
+  --font: "Segoe UI", "Noto Sans", system-ui, sans-serif;
+  --font-display: "Bahnschrift", "DIN Alternate", "Franklin Gothic Medium",
+    "Segoe UI", system-ui, sans-serif;
+  --fs-xs: 0.78rem;
+  --fs-sm: 0.87rem;
+  --fs-md: 0.95rem;
+
+  /* spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+
+  /* shape + depth: tighter radii, amber glow instead of soft shadows */
+  --radius: 6px;
+  --radius-sm: 4px;
+  --shadow:
+    inset 0 0 34px rgba(255, 140, 40, 0.06),
+    0 0 20px rgba(255, 150, 40, 0.22),
+    0 8px 30px rgba(0, 0, 0, 0.55);
+  --shadow-soft: 0 0 12px rgba(255, 150, 40, 0.18);
+  --glass: saturate(1.15) blur(6px);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --scan: repeating-linear-gradient(0deg, rgba(255, 196, 128, 0.05) 0 1px, rgba(0, 0, 0, 0) 1px 3px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  overflow: hidden;
+  color-scheme: dark;
+}
+
+/* --- layout roots --- */
+
+#app {
+  position: fixed;
+  inset: 0;
+  cursor: grab;
+}
+
+#app.is-grabbing { cursor: grabbing; }
+#app.is-orbiting { cursor: move; }
+
+#app canvas { display: block; }
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none; /* children opt back in */
+  z-index: 10;
+}
+
+#ui > * { pointer-events: auto; }
+
+/* --- cursor language: every interactive DOM element is a pointer --- */
+
+button, [role="button"], a, label[for], select, summary { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+/* --- scrollbars --- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 166, 64, 0.35) transparent;
+}
+
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 166, 64, 0.35);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover { background: rgba(255, 166, 64, 0.55); }
+
+/* --- panels: holo frame (mirrors .holo-panel for non-kit surfaces) --- */
+
+.panel {
+  background: var(--scan),
+    linear-gradient(180deg, rgba(120, 58, 14, 0.3), rgba(30, 14, 4, 0) 34%),
+    var(--bg-panel);
+  backdrop-filter: var(--glass);
+  -webkit-backdrop-filter: var(--glass);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--pink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--sp-4);
+  color: var(--text);
+}
+
+.panel h1, .panel h2, .panel h3 { margin-top: 0; font-family: var(--font-display); }
+
+.panel-title {
+  margin: 0 0 var(--sp-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--pink);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: 0 0 9px rgba(255, 166, 64, 0.5);
+}
+
+/* --- buttons (holo: amber outline, hover glow, angular) --- */
+
+.btn {
+  appearance: none;
+  border: 1px solid rgba(255, 166, 64, 0.55);
+  background: rgba(255, 166, 64, 0.08);
+  color: var(--pink);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 15px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 130ms ease, box-shadow 130ms ease,
+    color 130ms ease, filter 130ms ease;
+}
+
+.btn:hover { background: rgba(255, 166, 64, 0.2); box-shadow: 0 0 14px rgba(255, 166, 64, 0.5); }
+.btn:active { filter: brightness(0.9); }
+.btn:focus-visible {
+  outline: 2px solid var(--lavender);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  background: rgba(255, 166, 64, 0.05);
+  filter: none;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--peach), var(--pink));
+  border-color: transparent;
+  color: #241102;
+  box-shadow: 0 0 14px rgba(255, 182, 88, 0.35);
+}
+.btn-primary:hover {
+  background: linear-gradient(180deg, #ffe4b8, #ffc270);
+  box-shadow: 0 0 16px rgba(255, 182, 88, 0.65);
+}
+
+.btn-ghost {
+  background: rgba(255, 166, 64, 0.04);
+  box-shadow: none;
+}
+
+/* --- inputs --- */
+
+.input,
+textarea.input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid rgba(255, 166, 64, 0.55);
+  border-radius: var(--radius-sm);
+  color: var(--peach);
+  caret-color: var(--lavender);
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  padding: 10px 12px;
+  transition: border-color 130ms ease, box-shadow 130ms ease;
+}
+
+.input::placeholder { color: rgba(255, 182, 88, 0.4); }
+.input:focus-visible {
+  outline: none;
+  border-color: var(--lavender);
+  box-shadow: 0 0 12px rgba(63, 224, 255, 0.35);
+}
+
+.field-label {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--text-dim);
+  margin: var(--sp-3) 0 var(--sp-1);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.field-error { color: var(--danger); font-size: var(--fs-xs); margin: var(--sp-1) 0 0; }
+
+/* --- chips --- */
+
+.chip {
+  display: inline-block;
+  background: rgba(40, 20, 4, 0.55);
+  border: 1px solid rgba(255, 166, 64, 0.55);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+  color: var(--pink);
+  margin: 0 4px 4px 0;
+}
+
+button.chip { transition: background 120ms ease, box-shadow 120ms ease; }
+button.chip:hover { background: rgba(255, 166, 64, 0.18); box-shadow: 0 0 10px rgba(255, 166, 64, 0.4); }
+button.chip:focus-visible { outline: 2px solid var(--lavender); outline-offset: 1px; }
+
+/* --- counter pop (HUD stats and friends) --- */
+
+.stat-pop { animation: stat-pop 320ms var(--ease-pop); }
+
+@keyframes stat-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+/* --- skeleton shimmer (loading placeholders) --- */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 196, 128, 0.08);
+  border-radius: 4px;
+  color: transparent !important;
+  min-height: 0.9em;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 196, 128, 0.14), transparent);
+  animation: skeleton-shimmer 1.2s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+
+/* --- tooltips: [data-tooltip] grows a bubble under the element --- */
+
+[data-tooltip] { position: relative; }
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  /* alt-text syntax keeps the tooltip out of the accessible name where
+     supported; older browsers ignore this line and keep the one above */
+  content: attr(data-tooltip) / "";
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-3px);
+  background: rgba(20, 10, 3, 0.96);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  padding: 5px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease 300ms, transform 140ms ease 300ms;
+  box-shadow: var(--shadow-soft);
+  z-index: 100;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --- toasts: holo chips --- */
+
+.toast-stack {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  z-index: 60;
+}
+
+.toast {
+  background: var(--scan), var(--bg-panel);
+  backdrop-filter: var(--glass);
+  -webkit-backdrop-filter: var(--glass);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 14px rgba(255, 150, 40, 0.25), 0 6px 20px rgba(0, 0, 0, 0.5);
+  padding: 8px 16px;
+  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--pink);
+  animation: toast-pop 200ms var(--ease-pop);
+}
+
+.toast-error { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 14px rgba(255, 122, 92, 0.3); }
+.toast-success { border-color: var(--lavender); color: var(--lavender); box-shadow: 0 0 14px rgba(63, 224, 255, 0.3); }
+
+@keyframes toast-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --- modal overlays (confirm, howto, create) --- */
+
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 4, 1, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: backdrop-in 160ms ease-out;
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dialog {
+  min-width: 300px;
+  max-width: min(560px, calc(100vw - 40px));
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+
+/* --- howto --- */
+
+.howto-list { margin: 0; padding: 0; list-style: none; }
+.howto-list li { display: flex; gap: 10px; margin: 8px 0; align-items: baseline; }
+
+.kbd {
+  background: var(--bg-input);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--peach);
+  white-space: nowrap;
+}
+
+/* --- markdown output --- */
+
+.md { line-height: 1.55; font-size: var(--fs-md); }
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 {
+  color: var(--pink);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  margin: 0.8em 0 0.3em;
+}
+.md p { margin: 0.5em 0; }
+.md ul, .md ol { margin: 0.5em 0; padding-left: 1.4em; }
+.md a { color: var(--lavender); }
+.md code {
+  background: var(--bg-input);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.85em;
+}
+
+/* --- boot / connect screen + scene placeholder --- */
+
+.center-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boot-panel { text-align: center; max-width: 380px; }
+.boot-panel .face { font-size: 2.2rem; margin-bottom: 6px; color: var(--pink); }
+.boot-panel p { color: var(--text-dim); margin: 8px 0 16px; }
+.boot-panel .input + .btn { margin-top: 16px; }
+
+.scene-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  background: linear-gradient(130deg, #241204, #3a1e08, #06222b, #241204);
+  background-size: 300% 300%;
+  animation: placeholder-drift 14s ease infinite;
+}
+
+@keyframes placeholder-drift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.scene-placeholder .scene-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pink);
+  text-shadow: 0 0 14px rgba(255, 166, 64, 0.5);
+}
+
+.scene-placeholder .scene-sub { color: var(--text-dim); font-size: var(--fs-sm); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* tooltips ride above every panel, no matter where they are */
+[data-tooltip]:hover, [data-tooltip]:focus-visible { z-index: 2147483000; }
+[data-tooltip]::after, [data-tooltip]::before { z-index: 2147483001; }
+
+/* holo panels drag by their header */
+.holo-panel > header { cursor: grab; user-select: none; }
+.holo-panel.holo-dragged > header { cursor: grabbing; }

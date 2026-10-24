@@ -1,0 +1,30 @@
+# private working notes, never published
+docs/IDEA.md
+docs/REQUIREMENTS.md
+docs/TESTPLAN.md
+docs/WALKTHROUGH.md
+docs/MEMORY.md
+docs/raw.md
+
+# python
+__pycache__/
+.venv/
+*.egg-info/
+
+# node (dev tooling pinned exactly in package.json)
+node_modules/
+frontend/package-lock.json
+
+# env / secrets
+.env
+*.key
+
+# the local library: SQLite file of the user's worlds
+.data/
+
+# local video renders
+video.mp4
+docs/video/
+
+# research store
+.research/
