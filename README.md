@@ -83,7 +83,7 @@ flowchart LR
   book --> sleep[sleep binds old turns into books]
   book --> dream[the island dreams]
   notes --> dream
-  dream --> graph[knowledge graph]
+  dream --> knowledge[knowledge graph]
   dream --> ridge[dark keepers on the ridge]
 ```
 
